@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Web5.blog 开发框架与架构白皮书</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a1628;
+    --bg-mid: #0f1e36;
+    --accent-cyan: #4da8da;
+    --accent-glow: #2d7ab3;
+    --title-white: #e8f0f8;
+    --muted-blue: #7a9bb8;
+    --accent-gold: #d6b551;
+    --accent-purple: #b080e8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 794px; height: 1123px;
+    margin: 0; padding: 0;
+    background: var(--bg-deep);
+    overflow: hidden;
+    font-family: 'Noto Serif SC', serif;
+  }
+  .cover {
+    position: relative;
+    width: 794px; height: 1123px;
+    background:
+      radial-gradient(ellipse at 15% 12%, rgba(45, 122, 179, 0.18) 0%, transparent 45%),
+      radial-gradient(ellipse at 85% 88%, rgba(176, 128, 232, 0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(77, 168, 218, 0.04) 0%, transparent 70%),
+      linear-gradient(180deg, #0a1628 0%, #0f1e36 50%, #0a1628 100%);
+    color: var(--title-white);
+  }
+  /* Layer 1: background grid */
+  .layer-bg {
+    position: absolute; inset: 0; z-index: 1;
+    overflow: hidden;
+    background-image:
+      linear-gradient(rgba(77, 168, 218, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(77, 168, 218, 0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  .layer-bg::before {
+    content: '';
+    position: absolute;
+    top: 30%; left: 60%;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(77, 168, 218, 0.12) 0%, transparent 70%);
+    filter: blur(20px);
+  }
+  /* Layer 2: structure - luminous frame */
+  .layer-struct {
+    position: absolute; inset: 0; z-index: 2;
+  }
+  .frame {
+    position: absolute;
+    top: 80px; left: 60px;
+    right: 60px; bottom: 80px;
+    border: 1.5px solid var(--accent-cyan);
+    box-shadow:
+      0 0 24px rgba(77, 168, 218, 0.25),
+      inset 0 0 48px rgba(77, 168, 218, 0.05);
+  }
+  .corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 2px solid var(--accent-gold);
+  }
+  .corner.tl { top: 70px; left: 50px; border-right: none; border-bottom: none; }
+  .corner.tr { top: 70px; right: 50px; border-left: none; border-bottom: none; }
+  .corner.bl { bottom: 70px; left: 50px; border-right: none; border-top: none; }
+  .corner.br { bottom: 70px; right: 50px; border-left: none; border-top: none; }
+  /* Layer 3: content */
+  .layer-content {
+    position: absolute; inset: 0; z-index: 3;
+    padding: 0 90px;
+  }
+  .kicker {
+    position: absolute;
+    top: 150px; left: 90px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11pt;
+    color: var(--accent-cyan);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    font-weight: 400;
+  }
+  .kicker-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent-gold);
+    border-radius: 50%;
+    margin: 0 12px 2px 0;
+    vertical-align: middle;
+    box-shadow: 0 0 8px var(--accent-gold);
+  }
+  .hero-title {
+    position: absolute;
+    top: 260px; left: 90px;
+    right: 90px;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 46pt;
+    font-weight: 900;
+    line-height: 1.18;
+    color: var(--accent-cyan);
+    text-shadow:
+      0 0 20px rgba(77, 168, 218, 0.3),
+      0 0 40px rgba(45, 122, 179, 0.15);
+    letter-spacing: -1px;
+  }
+  .hero-title .accent {
+    color: var(--accent-cyan);
+    font-style: italic;
+  }
+  .subtitle {
+    position: absolute;
+    top: 510px; left: 90px;
+    right: 90px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 16pt;
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--accent-cyan);
+    letter-spacing: 1px;
+  }
+  .summary {
+    position: absolute;
+    top: 600px; left: 90px;
+    right: 90px;
+    max-width: 560px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    line-height: 1.85;
+    color: var(--muted-blue);
+    letter-spacing: 0.3px;
+  }
+  .protocol-row {
+    position: absolute;
+    top: 800px; left: 90px;
+    right: 90px;
+    display: flex;
+    gap: 28px;
+  }
+  .protocol-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10pt;
+    color: var(--accent-gold);
+    padding: 6px 14px;
+    border: 1px solid rgba(214, 181, 81, 0.4);
+    border-radius: 2px;
+    letter-spacing: 1.5px;
+    background: rgba(214, 181, 81, 0.05);
+  }
+  .meta-block {
+    position: absolute;
+    bottom: 170px; left: 90px;
+    right: 90px;
+  }
+  .meta-line {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14pt;
+    font-weight: 500;
+    color: var(--title-white);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+  .meta-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5pt;
+    color: var(--muted-blue);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .footer {
+    position: absolute;
+    bottom: 105px; left: 90px;
+    right: 90px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .footer-left {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    color: var(--muted-blue);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .footer-right {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+    color: var(--accent-cyan);
+    letter-spacing: 2px;
+    text-align: right;
+  }
+  .version-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    font-size: 8.5pt;
+    letter-spacing: 2px;
+    margin-left: 8px;
+  }
+  /* Decorative circuit lines - repositioned to avoid text overlap */
+  .circuit {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .circuit-1 {
+    top: 175px; right: 95px;
+    width: 70px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-cyan));
+  }
+  .circuit-2 {
+    top: 175px; right: 95px;
+    width: 1px; height: 30px;
+    background: linear-gradient(180deg, var(--accent-cyan), transparent);
+  }
+  .circuit-node {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: var(--accent-gold);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent-gold);
+  }
+  .node-1 { top: 173px; right: 93px; }
+  .node-2 { top: 203px; right: 93px; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="layer-bg"></div>
+  <div class="layer-struct">
+    <div class="frame"></div>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="circuit circuit-1"></div>
+    <div class="circuit circuit-2"></div>
+    <div class="circuit-node node-1"></div>
+    <div class="circuit-node node-2"></div>
+  </div>
+  <div class="layer-content">
+    <div class="kicker"><span class="kicker-dot"></span>ARCHITECTURE WHITEPAPER · V1.0</div>
+    <div class="hero-title">Web5.blog<br>开发框架与<br>架构白皮书</div>
+    <div class="subtitle">个人数字解放的协议级实现<br>Prime × Eidolon × Vessel 三层生命架构</div>
+    <div class="summary">
+      本白皮书基于朴叔 Web5 个人解放互联网愿景，融合马克思主义政治经济学、戴维经济学比较优势理论与 PLVTVS.Network 代码资产，系统阐述 Web5.blog 作为全球首个分身原生博客平台的协议设计、五层架构、六大开发优先级、30/60/90 天冲刺路线图、技术风险矩阵与合规监管框架。
+    </div>
+    <div class="protocol-row">
+      <span class="protocol-chip">AP2</span>
+      <span class="protocol-chip">ARP</span>
+      <span class="protocol-chip">AA2P</span>
+      <span class="protocol-chip">ERC-4337</span>
+      <span class="protocol-chip">DWN</span>
+    </div>
+    <div class="meta-block">
+      <div class="meta-line">架构师级完整版 · 30/60/90 天冲刺路线图</div>
+      <div class="meta-sub">PREPARED FOR · 朴叔 Web5 生态</div>
+    </div>
+    <div class="footer">
+      <div class="footer-left">PLVTVS.ONE × EIDOLONOS.XYZ × WEB5.BLOG</div>
+      <div class="footer-right">
+        2026 · DIGITAL LIBERATION
+        <span class="version-tag">V1.0</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
