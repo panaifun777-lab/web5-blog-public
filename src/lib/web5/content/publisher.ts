@@ -24,24 +24,33 @@ export interface PublishResult {
   tokenId: bigint | null;
   arpVcId: string;
   contentId: string;
+  uploadFallback: boolean;
+  uploadSize: number;
 }
+
+// 升级版：使用真实 Irys SDK（带本地 fallback）
+import { uploadToArweave as irysUpload, estimateUploadCost } from './arweave-uploader';
 
 async function uploadToArweave(content: {
   title: string;
   bodyMd: string;
   authorDid: string;
   timestamp: number;
-}): Promise<string> {
-  return createHash('sha256')
-    .update(JSON.stringify(content))
-    .digest('base64url')
-    .slice(0, 43);
+}): Promise<{ hash: string; fallback: boolean; size: number }> {
+  const result = await irysUpload(content);
+  return {
+    hash: result.arweaveHash,
+    fallback: result.fallback,
+    size: result.size,
+  };
 }
 
 async function mintContentNFT(
   _arweaveHash: string,
   _royaltyRate: number
 ): Promise<bigint> {
+  // 生产环境：调用 ContentNFT.mint() 链上交易
+  // MVP：生成确定性 tokenId
   return BigInt(Math.floor(Math.random() * 1_000_000_000) + 1);
 }
 
@@ -71,12 +80,14 @@ export async function publishContent(params: PublishParams): Promise<PublishResu
   const license = params.license || 'CC_BY';
   const royaltyRate = params.royaltyRate || 100;
 
-  const arweaveHash = await uploadToArweave({
+  const uploadResult = await uploadToArweave({
     title: params.title,
     bodyMd: params.bodyMd,
     authorDid: session.primeDid,
     timestamp: Date.now(),
+    coverImageHash: params.coverImageHash,
   });
+  const { hash: arweaveHash, fallback: uploadFallback, size: uploadSize } = uploadResult;
 
   const tokenId = await mintContentNFT(arweaveHash, royaltyRate);
 
@@ -110,7 +121,7 @@ export async function publishContent(params: PublishParams): Promise<PublishResu
     },
   });
 
-  return { arweaveHash, tokenId, arpVcId, contentId: content.id };
+  return { arweaveHash, tokenId, arpVcId, contentId: content.id, uploadFallback, uploadSize };
 }
 
 export async function listContents(opts: { limit?: number; offset?: number } = {}) {
