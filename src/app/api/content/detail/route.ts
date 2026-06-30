@@ -5,6 +5,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+export async function POST(req: NextRequest) {
+  try {
+    const { arweaveHash, comment, vesselDid } = await req.json();
+    if (!arweaveHash || !comment || !vesselDid) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+    const content = await db.content.findUnique({ where: { arweaveHash } });
+    if (!content) {
+      return NextResponse.json({ error: 'Content not found' }, { status: 404 });
+    }
+    const vessel = await db.vessel.findUnique({
+      where: { did: vesselDid },
+      include: { prime: true },
+    });
+    if (!vessel) {
+      return NextResponse.json({ error: 'Vessel not found' }, { status: 404 });
+    }
+
+    const interaction = await db.interaction.create({
+      data: {
+        contentId: content.id,
+        vesselDid,
+        vesselId: vessel.id,
+        primeId: vessel.primeId,
+        type: 'COMMENT',
+        comment,
+      },
+    });
+
+    return NextResponse.json({ success: true, interactionId: interaction.id });
+  } catch (err) {
+    const e = err as Error;
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);

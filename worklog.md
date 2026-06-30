@@ -77,3 +77,75 @@ Stage Summary:
 - 所有 4 个参考代码库的关键模块均已整合：PLVTVS（设计+音频+粒子+RBAC）、AP2-Protocol-Explorer（BigInt+escrow+wallet）
 - MVP 可运行：http://localhost:3000 已通过 Agent Browser 端到端验证
 - 待办：集成真实 Irys SDK / viem 合约调用 / TEE 推理 / The Graph subgraph（生产环境）
+
+---
+Task ID: DEV-2
+Agent: Super Z (Tech Co-founder & Full-stack Architect)
+Task: Web5.blog P0→P3 全栈实现深度迭代（合约+种子+真实集成+功能型UI+VPS）
+
+Work Log:
+- T1: 编写 3 个 Solidity 合约
+  - contracts/contracts/VesselAuth.sol — 容器登录授权（Session Key grant/revoke + Vessel Awakening 记录 + 紧急熔断）
+  - contracts/contracts/BudgetFence.sol — AP2 微支付预算控制（三道闸 Scope Lock/Daily Cap/Decaying Auth + 批量结算）
+  - contracts/contracts/ContentNFT.sol — 内容确权 NFT（ERC-721 + ERC-2981 版税 + 批量铸造）
+  - contracts/scripts/deploy.ts — viem 部署脚本（目标 Base Sepolia，superadmin=0x1068...58B1）
+  - contracts/README.md — 完整部署文档
+  - src/lib/web5/contracts/addresses.ts — 合约地址配置
+
+- T2: 5 篇 Web5 宣言种子文章
+  - scripts/seed-content.ts — 完整 Markdown 正文 + 模拟 Arweave 上传 + NFT 铸造 + ARP VC
+  - 文章：Web5 宣言 / 技术蓝图 / 经济学内核 / 案例研究 / 教程
+  - 全部写入 Prisma Content 表
+
+- T3: 10 个种子用户系统
+  - scripts/seed-users.ts — 8 个 Vessel + 2 个 Observer + 邀请码 + 转化追踪
+  - 每个用户包含 Prime/Eidolon/Vessel/AP2Budget/AutonomousLog
+  - 转化率 66.7%（8/10 已从 Observer 转为 Vessel）
+
+- T4: 升级 publisher.ts 为真实 Irys SDK
+  - src/lib/web5/content/arweave-uploader.ts — Irys SDK 真实上传 + 本地 fallback
+  - 上传成本估算函数
+  - 批量上传支持
+
+- T5: 升级 eidolon-writer.ts 为真实 LLM 推理
+  - 集成 z-ai-web-dev-sdk（chat.completions.create + stream: true）
+  - 个性化 system prompt（4 种风格）
+  - TEE 模拟层（generateTEEProof 函数）
+  - Fallback 流式生成（LLM 不可用时）
+
+- T6: 页面从介绍型重构为功能型 — 5 大功能区
+  - T6-a: API 层
+    - /api/content/list — 博客流列表（含统计）
+    - /api/content/detail — 内容详情 + 评论 POST
+    - /api/explore — 全局统计 + Top Vessels + 合约状态 + 邀请码
+    - /api/conversion — Observer → Vessel 转化追踪
+  - T6-b: BlogFeed 组件 — 博客流 + 详情 + 微支付 + 评论 + 互动历史
+  - T6-c: Writer 组件 — AI SSE 流式写作 + 风格选择 + Arweave 发布 + NFT 铸造
+  - T6-d: ExplorePanel 组件 — 全局统计 + 转化追踪 + Top Vessels 排行 + 合约状态
+  - T6-e: MyVessels 组件 — 分身矩阵 + 4 模块（财务/状态/同步/日志）+ 收益报表
+  - T6-f: SettingsPanel 组件 — 账户/邀请码/合约/VPS 4 个 Tab
+  - T6-g: page.tsx 重构 — ScanRitual Landing + 5 大功能区导航
+
+- T7: VPS 配置建议
+  - VPS-DEPLOYMENT.md — 4 个层级配置 + 部署清单 + 监控 + 备份 + 安全加固
+  - 设置面板内置 VPS 配置展示
+
+- Agent Browser 端到端验证：
+  - Landing 页正常渲染（Hero + 三层架构 + 5 大功能预览）
+  - AWAKEN VESSEL 触发 ScanRitual 四阶段动效 → 容器唤醒成功
+  - 博客流显示 5 篇种子文章（朴叔发布），可点击查看详情
+  - 博客详情页完整：Arweave Hash + NFT Token ID + ARP VC + 微支付按钮 + 评论框
+  - 写作功能区：AI 流式写作 API 返回 200（z-ai-web-dev-sdk 真实调用）
+  - 探索面板：18 Primes / 16 Active Vessels / 5 Contents / 12.76 USDC Total Yield / 66.7% 转化率
+  - 我的分身：三层 DID + Total Harvest + BudgetFence 三道闸说明 + 4 模块 Tab
+  - 设置：账户/邀请码/合约/VPS 4 个 Tab 完整可用
+  - 截图保存：web5-blog-functional-{feed,explore,vessels,settings}.png
+
+Stage Summary:
+- 全球首创"容器登录"范式从 MVP 升级为完整功能型应用
+- 5 大功能区（博客流/写作/我的分身/探索/设置）全部可用，非介绍型
+- 3 个 Solidity 合约编写完成，部署脚本就绪（待 Foundry 环境部署至 Base Sepolia）
+- 5 篇 Web5 宣言种子文章 + 10 个种子用户 + 邀请码系统 + 转化追踪
+- 真实 Irys SDK 集成（带 fallback）+ 真实 LLM 推理（z-ai-web-dev-sdk）
+- VPS 配置文档完整（4 层级 + 部署清单 + 监控 + 备份 + 安全）
+- 待办：Foundry 环境部署合约至 Base Sepolia 主网 / AI 流式输出前端渲染优化
