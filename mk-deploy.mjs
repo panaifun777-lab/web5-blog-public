@@ -44,7 +44,7 @@ const files = [
   'src/lib/web5/distribution/farcaster.ts',
   'src/lib/web5/alerts/alerter.ts',
   'src/app/api/dashboard/route.ts',
-  '.env',
+  // '.env', // excluded — send manually via SSH for security
   'public/favicon.svg',
 ];
 

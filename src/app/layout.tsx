@@ -78,11 +78,51 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Person',
+        '@id': 'https://web5.blog/#person',
+        name: 'piaoshu.eth',
+        url: 'https://web5.blog',
+        sameAs: [
+          'https://warpcast.com/piaoshu',
+          'https://x.com/piaoshu1112',
+          'https://github.com/piaoshu',
+        ],
+        knowsAbout: ['Web5', 'Decentralized Identity', 'AI Agent', 'Smart Contracts'],
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://web5.blog/#website',
+        url: 'https://web5.blog',
+        name: 'Web5.blog',
+        description: '全球首个分身原生博客平台 — Prime × Eidolon × Vessel 三层生命架构',
+        publisher: { '@id': 'https://web5.blog/#person' },
+        inLanguage: ['zh-CN', 'en'],
+      },
+      {
+        '@type': 'BlogPosting',
+        '@id': 'https://web5.blog/#blogposting',
+        headline: 'Web5.blog · Vessel-Native Blog Platform',
+        description: 'Prime × Eidolon × Vessel 三层生命架构 — AP2/ARP/AA2P 协议族 · ERC-4337 · Arweave 永久确权 · AI 分身流式写作',
+        author: { '@id': 'https://web5.blog/#person' },
+        publisher: { '@id': 'https://web5.blog/#person' },
+        mainEntityOfPage: 'https://web5.blog',
+      },
+    ],
+  };
+
   return (
     <html lang="zh-CN" suppressHydrationWarning className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${notoSerifSC.variable} antialiased bg-background text-foreground`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers>{children}</Providers>
         <Toaster />
       </body>
