@@ -140,7 +140,7 @@ export function SettingsPanel({ session }: { session: VesselSession | null }) {
                 </span>
               </div>
 
-              <Field label="SUPERADMIN" value={SUPERADMIN} color="#FFCC00" mono copyable onCopy={() => copy(SUPERADMIN, 'admin')} copied={copied === 'admin'} />
+              <Field label="飘叔 (SUPERADMIN)" value={SUPERADMIN} color="#FFCC00" mono copyable onCopy={() => copy(SUPERADMIN, 'admin')} copied={copied === 'admin'} />
               <Field label="VesselAuth" value={ADDRESSES.VesselAuth} color="#00FFCC" mono copyable onCopy={() => copy(ADDRESSES.VesselAuth, 'va')} copied={copied === 'va'} />
               <Field label="BudgetFence" value={ADDRESSES.BudgetFence} color="#0066FF" mono copyable onCopy={() => copy(ADDRESSES.BudgetFence, 'bf')} copied={copied === 'bf'} />
               <Field label="ContentNFT" value={ADDRESSES.ContentNFT} color="#B080E8" mono copyable onCopy={() => copy(ADDRESSES.ContentNFT, 'cn')} copied={copied === 'cn'} />

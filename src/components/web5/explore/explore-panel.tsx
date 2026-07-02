@@ -210,7 +210,7 @@ export function ExplorePanel() {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#666]">SUPERADMIN</span>
+            <span className="text-[#666]">飘叔 (SUPERADMIN)</span>
             <span className="text-[#FFCC00]">{data.contracts.superadmin.slice(0, 12)}...{data.contracts.superadmin.slice(-6)}</span>
           </div>
           <div className="border-t border-[#1a1a1a] pt-2 space-y-1">

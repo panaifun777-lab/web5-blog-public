@@ -55,7 +55,7 @@ interface Interaction {
   authorAvatarSeed: string;
 }
 
-export function BlogFeed({ session }: { session: VesselSession | null }) {
+export function BlogFeed({ session, module: mod }: { session: VesselSession | null; module?: string }) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{
@@ -80,11 +80,22 @@ export function BlogFeed({ session }: { session: VesselSession | null }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [mod]);
 
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  // 客户端模块过滤：为每个 post 分配一个模块
+  const filteredPosts = mod && mod !== 'tech'
+    ? posts.filter(p => {
+        // 用 post ID 哈希决定模块归属
+        const sum = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const modules = ['tech', 'humanity', 'crowdfunding', 'crowdsourcing', 'bounties', 'piaoshu'];
+        const idx = sum % modules.length;
+        return modules[idx] === mod;
+      })
+    : posts;
 
   const openPost = async (post: BlogPost) => {
     try {
@@ -281,6 +292,14 @@ export function BlogFeed({ session }: { session: VesselSession | null }) {
                 >
                   <Coins className="w-4 h-4 mr-1" /> TIP AUTHOR
                 </Button>
+                {/* CITE 引用 */}
+                <Button onClick={() => {
+                  const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://sepolia.basescan.org/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
+                  navigator.clipboard.writeText(citeText);
+                  setMessage('✓ 引用链接已复制到剪贴板');
+                }} variant="outline" className="border-[#00FFCC]/30 text-[#00FFCC]">
+                  <FileText className="w-4 h-4 mr-1" /> CITE
+                </Button>
               </div>
 
               {/* 评论框 */}
@@ -365,7 +384,7 @@ export function BlogFeed({ session }: { session: VesselSession | null }) {
             <div key={i} className="cyber-loading-bar h-32 rounded" />
           ))}
         </div>
-      ) : posts.length === 0 ? (
+      ) : filteredPosts.length === 0 ? (
         <div className="cyber-panel text-center py-12">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
           <div className="cyber-mono text-[#666]">暂无内容</div>
@@ -375,7 +394,7 @@ export function BlogFeed({ session }: { session: VesselSession | null }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
             <Card
               key={post.id}
               className="cyber-panel hover:scale-[1.005] transition-transform cursor-pointer"

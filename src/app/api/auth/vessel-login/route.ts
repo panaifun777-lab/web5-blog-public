@@ -13,15 +13,27 @@ import { verifyAA2PSignature, queryPrimeDelegation } from '@/lib/web5/vessel-ver
 import { issueVesselToken } from '@/lib/web5/token-issuer';
 import { createHash } from 'crypto';
 
+// ━━ 全局 BigInt JSON 序列化修复 ━━
+if (typeof BigInt !== 'undefined' && !(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () { return this.toString(); };
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { challenge, aa2pClaim, vesselDid, eidolonDid } = body as {
-      challenge: VesselChallenge;
-      aa2pClaim: AA2PClaim;
-      vesselDid: string;
-      eidolonDid: string;
+    const body = await req.json().catch(() => ({}));
+    const { challenge, aa2pClaim, vesselDid, eidolonDid } = (body || {}) as {
+      challenge?: VesselChallenge;
+      aa2pClaim?: AA2PClaim;
+      vesselDid?: string;
+      eidolonDid?: string;
     };
+
+    if (!challenge || !aa2pClaim || !vesselDid) {
+      return NextResponse.json(
+        { error: 'Missing required fields: challenge, aa2pClaim, vesselDid' },
+        { status: 400 }
+      );
+    }
 
     const now = Date.now();
 

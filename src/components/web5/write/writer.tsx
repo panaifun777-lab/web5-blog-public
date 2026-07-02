@@ -5,14 +5,14 @@
 // AI 分身流式写作 — SSE 真实 LLM 推理 + Arweave 发布 + NFT 铸造
 // ════════════════════════════════════════════════════════════════
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Sparkles, Square, FileText, Coins, Shield, Loader2,
+  Sparkles, Square, FileText, Coins, Shield, Loader2, RefreshCw,
   Check, AlertCircle, Zap,
 } from 'lucide-react';
 import { fromTokenUnits } from '@/lib/web5/types';
@@ -30,6 +30,19 @@ export function Writer({ session }: { session: VesselSession | null }) {
   const [publishResult, setPublishResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const outputRef = useRef<HTMLPreElement>(null);
+  const outputContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll as new content streams in
+  useEffect(() => {
+    if (state === 'streaming' && outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight;
+    }
+    // Also scroll the container for mobile
+    if (state === 'streaming' && outputContainerRef.current) {
+      outputContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [output, state]);
 
   const canWrite = session && session.accessMode === 'vessel';
 
@@ -40,16 +53,21 @@ export function Writer({ session }: { session: VesselSession | null }) {
     setError(null);
     setPublishResult(null);
 
+    const currentPrompt = prompt;
+    const currentStyle = style;
+
     const ac = new AbortController();
     abortRef.current = ac;
+
+    let accumulated = '';
 
     try {
       const res = await fetch('/api/ai/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt,
-          style,
+          prompt: currentPrompt,
+          style: currentStyle,
           maxTokens: 800,
         }),
         signal: ac.signal,
@@ -78,15 +96,16 @@ export function Writer({ session }: { session: VesselSession | null }) {
             try {
               const data = JSON.parse(line.slice(6));
               if (data.text) {
-                setOutput((prev) => prev + data.text);
+                accumulated += data.text;
+                setOutput(accumulated);
               }
               if (data.done) {
-                setState('done');
                 // 自动提取标题（取第一行 # 后的内容）
-                const titleMatch = (output + data.text).match(/^#\s+(.+)$/m);
+                const titleMatch = accumulated.match(/^#\s+(.+)$/m);
                 if (titleMatch && !title) {
                   setTitle(titleMatch[1]);
                 }
+                setState('done');
                 return;
               }
               if (data.error) {
@@ -95,7 +114,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 return;
               }
             } catch (e) {
-              // 忽略 JSON 解析错误
+              // 忽略 JSON 解析错误，继续下一个事件
             }
           }
         }
@@ -109,7 +128,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       setError((err as Error).message);
       setState('error');
     }
-  }, [prompt, style, output, title]);
+  }, [prompt, style, title]);
 
   const stopStream = () => {
     abortRef.current?.abort();
@@ -234,12 +253,30 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 <div className="cyber-loading-bar w-20 h-1" />
               )}
             </div>
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[#ddd] max-h-[500px] overflow-y-auto">
+            <pre
+              ref={outputRef}
+              className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[#ddd] max-h-[500px] overflow-y-auto scroll-smooth"
+            >
               {output}
               {state === 'streaming' && <span className="cyber-blink">▊</span>}
             </pre>
           </CardContent>
         </Card>
+      )}
+
+      {/* 重新生成 / 编辑 */}
+      {state === 'done' && output && !publishResult && (
+        <div className="flex gap-2 mt-2">
+          <Button size="sm" variant="outline" onClick={() => { setOutput(''); setState('idle'); }} className="border-[#FFCC00]/30 text-[#FFCC00] text-xs">
+            <RefreshCw className="w-3 h-3 mr-1" /> REGENERATE
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => {
+            const edited = prompt('编辑内容:', output);
+            if (edited) setOutput(edited);
+          }} className="border-[#00FFCC]/30 text-[#00FFCC] text-xs">
+            <FileText className="w-3 h-3 mr-1" /> EDIT
+          </Button>
+        </div>
       )}
 
       {/* 发布区 */}

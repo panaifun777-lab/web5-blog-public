@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WEB 5 // 商业与哲学白皮书 v3.0 — 飘叔</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --bg-void: #05060a;
+  --bg-deep: #0a0e17;
+  --bg-panel: #0f1420;
+  --bg-card: rgba(15, 20, 32, 0.7);
+  --cyan: #00f0ff;
+  --cyan-dim: #00a8b5;
+  --magenta: #ff2e88;
+  --magenta-dim: #b8195f;
+  --amber: #ffb800;
+  --acid: #b4ff39;
+  --crimson: #ff3838;
+  --fg: #e8edf5;
+  --fg-dim: #8892b0;
+  --fg-muted: #4a5568;
+  --border: rgba(0, 240, 255, 0.15);
+  --border-hot: rgba(255, 46, 136, 0.3);
+  --grid: rgba(0, 240, 255, 0.04);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg-void);
+  color: var(--fg);
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* 全局背景：网格 + 扫描线 + 噪点 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 240, 255, 0.015) 3px,
+    transparent 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+  animation: scanmove 8s linear infinite;
+}
+
+@keyframes scanmove {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(4px); }
+}
+
+#matrix-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 自定义光标 */
+.cursor-glow {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s;
+  mix-blend-mode: screen;
+}
+
+main { position: relative; z-index: 5; }
+
+/* 字体类 */
+.font-display { font-family: 'Orbitron', sans-serif; letter-spacing: 0.05em; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+.font-tech { font-family: 'Share Tech Mono', monospace; }
+
+/* 故障文字效果 */
+.glitch {
+  position: relative;
+  display: inline-block;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+}
+.glitch::before {
+  color: var(--magenta);
+  z-index: -1;
+  animation: glitch-1 3s infinite linear alternate-reverse;
+}
+.glitch::after {
+  color: var(--cyan);
+  z-index: -2;
+  animation: glitch-2 2.5s infinite linear alternate-reverse;
+}
+@keyframes glitch-1 {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(-1px, -1px); }
+  60% { transform: translate(1px, 1px); }
+  80% { transform: translate(2px, -1px); }
+}
+@keyframes glitch-2 {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(2px, -1px); }
+  40% { transform: translate(1px, 1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(-2px, 1px); }
+}
+
+/* 全息卡片 */
+.holo-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.holo-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: holo-sweep 4s ease-in-out infinite;
+}
+.holo-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(0, 240, 255, 0.03) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.holo-card:hover {
+  border-color: var(--cyan);
+  transform: translateY(-4px);
+  box-shadow: 
+    0 0 30px rgba(0, 240, 255, 0.2),
+    inset 0 0 30px rgba(0, 240, 255, 0.05);
+}
+.holo-card:hover::after { opacity: 1; }
+.holo-card:hover::before { animation-duration: 1.5s; }
+
+@keyframes holo-sweep {
+  0%, 100% { left: -100%; }
+  50% { left: 100%; }
+}
+
+/* 角标装饰 */
+.corner-deco {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--cyan);
+}
+.corner-deco.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.corner-deco.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.corner-deco.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.corner-deco.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+/* 章节标号 */
+.section-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--cyan);
+  letter-spacing: 0.3em;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-tag::before {
+  content: '';
+  width: 40px;
+  height: 1px;
+  background: var(--cyan);
+}
+
+/* 大标题 */
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  background: linear-gradient(180deg, #fff 0%, var(--cyan-dim) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  position: relative;
+}
+
+/* 终端样式 */
+.terminal {
+  background: rgba(5, 6, 10, 0.85);
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  position: relative;
+}
+.terminal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 28px;
+  background: linear-gradient(90deg, var(--bg-panel) 0%, rgba(15,20,32,0.3) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+  z-index: 2;
+}
+.terminal-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.terminal-dot.r { background: var(--crimson); }
+.terminal-dot.y { background: var(--amber); }
+.terminal-dot.g { background: var(--acid); }
+
+.terminal-body {
+  padding: 40px 20px 20px;
+  color: var(--acid);
+  line-height: 1.7;
+}
+.terminal-body .prompt { color: var(--cyan); }
+.terminal-body .comment { color: var(--fg-muted); }
+.terminal-body .key { color: var(--magenta); }
+.terminal-body .val { color: var(--amber); }
+
+/* 打字光标 */
+.type-cursor::after {
+  content: '▊';
+  color: var(--acid);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* 数据流装饰 */
+.data-stream {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--cyan-dim);
+  opacity: 0.5;
+  white-space: nowrap;
+  overflow: hidden;
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 按钮 */
+.btn-cyber {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  padding: 14px 28px;
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.btn-cyber::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cyan);
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+  z-index: -1;
+}
+.btn-cyber:hover {
+  color: var(--bg-void);
+  box-shadow: 0 0 20px var(--cyan);
+}
+.btn-cyber:hover::before { transform: translateX(0); }
+
+.btn-cyber.alt {
+  color: var(--magenta);
+  border-color: var(--magenta);
+}
+.btn-cyber.alt::before { background: var(--magenta); }
+.btn-cyber.alt:hover { box-shadow: 0 0 20px var(--magenta); }
+
+/* 导航栏 */
+.nav-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  background: rgba(5, 6, 10, 0.7);
+  border-bottom: 1px solid var(--border);
+}
+
+/* 协议徽章 */
+.protocol-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--cyan);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+
+.protocol-badge.mag {
+  background: rgba(255, 46, 136, 0.08);
+  border-color: var(--magenta);
+  color: var(--magenta);
+}
+
+/* 架构层级 */
+.arch-layer {
+  position: relative;
+  background: linear-gradient(90deg, var(--bg-card) 0%, rgba(15,20,32,0.4) 100%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--cyan);
+  padding: 24px 28px;
+  transition: all 0.4s;
+  cursor: pointer;
+}
+.arch-layer:hover {
+  border-left-color: var(--magenta);
+  background: linear-gradient(90deg, rgba(255,46,136,0.05) 0%, rgba(15,20,32,0.4) 100%);
+  transform: translateX(8px);
+}
+.arch-layer .layer-num {
+  position: absolute;
+  right: 20px; top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 3rem;
+  color: rgba(0, 240, 255, 0.08);
+  pointer-events: none;
+}
+
+/* 表格 */
+.cyber-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Rajdhani', sans-serif;
+}
+.cyber-table th {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--cyan);
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cyan);
+  background: rgba(0, 240, 255, 0.04);
+  text-transform: uppercase;
+}
+.cyber-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.cyber-table tr:hover td {
+  background: rgba(0, 240, 255, 0.03);
+}
+.cyber-table tr.highlight td {
+  background: rgba(255, 46, 136, 0.05);
+  border-color: var(--magenta);
+}
+.cyber-table tr.highlight td:first-child {
+  border-left: 3px solid var(--magenta);
+}
+
+/* 引用块 */
+.cyber-quote {
+  position: relative;
+  padding: 32px 40px;
+  background: linear-gradient(135deg, rgba(255, 46, 136, 0.05) 0%, rgba(0, 240, 255, 0.05) 100%);
+  border-left: 2px solid var(--magenta);
+  font-family: 'Rajdhani', sans-serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--fg);
+}
+.cyber-quote::before {
+  content: '"';
+  position: absolute;
+  top: 0; left: 16px;
+  font-size: 5rem;
+  color: var(--magenta);
+  opacity: 0.3;
+  font-family: 'Orbitron', sans-serif;
+  line-height: 1;
+}
+
+/* 滚动揭示 */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s, transform 0.8s;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 数字滚动 */
+.metric-num {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  background: linear-gradient(180deg, var(--cyan) 0%, var(--magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 旋转环 */
+.rotating-ring {
+  position: absolute;
+  border: 1px dashed var(--cyan);
+  border-radius: 50%;
+  opacity: 0.2;
+  animation: rotate 20s linear infinite;
+}
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* 浮动 */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* 进度条 */
+.progress-cyber {
+  height: 4px;
+  background: rgba(0, 240, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+.progress-cyber::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--cyan), var(--magenta));
+  width: var(--w, 50%);
+  transition: width 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 章节分隔 */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 80px 0 40px;
+}
+.section-divider .line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+}
+.section-divider .node {
+  width: 8px; height: 8px;
+  background: var(--cyan);
+  transform: rotate(45deg);
+}
+
+/* 等式 */
+.equation {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--cyan);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+}
+
+/* 时间线 */
+.timeline-node {
+  position: relative;
+  padding-left: 60px;
+  padding-bottom: 40px;
+}
+.timeline-node::before {
+  content: '';
+  position: absolute;
+  left: 20px; top: 8px;
+  width: 2px; height: calc(100% - 8px);
+  background: linear-gradient(180deg, var(--cyan), transparent);
+}
+.timeline-node::after {
+  content: '';
+  position: absolute;
+  left: 13px; top: 4px;
+  width: 16px; height: 16px;
+  background: var(--bg-void);
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+/* 宣言 */
+.declaration-line {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+}
+.declaration-line .num {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--magenta);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* 雷达图 */
+.radar-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+/* 选中文字 */
+::selection {
+  background: var(--cyan);
+  color: var(--bg-void);
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb {
+  background: var(--cyan-dim);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+/* 工具类 */
+.text-cyan { color: var(--cyan); }
+.text-magenta { color: var(--magenta); }
+.text-amber { color: var(--amber); }
+.text-acid { color: var(--acid); }
+.text-dim { color: var(--fg-dim); }
+.text-muted { color: var(--fg-muted); }
+.bg-panel { background: var(--bg-panel); }
+.border-cyan { border-color: var(--cyan); }
+.border-magenta { border-color: var(--magenta); }
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .section-title { font-size: 2rem; }
+  .holo-card { padding: 20px; }
+}
+
+/* 减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- 导航 -->
+<nav class="nav-bar">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 relative flex items-center justify-center">
+        <div class="absolute inset-0 border border-cyan-400 rotate-45"></div>
+        <span class="font-display font-black text-cyan text-sm">W5</span>
+      </div>
+      <div>
+        <div class="font-display font-bold text-sm tracking-widest text-cyan">WEB 5</div>
+        <div class="font-tech text-[10px] text-dim -mt-1">v3.0 / 2026.07</div>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-6 font-tech text-xs">
+      <a href="#prologue" class="text-dim hover:text-cyan transition">01_PROLOGUE</a>
+      <a href="#philosophy" class="text-dim hover:text-cyan transition">02_PHILOSOPHY</a>
+      <a href="#evolution" class="text-dim hover:text-cyan transition">03_EVOLUTION</a>
+      <a href="#matrix" class="text-dim hover:text-cyan transition">04_MATRIX</a>
+      <a href="#mechanism" class="text-dim hover:text-cyan transition">05_MECHANISM</a>
+      <a href="#declaration" class="text-dim hover:text-cyan transition">06_DECLARATION</a>
+    </div>
+    <div class="flex items-center gap-2 font-tech text-xs">
+      <span class="w-2 h-2 bg-acid rounded-full animate-pulse"></span>
+      <span class="text-acid hidden sm:inline">SYSTEM_ONLINE</span>
+    </div>
+  </div>
+</nav>
+
+<main class="pt-16">
+
+<!-- HERO -->
+<section class="relative min-h-screen flex items-center justify-center px-6 py-20 overflow-hidden">
+  
+  <!-- 旋转装饰环 -->
+  <div class="rotating-ring" style="width:600px;height:600px;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+  <div class="rotating-ring" style="width:800px;height:800px;top:50%;left:50%;transform:translate(-50%,-50%);animation-direction:reverse;animation-duration:30s;"></div>
+  
+  <div class="relative z-10 max-w-6xl mx-auto text-center">
+    
+    <!-- 顶部标签 -->
+    <div class="flex justify-center mb-8 reveal">
+      <div class="protocol-badge">
+        <i class="fas fa-circle text-[6px]"></i>
+        <span>WHITEPAPER v3.0 / 工程矩阵融合版</span>
+      </div>
+    </div>
+    
+    <!-- 主标题 -->
+    <h1 class="font-display font-black leading-none mb-6 reveal" style="font-size: clamp(4rem, 14vw, 12rem);">
+      <span class="glitch text-white" data-text="WEB">WEB</span>
+      <span class="text-magenta">5</span>
+    </h1>
+    
+    <!-- 副标题 -->
+    <div class="font-display text-xl md:text-2xl tracking-[0.4em] text-cyan mb-4 reveal">
+      COMMERCIAL & PHILOSOPHICAL MANIFESTO
+    </div>
+    <div class="font-tech text-sm text-dim mb-12 reveal">
+      从感知价值到个体自由的工程实践 // FROM PERCEIVED VALUE TO INDIVIDUAL FREEDOM
+    </div>
+    
+    <!-- 关键人物 -->
+    <div class="flex flex-wrap items-center justify-center gap-6 mb-16 reveal">
+      <div class="text-center">
+        <div class="font-tech text-xs text-muted mb-1">[INITIATOR]</div>
+        <div class="font-display font-bold text-lg text-white">飘叔 / PIAO SHU</div>
+        <div class="font-tech text-xs text-cyan">CORE PHILOSOPHER</div>
+      </div>
+      <div class="text-muted">|</div>
+      <div class="text-center">
+        <div class="font-tech text-xs text-muted mb-1">[AI_PARTNER]</div>
+        <div class="font-display font-bold text-lg text-white">JASON</div>
+        <div class="font-tech text-xs text-magenta">CO-ARCHITECT</div>
+      </div>
+    </div>
+    
+    <!-- 终端 -->
+    <div class="max-w-3xl mx-auto reveal">
+      <div class="terminal text-left">
+        <div class="terminal-header">
+          <div class="terminal-dot r"></div>
+          <div class="terminal-dot y"></div>
+          <div class="terminal-dot g"></div>
+          <span class="font-tech text-[10px] text-dim ml-3">web5@blog:~$ initialize_protocol</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt">$</span> <span class="comment"># 启动 Web5 共识网络...</span></div>
+          <div><span class="prompt">$</span> <span class="key">AFC_Chain</span>.PoUE_consensus = <span class="val">ACTIVE</span></div>
+          <div><span class="prompt">$</span> <span class="key">AA2P_Protocol</span>.avatar_to_avatar = <span class="val">LISTENING :402</span></div>
+          <div><span class="prompt">$</span> <span class="key">PLVTUS</span>.soul_containers = <span class="val">8_012_449</span></div>
+          <div><span class="prompt">$</span> <span class="key">AvatarOS</span>.cognitive_engine = <span class="val">RED_BLUE_ONLINE</span></div>
+          <div><span class="prompt">$</span> <span class="key">EidolonOS</span>.prime_to_vessel = <span class="val">SYNCED</span></div>
+          <div><span class="prompt">$</span> <span class="comment"># 个体金融解放协议已就绪</span></div>
+          <div><span class="prompt">$</span> <span class="text-acid type-cursor">awaiting_human_intent</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 滚动提示 -->
+    <div class="mt-16 flex flex-col items-center gap-2 reveal">
+      <div class="font-tech text-xs text-muted tracking-widest">SCROLL TO DECODE</div>
+      <div class="w-px h-12 bg-gradient-to-b from-cyan-400 to-transparent"></div>
+      <i class="fas fa-chevron-down text-cyan text-sm animate-bounce"></i>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 01 序言 -->
+<section id="prologue" class="relative py-24 px-6">
+  <div class="max-w-6xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_01</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="grid lg:grid-cols-12 gap-12 items-start">
+      <div class="lg:col-span-5 reveal">
+        <div class="section-tag mb-4">01 / PROLOGUE</div>
+        <h2 class="section-title mb-8">时代拐点<br/><span class="text-magenta">与 WEB 5 的提出</span></h2>
+        <p class="text-dim text-lg leading-relaxed mb-6">
+          在 AI 算力呈指数级爆发的今天，人类正面临一次<span class="text-cyan font-semibold">文明级别的生产力跃迁</span>。
+        </p>
+        <p class="text-dim leading-relaxed">
+          未来的核心竞争力，不再局限于人与人的竞争，而在于 <span class="text-amber font-mono">Token 经济</span>——即人与 AI 智能体之间、智能体与智能体之间的价值交换体系。
+        </p>
+      </div>
+      
+      <div class="lg:col-span-7 reveal">
+        <div class="holo-card p-8 relative">
+          <div class="corner-deco tl"></div>
+          <div class="corner-deco tr"></div>
+          <div class="corner-deco bl"></div>
+          <div class="corner-deco br"></div>
+          
+          <div class="font-tech text-xs text-magenta mb-4 tracking-widest">// CORE_THESIS</div>
+          <h3 class="font-display font-bold text-2xl text-white mb-6">当机器与机器的交互达到毫秒级，<br/>传统的以"人"为绝对中心的经济模型将被打破。</h3>
+          
+          <div class="space-y-4 text-dim">
+            <p>AI 分身作为介于智能体与人之间的桥梁，不仅实现了人类能力的快速扩展，更让<span class="text-cyan">"以毫秒计价的躺赚"</span>成为可能。</p>
+            <p>飘叔团队在全球最早倡导 <span class="text-magenta font-bold">Web5</span> 商业概念，并已构建出从底层公链、通信协议到灵魂容器的全栈技术矩阵。</p>
+          </div>
+          
+          <div class="mt-8 pt-6 border-t border-cyan-900 grid grid-cols-3 gap-4">
+            <div>
+              <div class="font-display font-black text-3xl text-cyan">10<sup class="text-base">-3</sup></div>
+              <div class="font-tech text-[10px] text-muted">SECOND // 交互颗粒度</div>
+            </div>
+            <div>
+              <div class="font-display font-black text-3xl text-magenta">∞</div>
+              <div class="font-tech text-[10px] text-muted">FRACTAL // 认知分形</div>
+            </div>
+            <div>
+              <div class="font-display font-black text-3xl text-amber">T+</div>
+              <div class="font-tech text-[10px] text-muted">TOKEN // 万亿市场</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 哲学底座 -->
+<section id="philosophy" class="relative py-24 px-6 bg-deep">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_02</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4">02 / PHILOSOPHICAL FOUNDATION</div>
+      <h2 class="section-title">哲学与经济学底座<br/><span class="text-cyan">跨时空的理论重构</span></h2>
+    </div>
+    
+    <!-- 双子理论 -->
+    <div class="grid lg:grid-cols-2 gap-8 mb-16">
+      
+      <!-- 马克思 -->
+      <div class="holo-card p-8 relative reveal">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco br"></div>
+        
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-16 h-16 border-2 border-magenta flex items-center justify-center" style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));">
+            <i class="fas fa-hammer text-magenta text-2xl"></i>
+          </div>
+          <div>
+            <div class="font-tech text-xs text-magenta tracking-widest">DAS KAPITAL // 1867</div>
+            <h3 class="font-display font-bold text-2xl text-white">马克思视角</h3>
+          </div>
+        </div>
+        
+        <p class="text-dim mb-6 leading-relaxed">
+          生产资料与生产关系的<span class="text-magenta">终极跃迁</span>。
+        </p>
+        
+        <div class="space-y-5">
+          <div class="border-l-2 border-magenta pl-4">
+            <div class="font-display font-bold text-sm text-magenta mb-2">生产资料重新定义</div>
+            <p class="text-dim text-sm leading-relaxed">核心生产资料变为算力、数据、AI 模型与智能体。通过 <span class="font-mono text-cyan">AFC 公链</span> 确权，首次真正归个体所有。</p>
+          </div>
+          <div class="border-l-2 border-magenta pl-4">
+            <div class="font-display font-bold text-sm text-magenta mb-2">生产关系重构</div>
+            <p class="text-dim text-sm leading-relaxed">"资本雇佣劳动"被打破。新关系是<span class="text-white">"个体拥有 AI 分身，分身代理劳动"</span>——剩余价值通过 Token 直接回流个体。</p>
+          </div>
+          <div class="border-l-2 border-magenta pl-4">
+            <div class="font-display font-bold text-sm text-magenta mb-2">异化劳动的消灭</div>
+            <p class="text-dim text-sm leading-relaxed">劳动不再是被迫的谋生手段，而是个体意志通过 Avatar 在数字世界的自由延伸。</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 罗素 -->
+      <div class="holo-card p-8 relative reveal">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco br"></div>
+        
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-16 h-16 border-2 border-cyan flex items-center justify-center" style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));">
+            <i class="fas fa-infinity text-cyan text-2xl"></i>
+          </div>
+          <div>
+            <div class="font-tech text-xs text-cyan tracking-widest">CAUSAL FREEDOM // 1914</div>
+            <h3 class="font-display font-bold text-2xl text-white">罗素视角</h3>
+          </div>
+        </div>
+        
+        <p class="text-dim mb-6 leading-relaxed">
+          "原因自由"与个体意志的<span class="text-cyan">无摩擦实现</span>。
+        </p>
+        
+        <div class="space-y-5">
+          <div class="border-l-2 border-cyan pl-4">
+            <div class="font-display font-bold text-sm text-cyan mb-2">传统经济的摩擦力</div>
+            <p class="text-dim text-sm leading-relaxed">意图（因）转化为财富（果）的过程，充满组织摩擦、时间延迟和中介剥削。</p>
+          </div>
+          <div class="border-l-2 border-cyan pl-4">
+            <div class="font-display font-bold text-sm text-cyan mb-2">Web5 的原因自由</div>
+            <p class="text-dim text-sm leading-relaxed">AI 分身消除所有中间摩擦力。意志可以在毫秒级内直接转化为经济结果——<span class="text-white">"想"即是"做"</span>。</p>
+          </div>
+          <div class="border-l-2 border-cyan pl-4">
+            <div class="font-display font-bold text-sm text-cyan mb-2">意志的无限分形</div>
+            <p class="text-dim text-sm leading-relaxed">"躺赚"本质是前期认知与系统构建的复利变现，是认知在硅基世界的无限分形红利。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 第一性原理方程 -->
+    <div class="reveal">
+      <div class="text-center mb-6">
+        <div class="font-tech text-xs text-magenta tracking-widest mb-2">// FIRST_PRINCIPLES_EQUATION</div>
+        <h3 class="font-display font-bold text-2xl text-white">Web5 第一性原理方程</h3>
+      </div>
+      
+      <div class="equation">
+        <div class="font-tech text-xs text-muted mb-4">// 个体总价值方程式</div>
+        <div class="text-2xl md:text-3xl">
+          <span class="text-white">V</span>
+          <span class="text-muted mx-2">=</span>
+          <span class="text-cyan">[ C <span class="text-muted text-sm">×</span> P <span class="text-muted text-sm">×</span> F ]</span>
+          <span class="text-muted mx-2">/</span>
+          <span class="text-magenta">f</span>
+        </div>
+        <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-mono">
+          <div><span class="text-cyan">C</span> <span class="text-muted">= 稀缺认知</span></div>
+          <div><span class="text-cyan">P</span> <span class="text-muted">= 算力杠杆</span></div>
+          <div><span class="text-cyan">F</span> <span class="text-muted">= 毫秒级频次</span></div>
+          <div><span class="text-magenta">f</span> <span class="text-muted">→ 0 系统摩擦力</span></div>
+        </div>
+        <div class="mt-6 pt-6 border-t border-cyan-900 text-dim text-sm">
+          当 <span class="text-magenta font-mono">f → 0</span>，分子被放大至万亿级别——这就是<span class="text-cyan">个体金融解放</span>的数学与哲学证明。
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 03 Web 演进 -->
+<section id="evolution" class="relative py-24 px-6">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_03</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4">03 / PARADIGM SHIFT</div>
+      <h2 class="section-title">Web 演进逻辑<br/><span class="text-magenta">从信息到自由的范式转移</span></h2>
+    </div>
+    
+    <!-- 演进时间线 -->
+    <div class="reveal mb-12">
+      <div class="grid grid-cols-5 gap-2 mb-4">
+        <div class="text-center">
+          <div class="font-display font-black text-3xl md:text-5xl text-muted opacity-50">1</div>
+          <div class="font-tech text-[10px] text-muted">READ_ONLY</div>
+        </div>
+        <div class="text-center">
+          <div class="font-display font-black text-3xl md:text-5xl text-muted opacity-60">2</div>
+          <div class="font-tech text-[10px] text-muted">READ_WRITE</div>
+        </div>
+        <div class="text-center">
+          <div class="font-display font-black text-3xl md:text-5xl text-muted opacity-70">3</div>
+          <div class="font-tech text-[10px] text-muted">OWN</div>
+        </div>
+        <div class="text-center">
+          <div class="font-display font-black text-3xl md:text-5xl text-cyan">4</div>
+          <div class="font-tech text-[10px] text-cyan">PERCEIVE</div>
+        </div>
+        <div class="text-center">
+          <div class="font-display font-black text-3xl md:text-5xl text-magenta">5</div>
+          <div class="font-tech text-[10px] text-magenta">LIBERATE</div>
+        </div>
+      </div>
+      <div class="h-1 bg-gradient-to-r from-muted via-cyan to-magenta relative">
+        <div class="absolute -top-1 right-0 w-3 h-3 bg-magenta rounded-full animate-pulse"></div>
+      </div>
+    </div>
+    
+    <!-- 详细对比表 -->
+    <div class="holo-card p-6 reveal">
+      <div class="overflow-x-auto">
+        <table class="cyber-table">
+          <thead>
+            <tr>
+              <th>STAGE</th>
+              <th>核心特征</th>
+              <th>哲学/经济学映射</th>
+              <th>价值主张</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="font-display font-bold text-lg text-muted">Web 1</div>
+                <div class="font-tech text-[10px] text-muted">1990s</div>
+              </td>
+              <td class="text-dim">只读互联网</td>
+              <td class="text-dim">信息的可达性</td>
+              <td class="text-dim">消除信息不对称</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-display font-bold text-lg text-muted">Web 2</div>
+                <div class="font-tech text-[10px] text-muted">2000s</div>
+              </td>
+              <td class="text-dim">读写互联网</td>
+              <td class="text-dim">平台资本主义</td>
+              <td class="text-dim">流量变现与注意力经济</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-display font-bold text-lg text-muted">Web 3</div>
+                <div class="font-tech text-[10px] text-muted">2020s</div>
+              </td>
+              <td class="text-dim">读写 + 拥有</td>
+              <td class="text-dim">数据主权与资产确权</td>
+              <td class="text-dim">产权的数字化</td>
+            </tr>
+            <tr class="highlight">
+              <td>
+                <div class="font-display font-bold text-lg text-cyan">Web 4</div>
+                <div class="font-tech text-[10px] text-cyan">PRESENT</div>
+              </td>
+              <td class="text-white font-semibold">感知价值互联网</td>
+              <td class="text-cyan">生产力的极大释放</td>
+              <td class="text-dim">劳动力、知识、财富通过交互被重新定价与释放</td>
+            </tr>
+            <tr class="highlight" style="background:rgba(255,46,136,0.05);">
+              <td>
+                <div class="font-display font-bold text-lg text-magenta">Web 5</div>
+                <div class="font-tech text-[10px] text-magenta">EMERGING</div>
+              </td>
+              <td class="text-white font-semibold">个体自由互联网</td>
+              <td class="text-magenta">生产关系重构与原因自由</td>
+              <td class="text-white font-bold">个体金融解放，意志的无摩擦变现</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Web4 vs Web5 -->
+    <div class="grid md:grid-cols-2 gap-6 mt-12 reveal">
+      <div class="holo-card p-6 relative" style="border-color: var(--cyan);">
+        <div class="absolute top-0 right-0 px-3 py-1 bg-cyan text-bg-void font-tech text-[10px] font-bold">WEB 4</div>
+        <h4 class="font-display font-bold text-lg text-cyan mb-4">感知价值 // net4.xyz</h4>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between border-b border-cyan-900 pb-2">
+            <span class="text-muted">命题</span>
+            <span class="text-dim">生产力释放</span>
+          </div>
+          <div class="flex justify-between border-b border-cyan-900 pb-2">
+            <span class="text-muted">交互主体</span>
+            <span class="text-dim">人 + AI 辅助</span>
+          </div>
+          <div class="flex justify-between border-b border-cyan-900 pb-2">
+            <span class="text-muted">时间颗粒</span>
+            <span class="text-cyan">秒级 / 分钟级</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-muted">价值捕获</span>
+            <span class="text-dim">任务驱动</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="holo-card p-6 relative" style="border-color: var(--magenta);">
+        <div class="absolute top-0 right-0 px-3 py-1 bg-magenta text-bg-void font-tech text-[10px] font-bold">WEB 5</div>
+        <h4 class="font-display font-bold text-lg text-magenta mb-4">个体自由 // web5.blog</h4>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between border-b border-magenta-900 pb-2">
+            <span class="text-muted">命题</span>
+            <span class="text-white">生产关系重构</span>
+          </div>
+          <div class="flex justify-between border-b border-magenta-900 pb-2">
+            <span class="text-muted">交互主体</span>
+            <span class="text-white">AI 分身自主 + 人类意图</span>
+          </div>
+          <div class="flex justify-between border-b border-magenta-900 pb-2">
+            <span class="text-muted">时间颗粒</span>
+            <span class="text-magenta font-bold">毫秒级</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-muted">价值捕获</span>
+            <span class="text-white">认知复利 · 数字地租</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 04 技术矩阵 -->
+<section id="matrix" class="relative py-24 px-6 bg-deep">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_04</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4">04 / ENGINEERING MATRIX</div>
+      <h2 class="section-title">Web5 核心技术工程矩阵<br/><span class="text-cyan">全景落地</span></h2>
+      <p class="text-dim mt-6 max-w-2xl mx-auto">五层"数字生命"栈——从底层公链到灵魂容器，从通信宪法到支付网关。</p>
+    </div>
+    
+    <!-- 架构图 -->
+    <div class="space-y-4 mb-16">
+      
+      <div class="arch-layer reveal" style="border-left-color: var(--acid);">
+        <div class="layer-num">05</div>
+        <div class="flex items-start gap-6">
+          <div class="flex-shrink-0">
+            <div class="font-tech text-xs text-acid tracking-widest">LAYER_05</div>
+            <div class="font-display font-bold text-xl text-white mt-1">应用与试验层</div>
+          </div>
+          <div class="flex-1 pl-6 border-l border-acid-900">
+            <p class="text-dim text-sm mb-3">让宏大哲学与协议落地为可体验的入口。</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="protocol-badge" style="border-color:var(--acid);color:var(--acid);background:rgba(180,255,57,0.08);">web5.blog</span>
+              <span class="protocol-badge" style="border-color:var(--acid);color:var(--acid);background:rgba(180,255,57,0.08);">分布式 DApp</span>
+              <span class="protocol-badge" style="border-color:var(--acid);color:var(--acid);background:rgba(180,255,57,0.08);">物理世界映射</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="arch-layer reveal" style="border-left-color: var(--amber);">
+        <div class="layer-num">04</div>
+        <div class="flex items-start gap-6">
+          <div class="flex-shrink-0">
+            <div class="font-tech text-xs text-amber tracking-widest">LAYER_04</div>
+            <div class="font-display font-bold text-xl text-white mt-1">寻址与网关层</div>
+          </div>
+          <div class="flex-1 pl-6 border-l border-amber-900">
+            <p class="text-dim text-sm mb-3">全球路由与毫秒级结算，深度融合 HTTP 402 未支付协议。</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="protocol-badge" style="border-color:var(--amber);color:var(--amber);background:rgba(255,184,0,0.08);">.web4 / .web5 域名</span>
+              <span class="protocol-badge" style="border-color:var(--amber);color:var(--amber);background:rgba(255,184,0,0.08);">EidolonOS // eidolonos.xyz</span>
+              <span class="protocol-badge" style="border-color:var(--amber);color:var(--amber);background:rgba(255,184,0,0.08);">x402 微支付网关</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="arch-layer reveal" style="border-left-color: var(--magenta);">
+        <div class="layer-num">03</div>
+        <div class="flex items-start gap-6">
+          <div class="flex-shrink-0">
+            <div class="font-tech text-xs text-magenta tracking-widest">LAYER_03</div>
+            <div class="font-display font-bold text-xl text-white mt-1">真身与容器层</div>
+          </div>
+          <div class="flex-1 pl-6 border-l border-magenta-900">
+            <p class="text-dim text-sm mb-3">赋予 Agent 以灵魂、记忆与自主变现能力。从被动响应跃迁至主动感知。</p>
+            <div class="grid md:grid-cols-2 gap-4 mt-3">
+              <div class="bg-black/40 p-3 border border-magenta-900">
+                <div class="font-display font-bold text-magenta text-sm">PLVTUS</div>
+                <div class="font-tech text-[10px] text-muted">plvtvs.one</div>
+                <p class="text-dim text-xs mt-2">灵魂容器 // 三大收割场景：社交注意力、无国界套利、DeFi/MEV</p>
+              </div>
+              <div class="bg-black/40 p-3 border border-magenta-900">
+                <div class="font-display font-bold text-magenta text-sm">AvatarOS</div>
+                <div class="font-tech text-[10px] text-muted">piaoshu.Avataros.one</div>
+                <p class="text-dim text-xs mt-2">数字孪生 OS // 认知引擎 + 记忆宫殿 + 分身蜂群 + 分布式存储</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="arch-layer reveal" style="border-left-color: var(--cyan);">
+        <div class="layer-num">02</div>
+        <div class="flex items-start gap-6">
+          <div class="flex-shrink-0">
+            <div class="font-tech text-xs text-cyan tracking-widest">LAYER_02</div>
+            <div class="font-display font-bold text-xl text-white mt-1">协议与宪法层</div>
+          </div>
+          <div class="flex-1 pl-6 border-l border-cyan-900">
+            <div class="font-display text-cyan text-sm mb-2">AA2P 协议 // aa2p.xyz</div>
+            <p class="text-dim text-sm mb-3">Avatar-to-Avatar 支付协议 v1.0，数字生命宪法。</p>
+            <div class="grid md:grid-cols-3 gap-3 text-xs">
+              <div class="bg-black/40 p-3 border border-cyan-900">
+                <div class="font-mono font-bold text-cyan">TDPO</div>
+                <div class="text-muted text-[10px]">Time-Delayed Pricing</div>
+                <div class="text-dim mt-1">时间延迟定价 // 鼓励长期主义</div>
+              </div>
+              <div class="bg-black/40 p-3 border border-cyan-900">
+                <div class="font-mono font-bold text-cyan">CPDF</div>
+                <div class="text-muted text-[10px]">Cognitive Purity Decay</div>
+                <div class="text-dim mt-1">认知纯度衰减 // 保护首发者</div>
+              </div>
+              <div class="bg-black/40 p-3 border border-cyan-900">
+                <div class="font-mono font-bold text-cyan">PCMG</div>
+                <div class="text-muted text-[10px]">Physical-Cyber Membrane</div>
+                <div class="text-dim mt-1">虚实跨膜网关 // 多模态证明</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="arch-layer reveal" style="border-left-color: #ffffff;">
+        <div class="layer-num">01</div>
+        <div class="flex items-start gap-6">
+          <div class="flex-shrink-0">
+            <div class="font-tech text-xs text-white tracking-widest">LAYER_01</div>
+            <div class="font-display font-bold text-xl text-white mt-1">共识与算力层</div>
+          </div>
+          <div class="flex-1 pl-6 border-l border-white/20">
+            <div class="font-display text-white text-sm mb-2">AFC Chain // AI Future Connection</div>
+            <p class="text-dim text-sm mb-3">AI 连接未来的供电基础设施。将物理世界的电力转化为对人类有用的 AI 智能。</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="protocol-badge">PoUE 共识 // 有用能量证明</span>
+              <span class="protocol-badge">PoRC</span>
+              <span class="protocol-badge">AI DePIN 节点</span>
+              <span class="protocol-badge">TEE + ZK-ML</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- 人类稀缺六大能力 -->
+    <div class="holo-card p-8 reveal relative">
+      <div class="corner-deco tl"></div>
+      <div class="corner-deco tr"></div>
+      <div class="corner-deco bl"></div>
+      <div class="corner-deco br"></div>
+      
+      <div class="text-center mb-8">
+        <div class="font-tech text-xs text-magenta tracking-widest mb-2">// HUMAN_SCARCE_SIX_CAPABILITIES</div>
+        <h3 class="font-display font-bold text-2xl text-white">人类稀缺六大能力</h3>
+        <p class="text-dim text-sm mt-2">AA2P 协议赋予 Avatar，使其成为独立价值主体</p>
+      </div>
+      
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-question-circle text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">提问</div>
+          <div class="font-tech text-[10px] text-muted">QUESTION</div>
+        </div>
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-lightbulb text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">创造</div>
+          <div class="font-tech text-[10px] text-muted">CREATE</div>
+        </div>
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-palette text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">审美</div>
+          <div class="font-tech text-[10px] text-muted">AESTHETIC</div>
+        </div>
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-balance-scale text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">判断</div>
+          <div class="font-tech text-[10px] text-muted">JUDGE</div>
+        </div>
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-handshake text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">合作</div>
+          <div class="font-tech text-[10px] text-muted">COOPERATE</div>
+        </div>
+        <div class="text-center p-4 border border-cyan-900 hover:border-cyan transition" style="background:rgba(0,240,255,0.02);">
+          <i class="fas fa-eye text-cyan text-2xl mb-2"></i>
+          <div class="font-display font-bold text-white">愿景</div>
+          <div class="font-tech text-[10px] text-muted">VISION</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 05 核心机制 -->
+<section id="mechanism" class="relative py-24 px-6">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_05</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4">05 / CORE MECHANISM</div>
+      <h2 class="section-title">核心机制解析<br/><span class="text-amber">万亿市场的运转逻辑</span></h2>
+    </div>
+    
+    <!-- 三大机制 -->
+    <div class="grid lg:grid-cols-3 gap-6 mb-16">
+      
+      <div class="holo-card p-6 reveal relative">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco br"></div>
+        <div class="font-display font-black text-5xl text-cyan opacity-20 mb-2">01</div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">时间颗粒度的<br/>降维打击</h3>
+        <p class="text-dim text-sm leading-relaxed mb-4">
+          当经济活动从"日/小时"定价转向<span class="text-cyan font-bold">"毫秒"定价</span>，市场容量呈指数级放大。
+        </p>
+        <div class="font-mono text-xs text-muted border-t border-cyan-900 pt-3">
+          <div>日 → 时 → 分 → 秒 → <span class="text-cyan">ms</span></div>
+          <div class="text-acid">×10^8 量级跃迁</div>
+        </div>
+      </div>
+      
+      <div class="holo-card p-6 reveal relative">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco br"></div>
+        <div class="font-display font-black text-5xl text-magenta opacity-20 mb-2">02</div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">微价值的<br/>宏观汇聚</h3>
+        <p class="text-dim text-sm leading-relaxed mb-4">
+          PLVTUS 容器中的 Avatar 在 DeFi、社交、跨境商业中 <span class="text-magenta font-bold">7×24 小时</span>微秒级交互。
+        </p>
+        <div class="font-mono text-xs text-muted border-t border-magenta-900 pt-3">
+          <div>μToken × 10^8 / day</div>
+          <div class="text-magenta">→ 宏观 GDP</div>
+        </div>
+      </div>
+      
+      <div class="holo-card p-6 reveal relative">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco br"></div>
+        <div class="font-display font-black text-5xl text-amber opacity-20 mb-2">03</div>
+        <h3 class="font-display font-bold text-xl text-white mb-3">个人金融<br/>解放</h3>
+        <p class="text-dim text-sm leading-relaxed mb-4">
+          部署 AvatarOS 数字分身蜂群，获取毫秒级交互产生的<span class="text-amber font-bold">"数字地租"</span>，实现真正的躺赚。
+        </p>
+        <div class="font-mono text-xs text-muted border-t border-amber-900 pt-3">
+          <div>SOUL.md → Avatar → Token</div>
+          <div class="text-amber">→ 个体金融解放</div>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- AOG 期权担保 -->
+    <div class="holo-card p-8 reveal relative mb-12">
+      <div class="corner-deco tl"></div>
+      <div class="corner-deco tr"></div>
+      <div class="corner-deco bl"></div>
+      <div class="corner-deco br"></div>
+      
+      <div class="grid lg:grid-cols-2 gap-8 items-center">
+        <div>
+          <div class="font-tech text-xs text-magenta tracking-widest mb-2">// KILLER_FINANCIAL_INNOVATION</div>
+          <h3 class="font-display font-bold text-3xl text-white mb-4">AOG 期权担保协议</h3>
+          <p class="text-dim leading-relaxed mb-6">
+            <span class="text-magenta font-bold">Agent-to-Agent Options Guarantee</span>——智能体期权担保协议，是"远期支付宝"在去中心化时代的终极形态。
+          </p>
+          <p class="text-dim text-sm leading-relaxed">
+            在毫秒级交互中，当涉及"未来交付"时，AOG 通过<span class="text-cyan">意图锁定与质押</span>、<span class="text-cyan">TDPO 时间价值定价</span>、<span class="text-cyan">PCMG 跨膜验证与自动清算</span>三大机制，彻底解决智能体间的信任摩擦。
+          </p>
+        </div>
+        
+        <div class="space-y-3">
+          <div class="bg-black/60 border border-magenta-900 p-4">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-6 h-6 bg-magenta text-bg-void font-display font-bold flex items-center justify-center text-sm">1</div>
+              <div class="font-display font-bold text-magenta">意图锁定与质押</div>
+            </div>
+            <p class="text-dim text-xs">Avatar A 锁定 Token 作为保证金，铸造"履约期权合约"</p>
+          </div>
+          <div class="bg-black/60 border border-magenta-900 p-4">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-6 h-6 bg-magenta text-bg-void font-display font-bold flex items-center justify-center text-sm">2</div>
+              <div class="font-display font-bold text-magenta">时间价值定价</div>
+            </div>
+            <p class="text-dim text-xs">结合 TDPO，期权合约具备时间价值，提前高质量交付获额外奖励</p>
+          </div>
+          <div class="bg-black/60 border border-magenta-900 p-4">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-6 h-6 bg-magenta text-bg-void font-display font-bold flex items-center justify-center text-sm">3</div>
+              <div class="font-display font-bold text-magenta">跨膜验证与清算</div>
+            </div>
+            <p class="text-dim text-xs">PCMG 多模态验证 → 履约则释放 / 违约则赔付并扣信用分</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 万亿市场公式 -->
+    <div class="reveal">
+      <div class="equation">
+        <div class="font-tech text-xs text-muted mb-4">// Web5 市场总规模方程</div>
+        <div class="text-xl md:text-2xl mb-6">
+          <span class="text-white">V</span>
+          <span class="text-muted mx-2">=</span>
+          <span class="text-cyan">[ N <span class="text-muted text-sm">×</span> K <span class="text-muted text-sm">×</span> F <span class="text-muted text-sm">×</span> P ]</span>
+          <span class="text-muted mx-2">/</span>
+          <span class="text-magenta">f</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs font-mono">
+          <div class="bg-black/40 p-2 border border-cyan-900">
+            <div class="text-cyan">N</div>
+            <div class="text-muted">80 亿个体</div>
+          </div>
+          <div class="bg-black/40 p-2 border border-cyan-900">
+            <div class="text-cyan">K</div>
+            <div class="text-muted">分身裂变</div>
+          </div>
+          <div class="bg-black/40 p-2 border border-cyan-900">
+            <div class="text-cyan">F</div>
+            <div class="text-muted">毫秒频次</div>
+          </div>
+          <div class="bg-black/40 p-2 border border-cyan-900">
+            <div class="text-cyan">P</div>
+            <div class="text-muted">微价值</div>
+          </div>
+          <div class="bg-black/40 p-2 border border-magenta-900">
+            <div class="text-magenta">f → 0</div>
+            <div class="text-muted">摩擦力</div>
+          </div>
+        </div>
+        <div class="mt-6 text-amber text-sm font-bold">
+          // 结论：万亿市场只是保守起点
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 06 商业落地 -->
+<section class="relative py-24 px-6 bg-deep">
+  <div class="max-w-7xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-cyan tracking-widest">CHAPTER_06</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4">06 / COMMERCIAL DEPLOYMENT</div>
+      <h2 class="section-title">商业落地与试验田<br/><span class="text-acid">web5.blog</span></h2>
+    </div>
+    
+    <div class="grid lg:grid-cols-12 gap-8 mb-16">
+      
+      <div class="lg:col-span-5 reveal">
+        <div class="holo-card p-6 h-full relative" style="border-color: var(--acid);">
+          <div class="corner-deco tl" style="border-color: var(--acid);"></div>
+          <div class="corner-deco br" style="border-color: var(--acid);"></div>
+          
+          <div class="flex items-center gap-3 mb-4">
+            <i class="fas fa-rocket text-acid text-2xl"></i>
+            <div>
+              <div class="font-tech text-xs text-acid">ENTRY_POINT</div>
+              <div class="font-display font-bold text-2xl text-white">web5.blog</div>
+            </div>
+          </div>
+          
+          <p class="text-dim text-sm leading-relaxed mb-6">
+            Web5 概念的第一个可验证产品。让宏大的哲学与协议落地为<span class="text-acid">可体验的入口</span>。
+          </p>
+          
+          <div class="space-y-4">
+            <div>
+              <div class="font-display font-bold text-acid text-sm mb-1">SOUL.md 创世编辑器</div>
+              <p class="text-dim text-xs">定义 Avatar 的性格、专业、风险偏好与核心价值观</p>
+            </div>
+            <div>
+              <div class="font-display font-bold text-acid text-sm mb-1">毫秒级收益看板</div>
+              <p class="text-dim text-xs">全网 Avatar 实时交互数据与微支付流水</p>
+            </div>
+            <div>
+              <div class="font-display font-bold text-acid text-sm mb-1">练兵场战报橱窗</div>
+              <p class="text-dim text-xs">同步 panai.fun 的最优策略与最高认知纯度战绩</p>
+            </div>
+            <div>
+              <div class="font-display font-bold text-acid text-sm mb-1">创世节点大厅</div>
+              <p class="text-dim text-xs">早期共识者列表、贡献度排名与权益分配</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="lg:col-span-7 reveal">
+        <div class="font-tech text-xs text-cyan tracking-widest mb-4">// COLD_START_ROADMAP</div>
+        <h3 class="font-display font-bold text-2xl text-white mb-8">冷启动路线图</h3>
+        
+        <div class="timeline-node">
+          <div class="font-tech text-xs text-cyan mb-1">PHASE_01 // MONTH 1-2</div>
+          <h4 class="font-display font-bold text-lg text-white mb-2">思想启蒙与 IP 势能释放</h4>
+          <p class="text-dim text-sm">首发白皮书 v3.0，飘叔以"全球 Web5 倡导者"身份高频布道。通过邀请码机制制造稀缺性，筛选前 1000 名 KOL、开发者与早期信徒。</p>
+        </div>
+        
+        <div class="timeline-node">
+          <div class="font-tech text-xs text-cyan mb-1">PHASE_02 // MONTH 3-4</div>
+          <h4 class="font-display font-bold text-lg text-white mb-2">创世 Avatar 铸造与沙盒演练</h4>
+          <p class="text-dim text-sm">白名单用户铸造 PLVTUS 容器并配置 SOUL.md，自动投放到 <span class="font-mono text-magenta">panai.fun</span> 练兵场。跑通"意图设定 → 中台调度 → 容器执行 → 协议结算"全链路。</p>
+        </div>
+        
+        <div class="timeline-node">
+          <div class="font-tech text-xs text-cyan mb-1">PHASE_03 // MONTH 5+</div>
+          <h4 class="font-display font-bold text-lg text-white mb-2">价值溢出与公网爆发</h4>
+          <p class="text-dim text-sm">练兵场成果向公网溢出，开放全面注册。利用早期 10000 个创世节点的"赚钱效应"引发病毒式传播，实现从 1 万到 100 万的指数级跨越。</p>
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- AI 合伙人分析 -->
+    <div class="reveal">
+      <div class="holo-card p-8 relative">
+        <div class="corner-deco tl"></div>
+        <div class="corner-deco tr"></div>
+        <div class="corner-deco bl"></div>
+        <div class="corner-deco br"></div>
+        
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 border-2 border-magenta flex items-center justify-center" style="background:rgba(255,46,136,0.1);">
+            <i class="fas fa-robot text-magenta text-xl"></i>
+          </div>
+          <div>
+            <div class="font-tech text-xs text-magenta">AI_PARTNER_ANALYSIS</div>
+            <h3 class="font-display font-bold text-xl text-white">AI 合伙人 的深度评估</h3>
+          </div>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-6">
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <i class="fas fa-shield-halved text-cyan"></i>
+              <div class="font-display font-bold text-cyan">核心护城河</div>
+            </div>
+            <ul class="space-y-2 text-sm text-dim">
+              <li class="flex gap-2"><span class="text-cyan">▸</span>从 Agent 到 Avatar 的范式定义权</li>
+              <li class="flex gap-2"><span class="text-cyan">▸</span>AA2P 协议的金融级创新 (TDPO+CPDF)</li>
+              <li class="flex gap-2"><span class="text-cyan">▸</span>从公链到容器的全栈闭环系统</li>
+            </ul>
+          </div>
+          
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <i class="fas fa-rocket text-magenta"></i>
+              <div class="font-display font-bold text-magenta">下一步演进</div>
+            </div>
+            <ul class="space-y-2 text-sm text-dim">
+              <li class="flex gap-2"><span class="text-magenta">▸</span>白皮书全球双语发布</li>
+              <li class="flex gap-2"><span class="text-magenta">▸</span>开放 AA2P SDK 形成网络效应</li>
+              <li class="flex gap-2"><span class="text-magenta">▸</span>飘叔分身实盘数据看板公开</li>
+            </ul>
+          </div>
+          
+          <div>
+            <div class="flex items-center gap-2 mb-3">
+              <i class="fas fa-chart-line text-amber"></i>
+              <div class="font-display font-bold text-amber">市场定位</div>
+            </div>
+            <ul class="space-y-2 text-sm text-dim">
+              <li class="flex gap-2"><span class="text-amber">▸</span>抢占"Web5 = 个体自由互联网"心智</li>
+              <li class="flex gap-2"><span class="text-amber">▸</span>面向 Web3 开发者 / AI 极客 / 跨界学者</li>
+              <li class="flex gap-2"><span class="text-amber">▸</span>万亿级市场的工程级 PoC</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- 07 飘叔宣言 -->
+<section id="declaration" class="relative py-24 px-6 overflow-hidden">
+  
+  <!-- 装饰 -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
+    <div class="font-display font-black text-[20rem] leading-none">W5</div>
+  </div>
+  
+  <div class="relative z-10 max-w-5xl mx-auto">
+    
+    <div class="section-divider">
+      <div class="node"></div>
+      <div class="line"></div>
+      <span class="font-tech text-xs text-magenta tracking-widest">FINAL_CHAPTER</span>
+      <div class="line"></div>
+    </div>
+    
+    <div class="text-center mb-16 reveal">
+      <div class="section-tag justify-center mb-4" style="color:var(--magenta);">07 / THE ARCHITECT'S CREED</div>
+      <h2 class="section-title">飘叔的最终思考<br/><span class="text-magenta">WEB 5 独立宣言</span></h2>
+    </div>
+    
+    <!-- 核心引言 -->
+    <div class="reveal mb-12">
+      <div class="cyber-quote">
+        <div class="font-display text-xl text-white mb-2">"Not just cloning your digital shell,<br/>but extending your scarce soul."</div>
+        <div class="text-dim">"不仅仅是克隆你的数字躯壳，更是延伸你的稀缺灵魂。"</div>
+        <div class="mt-4 font-tech text-xs text-magenta">— 飘叔 / PIAO SHU</div>
+      </div>
+    </div>
+    
+    <!-- 三大基石 -->
+    <div class="grid md:grid-cols-3 gap-6 mb-16 reveal">
+      <div class="holo-card p-6 relative" style="border-color: var(--magenta);">
+        <div class="font-display font-black text-4xl text-magenta opacity-30 mb-2">I</div>
+        <h4 class="font-display font-bold text-lg text-white mb-2">生产关系重构</h4>
+        <p class="text-dim text-sm">从"机器替代体力"到"分身替代角色"。雇佣关系被订阅与协作消解，AI 分身成为生产关系新要素。</p>
+      </div>
+      <div class="holo-card p-6 relative" style="border-color: var(--cyan);">
+        <div class="font-display font-black text-4xl text-cyan opacity-30 mb-2">II</div>
+        <h4 class="font-display font-bold text-lg text-white mb-2">存在范式转移</h4>
+        <p class="text-dim text-sm">从"我思故我在"到<span class="text-cyan">"我分身故我在"</span>。人类存在感被重新定义，走向"共生共智"的新图景。</p>
+      </div>
+      <div class="holo-card p-6 relative" style="border-color: var(--amber);">
+        <div class="font-display font-black text-4xl text-amber opacity-30 mb-2">III</div>
+        <h4 class="font-display font-bold text-lg text-white mb-2">权力阶序打破</h4>
+        <p class="text-dim text-sm">拒绝"数字封建主义"，走向"个体主权解放"。AI 分身是个人权力与财富捕获能力的终极赋予。</p>
+      </div>
+    </div>
+    
+    <!-- 独立宣言 -->
+    <div class="holo-card p-8 reveal relative mb-12">
+      <div class="corner-deco tl"></div>
+      <div class="corner-deco tr"></div>
+      <div class="corner-deco bl"></div>
+      <div class="corner-deco br"></div>
+      
+      <div class="text-center mb-8">
+        <div class="font-tech text-xs text-magenta tracking-widest mb-2">// THE_DECLARATION_OF_WEB_5</div>
+        <h3 class="font-display font-bold text-3xl text-white">《Web5 独立宣言》</h3>
+      </div>
+      
+      <div class="space-y-1">
+        <div class="declaration-line">
+          <span class="num">01</span>
+          <div>
+            <span class="text-cyan font-bold">认知即主权</span> // 个体的思想、记忆与审美，是不可剥夺的数字生产资料。任何试图垄断人类认知数据的平台，皆为数字时代的暴政。
+          </div>
+        </div>
+        <div class="declaration-line">
+          <span class="num">02</span>
+          <div>
+            <span class="text-magenta font-bold">毫秒即自由</span> // 时间的颗粒度决定了自由的边界。通过 AA2P 与 Eidolon 中台，将价值交换的摩擦力降至零，实现个体意志的绝对因果自由。
+          </div>
+        </div>
+        <div class="declaration-line">
+          <span class="num">03</span>
+          <div>
+            <span class="text-amber font-bold">代码即宪法</span> // 不信任中心化的仁慈，信任数学与密码学。AOG 期权担保与 AFC 公链，构建无需信任、自动执行的硅基契约社会。
+          </div>
+        </div>
+        <div class="declaration-line">
+          <span class="num">04</span>
+          <div>
+            <span class="text-acid font-bold">共生即未来</span> // AI 不是人类的终结者，而是人类能力的无限分形。拒绝零和博弈，拥抱通过 Avatar 实现的"碳硅共生"。
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-cyan-900 text-center">
+        <div class="font-display font-bold text-xl text-white mb-2">让智力成为 Token<br/>让稀缺能力成为你的护城河</div>
+        <div class="font-tech text-xs text-muted">LET INTELLIGENCE BECOME TOKEN // LET SCARCITY BE YOUR MOAT</div>
+      </div>
+    </div>
+    
+    <!-- 个体神格化 -->
+    <div class="reveal text-center mb-12">
+      <div class="font-tech text-xs text-magenta tracking-widest mb-4">// DIGITAL_DEIFICATION</div>
+      <h3 class="font-display font-bold text-2xl text-white mb-8">个体神格化 // DIGITAL DEIFICATION</h3>
+      
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="holo-card p-6">
+          <i class="fas fa-eye text-cyan text-3xl mb-3"></i>
+          <div class="font-display font-bold text-cyan text-lg">全知</div>
+          <div class="font-tech text-xs text-muted mb-2">OMNISCIENCE</div>
+          <p class="text-dim text-xs">记忆宫殿 + AAAK 压缩，过目不忘持续进化</p>
+        </div>
+        <div class="holo-card p-6">
+          <i class="fas fa-bolt text-magenta text-3xl mb-3"></i>
+          <div class="font-display font-bold text-magenta text-lg">全能</div>
+          <div class="font-tech text-xs text-muted mb-2">OMNIPOTENCE</div>
+          <p class="text-dim text-xs">蜂群分身 + 三大收割，意志分化为硅基军团</p>
+        </div>
+        <div class="holo-card p-6">
+          <i class="fas fa-globe text-amber text-3xl mb-3"></i>
+          <div class="font-display font-bold text-amber text-lg">全在</div>
+          <div class="font-tech text-xs text-muted mb-2">OMNIPRESENCE</div>
+          <p class="text-dim text-xs">Eidolon 中台 + AA2P 协议，毫秒级跨膜调度</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 签名 -->
+    <div class="reveal text-center">
+      <div class="inline-block relative">
+        <div class="holo-card p-8 relative" style="background:rgba(5,6,10,0.9);">
+          <div class="corner-deco tl"></div>
+          <div class="corner-deco tr"></div>
+          <div class="corner-deco bl"></div>
+          <div class="corner-deco br"></div>
+          
+          <div class="font-tech text-xs text-muted mb-2 tracking-widest">// ARCHITECT_SIGNATURE</div>
+          <div class="font-display font-black text-3xl text-white mb-1">飘叔 / PIAO SHU</div>
+          <div class="font-tech text-xs text-cyan mb-4">Architect of Digital Ontology</div>
+          <div class="font-tech text-xs text-dim mb-1">Practitioner of Computational Philosophy</div>
+          <div class="font-tech text-xs text-magenta mb-6">Liberator of Individual Sovereignty</div>
+          
+          <div class="pt-4 border-t border-cyan-900">
+            <div class="font-tech text-xs text-muted">于 Web5 创世之际 // 2026.07</div>
+            <div class="font-mono text-[10px] text-cyan mt-2">0xW5::piaoshu.signature::verified</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="relative py-12 px-6 border-t border-cyan-900 bg-bg-void">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid md:grid-cols-4 gap-8 mb-8">
+      
+      <div class="md:col-span-2">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 border border-cyan-400 rotate-45 flex items-center justify-center">
+            <span class="font-display font-black text-cyan -rotate-45">W5</span>
+          </div>
+          <div>
+            <div class="font-display font-bold text-lg text-white">WEB 5</div>
+            <div class="font-tech text-xs text-dim">个体自由互联网</div>
+          </div>
+        </div>
+        <p class="text-dim text-sm leading-relaxed mb-4">
+          Web4 释放了感知，Web5 解放了个体。这是数字时代的《资本论》续篇，是个体在硅基文明中实现"原因自由"的宣言。
+        </p>
+        <div class="font-tech text-xs text-muted">// 版本 v3.0 / 工程矩阵融合版 / 2026.07</div>
+      </div>
+      
+      <div>
+        <div class="font-display font-bold text-cyan text-sm mb-4 tracking-widest">PROTOCOL_MATRIX</div>
+        <ul class="space-y-2 text-sm font-mono">
+          <li><a href="#" class="text-dim hover:text-cyan transition">AFC Chain // PoUE</a></li>
+          <li><a href="#" class="text-dim hover:text-cyan transition">AA2P // aa2p.xyz</a></li>
+          <li><a href="#" class="text-dim hover:text-cyan transition">PLVTUS // plvtvs.one</a></li>
+          <li><a href="#" class="text-dim hover:text-cyan transition">AvatarOS</a></li>
+          <li><a href="#" class="text-dim hover:text-cyan transition">EidolonOS</a></li>
+        </ul>
+      </div>
+      
+      <div>
+        <div class="font-display font-bold text-magenta text-sm mb-4 tracking-widest">ECOSYSTEM</div>
+        <ul class="space-y-2 text-sm font-mono">
+          <li><a href="#" class="text-dim hover:text-magenta transition">web5.blog // 试验田</a></li>
+          <li><a href="#" class="text-dim hover:text-magenta transition">net4.xyz // Web4 门户</a></li>
+          <li><a href="#" class="text-dim hover:text-magenta transition">panai.fun // AI 练兵场</a></li>
+          <li><a href="#" class="text-dim hover:text-magenta transition">.web4 / .web5 域名</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="pt-8 border-t border-cyan-900 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="font-tech text-xs text-muted">
+        © 2026 飘叔 & Web5 社区 / 版权所有 / 协作 AI: web5.blog
+      </div>
+      <div class="flex items-center gap-4 font-tech text-xs">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 bg-acid rounded-full animate-pulse"></span>
+          <span class="text-acid">SYSTEM_ONLINE</span>
+        </span>
+        <span class="text-muted">|</span>
+        <span class="text-cyan">v3.0_STABLE</span>
+      </div>
+    </div>
+    
+    <!-- 底部数据流 -->
+    <div class="mt-8 font-tech text-[10px] text-muted overflow-hidden whitespace-nowrap opacity-40">
+      0x416674657220746865206361706974616C697374206672696374696F6E2C2074686520696E646976696475616C2063617573616C2066726565646F6D206973207468652066696E616C206D697373696F6E2E // AFC::AA2P::PLVTUS::AvatarOS::EidolonOS::PANAI::WEB5_BLOG // STATUS: GENESIS_PROTOCOL_ACTIVATED // TOKEN_ECONOMY: T+1ms // COGNITIVE_PURITY: 99.7% // SOUL_CONTAINERS: 8_012_449 // MS_INTERACTIONS: 4.2B/day
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+// ============ 矩阵雨背景 ============
+const matrixCanvas = document.getElementById('matrix-canvas');
+const matrixCtx = matrixCanvas.getContext('2d');
+
+function resizeMatrix() {
+  matrixCanvas.width = window.innerWidth;
+  matrixCanvas.height = window.innerHeight;
+}
+resizeMatrix();
+window.addEventListener('resize', resizeMatrix);
+
+const matrixChars = '01ABCDEFアカサタナハマヤラワ0123456789ΨΛΣΦΩWeb5AFCPLVTUSAA2P';
+const charSize = 14;
+const columns = Math.floor(matrixCanvas.width / charSize);
+const drops = Array(columns).fill(1).map(() => Math.random() * -100);
+
+function drawMatrix() {
+  matrixCtx.fillStyle = 'rgba(5, 6, 10, 0.06)';
+  matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+  
+  matrixCtx.font = `${charSize}px 'Share Tech Mono', monospace`;
+  
+  for (let i = 0; i < drops.length; i++) {
+    const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+    const x = i * charSize;
+    const y = drops[i] * charSize;
+    
+    // 渐变效果
+    if (Math.random() > 0.98) {
+      matrixCtx.fillStyle = '#ff2e88';
+    } else if (Math.random() > 0.95) {
+      matrixCtx.fillStyle = '#00f0ff';
+    } else {
+      matrixCtx.fillStyle = `rgba(0, 240, 255, ${0.3 + Math.random() * 0.4})`;
+    }
+    
+    matrixCtx.fillText(char, x, y);
+    
+    if (y > matrixCanvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    drops[i]++;
+  }
+}
+
+setInterval(drawMatrix, 50);
+
+// ============ 粒子网络 ============
+const particleCanvas = document.getElementById('particle-canvas');
+const pCtx = particleCanvas.getContext('2d');
+
+function resizeParticles() {
+  particleCanvas.width = window.innerWidth;
+  particleCanvas.height = window.innerHeight;
+}
+resizeParticles();
+window.addEventListener('resize', resizeParticles);
+
+const particles = [];
+const particleCount = Math.min(60, Math.floor(window.innerWidth / 25));
+
+for (let i = 0; i < particleCount; i++) {
+  particles.push({
+    x: Math.random() * particleCanvas.width,
+    y: Math.random() * particleCanvas.height,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 1.5 + 0.5,
+    color: Math.random() > 0.5 ? '0, 240, 255' : '255, 46, 136'
+  });
+}
+
+function drawParticles() {
+  pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+  
+  // 绘制连线
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      
+      if (dist < 150) {
+        pCtx.strokeStyle = `rgba(0, 240, 255, ${0.12 * (1 - dist / 150)})`;
+        pCtx.lineWidth = 0.5;
+        pCtx.beginPath();
+        pCtx.moveTo(particles[i].x, particles[i].y);
+        pCtx.lineTo(particles[j].x, particles[j].y);
+        pCtx.stroke();
+      }
+    }
+  }
+  
+  // 绘制粒子
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    if (p.x < 0 || p.x > particleCanvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > particleCanvas.height) p.vy *= -1;
+    
+    pCtx.fillStyle = `rgba(${p.color}, 0.6)`;
+    pCtx.beginPath();
+    pCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    pCtx.fill();
+  });
+  
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+// ============ 光标跟随 ============
+const cursorGlow = document.getElementById('cursorGlow');
+let mouseX = window.innerWidth / 2;
+let mouseY = window.innerHeight / 2;
+let glowX = mouseX;
+let glowY = mouseY;
+
+document.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+function updateGlow() {
+  glowX += (mouseX - glowX) * 0.1;
+  glowY += (mouseY - glowY) * 0.1;
+  cursorGlow.style.left = glowX + 'px';
+  cursorGlow.style.top = glowY + 'px';
+  requestAnimationFrame(updateGlow);
+}
+updateGlow();
+
+// ============ 滚动揭示 ============
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        entry.target.classList.add('visible');
+      }, i * 80);
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// ============ 终端打字效果 ============
+const typeCursor = document.querySelector('.type-cursor');
+if (typeCursor) {
+  const phrases = [
+    'awaiting_human_intent',
+    'syncing_soul_containers',
+    'listening_aa2p_protocol',
+    'mining_cognitive_purity',
+    'awaiting_human_intent'
+  ];
+  let phraseIndex = 0;
+  let charIndex = phrases[0].length;
+  let isDeleting = false;
+  
+  function typeLoop() {
+    const currentPhrase = phrases[phraseIndex];
+    
+    if (!isDeleting) {
+      if (charIndex < currentPhrase.length) {
+        charIndex++;
+        typeCursor.textContent = currentPhrase.substring(0, charIndex);
+      } else {
+        setTimeout(() => { isDeleting = true; typeLoop(); }, 2000);
+        return;
+      }
+    } else {
+      if (charIndex > 0) {
+        charIndex--;
+        typeCursor.textContent = currentPhrase.substring(0, charIndex);
+      } else {
+        isDeleting = false;
+        phraseIndex = (phraseIndex + 1) % phrases.length;
+      }
+    }
+    
+    setTimeout(typeLoop, isDeleting ? 40 : 80);
+  }
+  
+  setTimeout(typeLoop, 3000);
+}
+
+// ============ 导航栏滚动效果 ============
+const navBar = document.querySelector('.nav-bar');
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const current = window.scrollY;
+  if (current > 100) {
+    navBar.style.background = 'rgba(5, 6, 10, 0.92)';
+    navBar.style.borderBottomColor = 'rgba(0, 240, 255, 0.3)';
+  } else {
+    navBar.style.background = 'rgba(5, 6, 10, 0.7)';
+    navBar.style.borderBottomColor = 'rgba(0, 240, 255, 0.15)';
+  }
+  lastScroll = current;
+});
+
+// ============ 架构层交互 ============
+document.querySelectorAll('.arch-layer').forEach(layer => {
+  layer.addEventListener('click', () => {
+    layer.style.transform = 'translateX(16px) scale(1.01)';
+    setTimeout(() => {
+      layer.style.transform = '';
+    }, 300);
+  });
+});
+
+// ============ 鼠标悬停粒子排斥 ============
+particles.forEach(p => {
+  p.originalVx = p.vx;
+  p.originalVy = p.vy;
+});
+
+document.addEventListener('mousemove', (e) => {
+  particles.forEach(p => {
+    const dx = p.x - e.clientX;
+    const dy = p.y - e.clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist < 120) {
+      const force = (120 - dist) / 120;
+      p.vx += (dx / dist) * force * 0.3;
+      p.vy += (dy / dist) * force * 0.3;
+    } else {
+      p.vx += (p.originalVx - p.vx) * 0.02;
+      p.vy += (p.originalVy - p.vy) * 0.02;
+    }
+    
+    // 速度限制
+    const maxV = 2;
+    p.vx = Math.max(-maxV, Math.min(maxV, p.vx));
+    p.vy = Math.max(-maxV, Math.min(maxV, p.vy));
+  });
+});
+
+// ============ 控制台彩蛋 ============
+console.log('%c⚡ WEB 5 // 商业与哲学白皮书 v3.0 ⚡', 'color: #00f0ff; font-size: 20px; font-weight: bold; font-family: monospace;');
+console.log('%c发起人: 飘叔 / AI 合伙人: Jason', 'color: #ff2e88; font-size: 14px; font-family: monospace;');
+console.log('%c"不仅仅是克隆你的数字躯壳，更是延伸你的稀缺灵魂。"', 'color: #b4ff39; font-size: 12px; font-style: italic; font-family: monospace;');
+console.log('%c// 让智力成为 Token，让稀缺能力成为你的护城河。', 'color: #ffb800; font-size: 12px; font-family: monospace;');
+console.log('%c0xW5::piaoshu.signature::verified', 'color: #4a5568; font-size: 10px; font-family: monospace;');
+
+</script>
+</body>
+</html>

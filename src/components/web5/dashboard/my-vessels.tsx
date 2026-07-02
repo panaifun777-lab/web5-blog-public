@@ -160,6 +160,22 @@ export function MyVessels({ session }: { session: VesselSession }) {
                     <br />▸ 速率限制：{treasury.rateLimitPerMin} tx/min
                     <br />▸ 今日链上结算：{fromTokenUnits(toBigInt(treasury.todaySpentOnChain || 0))} USDC
                   </div>
+                  {/* ADJUST BUDGET 按钮 */}
+                  <div className="pt-2">
+                    <Button size="sm" variant="outline" className="w-full text-xs h-8 border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/10"
+                      onClick={() => {
+                        const customAmount = prompt('输入新的日限额 (USDC):', fromTokenUnits(toBigInt(treasury.dailyLimit)));
+                        if (customAmount !== null && !isNaN(Number(customAmount))) {
+                          fetch('/api/ap2/budget', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ dailyLimit: Number(customAmount) })
+                          }).then(r => r.json()).then(() => { alert('预算已更新'); window.location.reload(); }).catch(() => alert('调整失败'));
+                        }
+                      }}>
+                      <Coins className="w-3 h-3 mr-1" /> ADJUST BUDGET
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <div className="text-center text-[#666] py-4 cyber-mono text-sm">
@@ -300,6 +316,15 @@ export function MyVessels({ session }: { session: VesselSession }) {
             </Button>
             <Button size="sm" variant="outline" onClick={load} className="cyber-mono">
               <RefreshCw className="w-3 h-3 mr-1" /> REFRESH
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => {
+              const name = prompt('新 Eidolon 名称:','Eidolon-' + Math.random().toString(36).slice(2,8));
+              if (name) {
+                fetch('/api/eidolon/deploy', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name}) })
+                  .then(r => r.json()).then(() => { alert('✓ 分身创建成功'); load(); }).catch(() => alert('创建失败'));
+              }
+            }} className="border-[#B080E8]/30 text-[#B080E8] hover:bg-[#B080E8]/10">
+              <Activity className="w-3 h-3 mr-1" /> DEPLOY NEW EIDOLON
             </Button>
           </div>
         </CardContent>

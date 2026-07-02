@@ -29,7 +29,7 @@ const seedArticles: SeedArticle[] = [
   {
     title: 'Web5 宣言：从 Web3 到个人解放的范式跃迁',
     authorDid: SUPERADMIN_DID,
-    authorDisplayName: '朴叔',
+    authorDisplayName: '飘叔',
     authorAvatarSeed: 'piaoshu-prime',
     license: 'CC_BY',
     royaltyRate: 100,
@@ -555,7 +555,7 @@ async function main() {
     update: {
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
-      displayName: '朴叔 (Superadmin)',
+      displayName: '飘叔 (Superadmin)',
       lastActiveAt: new Date(),
     },
     create: {
@@ -563,7 +563,7 @@ async function main() {
       walletAddress: '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
-      displayName: '朴叔 (Superadmin)',
+      displayName: '飘叔 (Superadmin)',
       avatarSeed: 'piaoshu-superadmin',
     },
   });

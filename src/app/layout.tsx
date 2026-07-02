@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Providers } from "@/components/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,28 +27,49 @@ const notoSerifSC = Noto_Serif_SC({
 });
 
 export const metadata: Metadata = {
-  title: "Web5.blog · 个人数字解放的协议级实现",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://web5.blog'),
+  title: {
+    default: 'Web5.blog · Vessel-Native Blog Platform',
+    template: '%s | Web5.blog',
+  },
   description:
-    "全球首个分身原生博客平台 — Prime × Eidolon × Vessel 三层生命架构。基于 AP2/ARP/AA2P 协议族与 ERC-4337 账户抽象，实现容器登录、永久确权、AI 分身写作与微支付躺赚。",
+    '全球首个分身原生博客平台 — Prime × Eidolon × Vessel 三层生命架构。AP2/ARP/AA2P 协议族 · ERC-4337 · Arweave 永久确权 · AI 分身流式写作。',
   keywords: [
-    "Web5", "Web5.blog", "PLVTVS", "EidolonOS", "AP2", "ARP", "AA2P",
-    "Vessel Auth", "Container Login", "ERC-4337", "Account Abstraction",
-    "Arweave", "DWN", "Digital Twin", "AI Agent", "Decentralized Blog",
+    'Web5', 'Web5.blog', 'PLVTVS', 'EidolonOS', 'AP2', 'ARP', 'AA2P',
+    'Vessel Auth', 'Container Login', 'ERC-4337', 'Account Abstraction',
+    'Arweave', 'DWN', 'Digital Twin', 'AI Agent', 'Decentralized Blog',
+    'piaoshu.eth', '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
   ],
-  authors: [{ name: "Web5.blog Architecture Team" }],
+  authors: [{ name: 'piaoshu.eth', url: 'https://web5.blog' }],
+  creator: 'piaoshu.eth',
+  publisher: 'PLVTVS.ONE × EIDOLONOS.XYZ',
+  robots: { index: true, follow: true, 'max-snippet': 300, 'max-image-preview': 'large' },
+  alternates: {
+    canonical: '/',
+  },
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: '/favicon.ico',
   },
   openGraph: {
-    title: "Web5.blog · 个人数字解放的协议级实现",
-    description: "Prime × Eidolon × Vessel 三层生命架构 — 全球首个分身原生博客平台",
-    siteName: "Web5.blog",
-    type: "website",
+    title: 'Web5.blog · 个人数字解放的协议级实现',
+    description: 'Prime × Eidolon × Vessel 三层生命架构 — 全球首个分身原生博客平台',
+    siteName: 'Web5.blog',
+    type: 'website',
+    locale: 'zh_CN',
+    url: 'https://web5.blog',
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Web5.blog",
-    description: "全球首个分身原生博客平台",
+    card: 'summary_large_image',
+    title: 'Web5.blog',
+    description: '全球首个分身原生博客平台',
+    site: '@piaoshu1112',
+    creator: '@piaoshu1112',
+  },
+  other: {
+    // Agent discovery headers
+    'X-Agent-Discovery': '/.well-known/agent.json',
+    'X-API-Discovery': '/api/openapi.json',
+    'X-LLMs-Discovery': '/llms.txt',
   },
 };
 
@@ -61,7 +83,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${notoSerifSC.variable} antialiased bg-background text-foreground`}
       >
-        {children}
+        <Providers>{children}</Providers>
         <Toaster />
       </body>
     </html>

@@ -12,6 +12,11 @@ import type {
 } from './types';
 import { RFC_CONSTANTS } from './types';
 
+// ━━ 全局 BigInt JSON 序列化修复 ━━
+if (typeof BigInt !== 'undefined' && !(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () { return this.toString(); };
+}
+
 const VESSEL_ENDPOINT =
   process.env.NEXT_PUBLIC_VESSEL_ENDPOINT || 'https://plvtvs.one';
 const BLOG_DID =
@@ -45,8 +50,10 @@ export async function requestVesselSignature(
   vesselDid: string;
   eidolonDid: string;
 }> {
-  // 模拟环境：生产环境调用真实 Vessel 端点
-  if (process.env.NODE_ENV !== 'production') {
+  // 当前使用模拟模式。plvtvs.one Vessel 端点部署后，将 NEXT_PUBLIC_MOCK_VESSEL 设为 false 启用真实端点
+  const useMock = process.env.NEXT_PUBLIC_MOCK_VESSEL !== 'false';
+
+  if (useMock) {
     return simulateVesselSignature(challenge);
   }
 
@@ -139,7 +146,7 @@ export async function awakenVessel(
 }
 
 /** 解析后端返回的 session（处理 BigInt 序列化） */
-function parseSessionResponse(raw: any): VesselSession {
+export function parseSessionResponse(raw: any): VesselSession {
   const ap2BudgetRaw = raw.ap2Budget || {};
   const toBigInt = (v: any): bigint => {
     if (typeof v === 'bigint') return v;

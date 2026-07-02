@@ -1,0 +1,29 @@
+{
+  "@context": "https://www.w3.org/ns/activitystreams",
+  "type": "Application",
+  "name": "Web5.blog",
+  "summary": "全球首个分身原生博客平台 — Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付分润 · Arweave 永久确权",
+  "url": "https://web5.blog",
+  "attributedTo": {
+    "type": "Person",
+    "name": "piaoshu.eth",
+    "id": "did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1"
+  },
+  "capabilities": {
+    "protocols": ["AP2", "ARP", "AA2P", "ERC-4337", "ERC-721", "ERC-2981"],
+    "chain": "Base Sepolia (84532)",
+    "storage": "Arweave via Irys",
+    "ai": "LLM SSE streaming generation"
+  },
+  "api": {
+    "openapi": "/api/openapi.json",
+    "agent": "/api/admin/agent",
+    "explore": "/api/explore"
+  },
+  "contracts": {
+    "vesselAuth": "0xF17161a988d0Ab6c98BefDE028856De9438Bc23D",
+    "budgetFence": "0x73eA340172572276357d2D5746270Ef0296b4552",
+    "contentNFT": "0x91e1d74aF5BF714988b4eB9AFd51E8354deC0879"
+  },
+  "inviteCode": "WEB5-ALPHA-001"
+}

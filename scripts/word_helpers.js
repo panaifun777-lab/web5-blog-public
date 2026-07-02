@@ -215,7 +215,7 @@ function coverPage() {
       spacing: { before: 400, after: 400 },
       children: [
         new TextRun({
-          text: '本白皮书基于朴叔 Web5 个人解放互联网愿景，融合马克思主义政治经济学、戴维经济学比较优势理论与 PLVTVS.Network 代码资产，系统阐述 Web5.blog 作为全球首个分身原生博客平台的协议设计、五层架构、六大开发优先级、30/60/90 天冲刺路线图、技术风险矩阵与合规监管框架。',
+          text: '本白皮书基于飘叔 Web5 个人解放互联网愿景，融合马克思主义政治经济学、戴维经济学比较优势理论与 PLVTVS.Network 代码资产，系统阐述 Web5.blog 作为全球首个分身原生博客平台的协议设计、五层架构、六大开发优先级、30/60/90 天冲刺路线图、技术风险矩阵与合规监管框架。',
           font: FONT_BODY, size: 22, color: C.TEXT_MUTED,
         }),
       ],

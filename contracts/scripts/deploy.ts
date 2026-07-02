@@ -34,6 +34,7 @@
 // 5. 部署完成后，将合约地址复制到：
 //    /home/z/my-project/src/lib/web5/contracts/addresses.ts
 
+import 'dotenv/config';
 import { createWalletClient, http, parseEther, encodeDeployData } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';

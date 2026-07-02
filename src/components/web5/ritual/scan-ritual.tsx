@@ -12,7 +12,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { getAudioEngine } from '@/lib/web5/audio-engine';
-import { awakenVessel, revokeVesselSession } from '@/lib/web5/vessel-auth';
+import { createVesselChallenge, requestVesselSignature, parseSessionResponse, revokeVesselSession } from '@/lib/web5/vessel-auth';
 import type { VesselSession } from '@/lib/web5/types';
 
 type RitualPhase = 'idle' | 'void' | 'ritual' | 'revelation' | 'complete' | 'error';
@@ -72,37 +72,90 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default' }: S
     setExplode(0);
 
     try {
-      // Phase 1: void — Vessel Challenge
+      // Phase 1: void — 生成 Vessel Challenge（真实 Step 1）
       setPhase('void');
       audio?.playVoid();
-      appendLogs(PHASE_LOGS.void);
-      setProgress(15);
-      await sleep(800);
+      const challenge = createVesselChallenge(['read', 'comment', 'micropay']);
+      appendLogs([
+        '> INITIALIZING VESSEL AWAKENING PROTOCOL...',
+        `> Generating AP2 challenge nonce: ${challenge.nonce.slice(0, 8)}...`,
+        '> Requesting vessel endpoint at plvtvs.one...',
+      ]);
+      setProgress(20);
+      await sleep(600);
 
-      // Phase 2: ritual — AA2P Handshake
+      // Phase 2: ritual — AA2P Handshake + 请求 Vessel 签名（真实 Step 2）
       setPhase('ritual');
       audio?.playRitual();
-      appendLogs(PHASE_LOGS.ritual);
+      appendLogs([
+        '> AA2P handshake initiated',
+        '> Requesting Eidolon signature via vessel environment...',
+      ]);
       setProgress(45);
-      await sleep(800);
+      // 并行执行：视觉动画 + 签名请求
+      const signPromise = requestVesselSignature(challenge);
+      await sleep(400);
 
-      // Phase 3: revelation — Prime Delegation + Token Issue
+      // 等待签名完成
+      const { aa2pClaim, vesselDid, eidolonDid } = await signPromise;
+      appendLogs([
+        '> Vessel signature acquired ✓',
+        `> Vessel DID: ${vesselDid.slice(0, 24)}...`,
+        '> Verifying soul credential...',
+      ]);
+      setProgress(65);
+      await sleep(400);
+
+      // Phase 3: revelation — 后端验证 Prime 授权 + 签发 Token（真实 Steps 3+4）
       setPhase('revelation');
       audio?.playRevelation();
-      appendLogs(PHASE_LOGS.revelation);
+      appendLogs([
+        '> Querying Prime delegation from eidolonos.xyz...',
+        '> Session Key authorized',
+        '> Issuing Vessel Session Token...',
+      ]);
       setExplode(1);
       setProgress(80);
-      await sleep(600);
 
-      // 实际调用 Vessel Awakening
-      const session = await awakenVessel(['read', 'comment', 'micropay']);
+      // 调用后端 API 完成登录
+      const res = await fetch('/api/auth/vessel-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          challenge,
+          aa2pClaim,
+          vesselDid,
+          eidolonDid,
+        }),
+      });
 
-      // Phase 4: complete
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown' }));
+        throw new Error(err.error || `Vessel auth failed: ${res.status}`);
+      }
+
+      const raw = await res.json();
+      const rawSession = raw.session || raw;
+      const session = parseSessionResponse(rawSession);
+
+      // 持久化会话
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('web5_vessel_session', JSON.stringify({
+          ...session,
+          ap2Budget: {
+            ...session.ap2Budget,
+            dailyLimit: session.ap2Budget.dailyLimit.toString(),
+            perTxLimit: session.ap2Budget.perTxLimit.toString(),
+          },
+        }));
+      }
+
+      // Phase 4: complete — 唤醒完成
       setPhase('complete');
       audio?.playDashboard();
-      appendLogs(PHASE_LOGS.complete);
+      appendLogs(['> VESSEL AWAKENED. Welcome to Web5.blog.']);
       setProgress(100);
-      await sleep(600);
+      await sleep(400);
 
       onSuccess?.(session);
     } catch (err) {
@@ -110,7 +163,7 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default' }: S
       setError(e.message);
       setPhase('error');
       audio?.playError();
-      appendLogs(PHASE_LOGS.error);
+      appendLogs(['> AUTHENTICATION FAILED. Vessel not awakened.']);
       appendLogs([`> ${e.message}`]);
       onError?.(e);
     }
