@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import { fromTokenUnits } from '@/lib/web5/types';
 import type { VesselSession } from '@/lib/web5/types';
+import {
+  extractFaqs, generateFaqSchema, generateArticleSchema,
+  injectJsonLd, clearJsonLd,
+  setPageMeta, restorePageMeta,
+} from '@/lib/web5/seo';
 
 interface BlogPost {
   id: string;
@@ -85,6 +90,42 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  // ── SEO: 动态 meta + 结构化数据 ──
+  useEffect(() => {
+    if (!selected) {
+      clearJsonLd();
+      restorePageMeta();
+      return;
+    }
+
+    const { detail } = selected;
+
+    // Article JSON-LD
+    const articleJson = generateArticleSchema({
+      headline: detail.title,
+      description: detail.excerpt,
+      authorName: detail.authorName,
+      datePublished: detail.publishedAt,
+    });
+    injectJsonLd(articleJson);
+
+    // FAQPage JSON-LD (if content has Q&A)
+    const faqs = extractFaqs(detail.bodyMd);
+    if (faqs.length > 0) {
+      const faqJson = generateFaqSchema(faqs);
+      if (faqJson) injectJsonLd(faqJson);
+    }
+
+    // Dynamic page meta
+    setPageMeta({
+      title: `${detail.title} | Web5.blog`,
+      description: detail.excerpt,
+      ogTitle: detail.title,
+      ogDescription: detail.excerpt,
+      ogUrl: typeof window !== 'undefined' ? window.location.href : 'https://web5.blog',
+    });
+  }, [selected]);
 
   // 客户端模块过滤：为每个 post 分配一个模块
   const filteredPosts = mod && mod !== 'tech'

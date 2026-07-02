@@ -5,6 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import ZAI from 'z-ai-web-dev-sdk';
+import { ensureKnowledgeBase, buildRagContext } from '@/lib/web5/rag/loader';
 
 export interface WriteParams {
   prompt: string;
@@ -29,13 +30,10 @@ function buildSystemPrompt(style: string): string {
   return STYLES[style] || STYLES.detailed;
 }
 
-/** 模拟 RAG 上下文检索（生产环境对接 Qdrant/Pinecone） */
-function mockRagRetrieve(prompt: string): string {
-  return `\n\n[私有知识库上下文 - 由 DWN RAG 引擎检索]
-用户曾表达过对"${prompt.slice(0, 20)}..."相关主题的关注。
-用户偏好协议级实现与生产关系重构的论述视角。
-用户常用术语：协议级、生产关系、个人解放、容器登录、分身矩阵。
-[/私有知识库上下文]\n\n`;
+/** 实时 RAG 上下文检索（替代 mockRagRetrieve） */
+async function retrieveRagContext(prompt: string): Promise<string> {
+  await ensureKnowledgeBase();
+  return buildRagContext(prompt, 3);
 }
 
 // ── SSE 流解析 ──────────────────────────────────────────────
@@ -190,7 +188,7 @@ export async function* streamWrite(
   params: WriteParams
 ): AsyncGenerator<WriteChunk, void, unknown> {
   const { prompt, style = 'detailed', maxTokens = 800, signal } = params;
-  const ragContext = mockRagRetrieve(prompt);
+  const ragContext = await retrieveRagContext(prompt);
   const fullPrompt = `${prompt}${ragContext}\n\n请基于以上内容，以 Web5.blog 博客文章的形式展开写作（约 ${maxTokens} 字）。包含标题、核心观点、论证展开、价值主张等小节。`;
 
   // 尝试链：DeepSeek → OpenAI → ZAI SDK → fallback
