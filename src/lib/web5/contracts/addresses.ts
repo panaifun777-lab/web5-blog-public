@@ -1,9 +1,20 @@
-// Auto-generated: 2026-07-01T21:42:08.116Z
+// ════════════════════════════════════════════════════════════════
+// Web5.blog 合约地址配置 — Base Sepolia (Chain ID: 84532)
+// 部署时间: 2026-07-01
+// 超级管理员: 0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1
+// ════════════════════════════════════════════════════════════════
+
 export const ADDRESSES = {
-  VesselAuth: '0xf17161a988d0ab6c98befde028856de9438bc23d',
-  BudgetFence: '0x73ea340172572276357d2d5746270ef0296b4552',
-  ContentNFT: '0x91e1d74af5bf714988b4eb9afd51e8354dec0879',
-  USDC: '0x036cbd53842c5426634e7929541ec2318f3dcf7e',
-  Superadmin: '0x10687368ef1be3f178de0fccf5edff49e1c258b1',
+  VesselAuth: '0xF17161a988d0Ab6c98BefDE028856De9438Bc23D',
+  BudgetFence: '0x73eA340172572276357d2D5746270Ef0296b4552',
+  ContentNFT: '0x91e1d74aF5BF714988b4eB9AFd51E8354deC0879',
+  USDC: '0x036CbD53842c5426634e7929541eC2318f3dCf7e',
+  Superadmin: '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
 } as const;
-export const CHAIN = { id: 84532, name: 'Base Sepolia', rpcUrl: 'https://sepolia.base.org', explorer: 'https://sepolia.basescan.org' } as const;
+
+export const CHAIN = {
+  id: 84532,
+  name: 'Base Sepolia',
+  rpcUrl: 'https://sepolia.base.org',
+  explorer: 'https://sepolia.basescan.org',
+} as const;
