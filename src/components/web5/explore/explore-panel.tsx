@@ -229,9 +229,77 @@ export function ExplorePanel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* NFT 市场 */}
+      <MarketplaceSection />
     </div>
   );
 }
+
+function MarketplaceSection() {
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/marketplace/list').then(r => r.json()).then(d => {
+      if (d.listings) setListings(d.listings);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="cyber-loading-bar h-24 rounded" />;
+  }
+
+  if (listings.length === 0) {
+    return (
+      <Card className="cyber-panel">
+        <CardHeader>
+          <h3 className="cyber-mono cyber-text-glow-gold flex items-center gap-2">
+            <Coins className="w-4 h-4" /> Content NFT 市场
+          </h3>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-[#666] py-4 cyber-mono text-sm">
+            暂无已铸造 NFT 上线交易
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="cyber-panel">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="cyber-mono cyber-text-glow-gold flex items-center gap-2">
+            <Coins className="w-4 h-4" /> Content NFT 市场
+          </h3>
+          <Badge variant="outline" className="border-[#FFCC00]/50 text-[#FFCC00]">{listings.length} 个在售</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {listings.slice(0, 6).map((nft: any) => (
+            <div key={nft.id} className="border border-[#1a1a1a] p-3 rounded hover:border-[#FFCC00]/30 transition-colors">
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="text-sm font-bold text-[#ddd] truncate flex-1">{nft.title}</h4>
+                {nft.forSale && <Badge className="bg-[#FFCC00]/10 text-[#FFCC00] text-[10px]">{nft.price} USDC</Badge>}
+              </div>
+              <p className="text-xs text-[#666] mb-2 line-clamp-2">{nft.excerpt || '—'}</p>
+              <div className="flex justify-between text-[10px] cyber-mono">
+                <span className="text-[#B080E8]">版税 {nft.royaltyRate / 100}%</span>
+                <span className="text-[#0066FF]">Token #{nft.tokenId?.slice(0, 8)}</span>
+              </div>
+              <div className="flex justify-between text-[10px] cyber-mono mt-1">
+                <span className="text-[#999]">{nft.authorName}</span>
+                <span className="text-[#666]">{nft.license}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
 function StatCard({ label, value, unit, icon, color }: {
   label: string;

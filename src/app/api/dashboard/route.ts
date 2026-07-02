@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
     }
 
     const vesselStatus = {
+      id: vessel.id,
       did: vessel.did,
       status: vessel.status,
       smartAccountAddress: vessel.smartAccountAddress,

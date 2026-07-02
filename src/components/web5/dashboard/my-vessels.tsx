@@ -15,7 +15,7 @@ import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { fromTokenUnits, type VesselSession } from '@/lib/web5/types';
 import {
   Activity, Coins, Cpu, Terminal, RefreshCw, Zap, Shield,
-  TrendingUp, Clock, AlertCircle,
+  TrendingUp, Clock, AlertCircle, Bell, Share2,
 } from 'lucide-react';
 
 function toBigInt(v: any): bigint {
@@ -29,6 +29,9 @@ function toBigInt(v: any): bigint {
 export function MyVessels({ session }: { session: VesselSession }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState<{ unreadCount: number; alerts: any[] }>({ unreadCount: 0, alerts: [] });
+  const [distroStats, setDistroStats] = useState<any>(null);
+  const [refStats, setRefStats] = useState<any>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,6 +45,21 @@ export function MyVessels({ session }: { session: VesselSession }) {
     } finally {
       setLoading(false);
     }
+    // Load alerts
+    try {
+      const alertRes = await fetch('/api/alerts?did=' + encodeURIComponent(session.vesselDid));
+      if (alertRes.ok) setAlerts(await alertRes.json());
+    } catch (_) {}
+    // Load distribution stats
+    try {
+      const distRes = await fetch('/api/distribution/farcaster?did=' + encodeURIComponent(session.vesselDid));
+      if (distRes.ok) setDistroStats(await distRes.json());
+    } catch (_) {}
+    // Load referral stats
+    try {
+      const refRes = await fetch('/api/arp/referral?did=' + encodeURIComponent(session.vesselDid));
+      if (refRes.ok) setRefStats(await refRes.json());
+    } catch (_) {}
   }, [session.vesselDid]);
 
   useEffect(() => {
@@ -67,7 +85,17 @@ export function MyVessels({ session }: { session: VesselSession }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold cyber-text-glow-cyan">我的分身矩阵</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold cyber-text-glow-cyan">我的分身矩阵</h2>
+          {alerts.unreadCount > 0 && (
+            <Badge variant="outline" className="border-[#FF66AA]/50 text-[#FF66AA] gap-1 cursor-pointer" onClick={() => {
+              const msgs = alerts.alerts.filter(a => !a.read).map(a => a.title).join('\n');
+              if (msgs) alert('未读告警:\n' + msgs);
+            }}>
+              <Bell className="w-3 h-3" /> {alerts.unreadCount}
+            </Badge>
+          )}
+        </div>
         <Button onClick={load} variant="ghost" size="sm" className="cyber-mono text-xs">
           <RefreshCw className="w-3 h-3 mr-1" /> 刷新
         </Button>
@@ -160,7 +188,27 @@ export function MyVessels({ session }: { session: VesselSession }) {
                     <br />▸ 速率限制：{treasury.rateLimitPerMin} tx/min
                     <br />▸ 今日链上结算：{fromTokenUnits(toBigInt(treasury.todaySpentOnChain || 0))} USDC
                   </div>
-                  {/* ADJUST BUDGET 按钮 */}
+                  {/* 推荐收益 + DeFi Harvest 摘要 */}
+                  <div className="grid grid-cols-2 gap-3 border-t border-[#1a1a1a] pt-3">
+                    <div className="border border-[#1a1a1a] p-2 rounded">
+                      <div className="cyber-mono text-[10px] text-[#666]">推荐分润</div>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-3 h-3 text-[#B080E8]" />
+                        <span className="text-sm font-bold text-[#B080E8]">
+                          {refStats ? fromTokenUnits(toBigInt(refStats.totalEarnings)) : '—'} USDC
+                        </span>
+                      </div>
+                      <div className="cyber-mono text-[10px] text-[#666]">{refStats?.totalReferrals || 0} 次推荐</div>
+                    </div>
+                    <div className="border border-[#1a1a1a] p-2 rounded">
+                      <div className="cyber-mono text-[10px] text-[#666]">DeFi 累积收益</div>
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-3 h-3 text-[#FFCC00]" />
+                        <span className="text-sm font-bold text-[#FFCC00]">{fromTokenUnits(totalYield)} USDC</span>
+                      </div>
+                      <div className="cyber-mono text-[10px] text-[#666]">自动复投</div>
+                    </div>
+                  </div>
                   <div className="pt-2">
                     <Button size="sm" variant="outline" className="w-full text-xs h-8 border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/10"
                       onClick={() => {
@@ -236,6 +284,30 @@ export function MyVessels({ session }: { session: VesselSession }) {
                   </div>
                 </>
               )}
+              {/* 分发统计 */}
+              <div className="border-t border-[#1a1a1a] pt-3 mt-3">
+                <h4 className="cyber-mono text-xs text-[#B080E8] mb-2">DISTRIBUTION STATS</h4>
+                {distroStats ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="border border-[#1a1a1a] p-2 rounded text-center">
+                      <div className="text-lg font-bold text-[#B080E8]">{distroStats.totalPosts}</div>
+                      <div className="cyber-mono text-[10px] text-[#666]">已分发</div>
+                    </div>
+                    <div className="border border-[#1a1a1a] p-2 rounded text-center">
+                      <div className="text-lg font-bold text-[#00FFCC]">{distroStats.totalImpressions}</div>
+                      <div className="cyber-mono text-[10px] text-[#666]">曝光</div>
+                    </div>
+                    <div className="border border-[#1a1a1a] p-2 rounded text-center">
+                      <div className="text-lg font-bold text-[#FFCC00]">{distroStats.totalEngagements}</div>
+                      <div className="cyber-mono text-[10px] text-[#666]">互动</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-[#666] py-2 cyber-mono text-xs">
+                    暂无分发数据
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -325,6 +397,25 @@ export function MyVessels({ session }: { session: VesselSession }) {
               }
             }} className="border-[#B080E8]/30 text-[#B080E8] hover:bg-[#B080E8]/10">
               <Activity className="w-3 h-3 mr-1" /> DEPLOY NEW EIDOLON
+            </Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              try {
+                const res = await fetch('/api/defi/harvest', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ vesselId:data.vesselStatus.id }) });
+                const result = await res.json();
+                if (result.success) alert('✓ DeFi 收益收割: +' + result.yieldAmount + ' USDC (' + result.pool + ' @ ' + result.apy + ')');
+                load();
+              } catch(e) { alert('收割失败'); }
+            }} className="border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/10">
+              <Zap className="w-3 h-3 mr-1" /> SIMULATE HARVEST
+            </Button>
+            <Button size="sm" variant="outline" onClick={async () => {
+              const hash = prompt('输入内容 Arweave Hash (留空自动选择):');
+              try {
+                const res = await fetch('/api/autonomous/tick', { method:'POST' });
+                if (res.ok) { alert('✓ 自治 tick 执行完成'); load(); }
+              } catch(e) { alert('分发失败'); }
+            }} className="border-[#00FFCC]/30 text-[#00FFCC] hover:bg-[#00FFCC]/10">
+              <Share2 className="w-3 h-3 mr-1" /> AUTO TICK (24/7)
             </Button>
           </div>
         </CardContent>
