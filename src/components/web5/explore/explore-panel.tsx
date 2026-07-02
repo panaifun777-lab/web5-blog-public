@@ -300,6 +300,7 @@ function MarketplaceSection() {
       </CardContent>
     </Card>
   );
+}
 
 function StatCard({ label, value, unit, icon, color }: {
   label: string;
