@@ -2,31 +2,25 @@
 
 // ════════════════════════════════════════════════════════════════
 // src/components/web5/i18n/language-switcher.tsx
-// 多语言切换 — 极简版本，零依赖，零 Context
+// 多语言切换 — 连接 I18nContext 实现实时翻译
 // ════════════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import { Globe } from 'lucide-react';
+import { I18nContext, LOCALES, type LocaleCode } from '@/lib/i18n/index';
 
-const LOCALES = [
-  { code: 'zh-CN' as const, label: '简体中文', flag: '🇨🇳' },
-  { code: 'en' as const,    label: 'English',  flag: '🇺🇸' },
-  { code: 'ja' as const,    label: '日本語',   flag: '🇯🇵' },
-  { code: 'ko' as const,    label: '한국어',   flag: '🇰🇷' },
-  { code: 'es' as const,    label: 'Español',  flag: '🇪🇸' },
-];
+const locales = Object.values(LOCALES);
 
 export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState(LOCALES[0]);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('web5_locale');
-      if (saved) { const f = LOCALES.find(l => l.code === saved); if (f) setCurrent(f); }
-    } catch { /* localStorage unavailable */ }
-  }, []);
+  const ctx = useContext(I18nContext);
+  const current = ctx ? {
+    code: ctx.locale,
+    label: ctx.locales.find(l => l.code === ctx.locale)?.nativeLabel || ctx.locale,
+    flag: ctx.locales.find(l => l.code === ctx.locale)?.flag || '🌐',
+  } : { code: 'zh-CN' as LocaleCode, label: '简体中文', flag: '🇨🇳' };
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -34,30 +28,36 @@ export function LanguageSwitcher() {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const switchLocale = (code: typeof LOCALES[0]['code'], l: typeof LOCALES[0]) => {
+  const switchLocale = (code: LocaleCode) => {
     try { localStorage.setItem('web5_locale', code); } catch {}
-    setCurrent(l);
+    if (ctx) ctx.setLocale(code);
     setOpen(false);
   };
 
   return (
-    <div ref={ref} className="relative inline-block">
-      <button onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 px-2 h-7 rounded-lg border text-[11px] transition-all hover:scale-105"
-        style={{ borderColor: open ? '#00FFCC40' : '#ffffff15', color: open ? '#00FFCC' : '#888', backgroundColor: open ? '#00FFCC10' : 'transparent' }}>
-        <Globe className="w-3 h-3" />
-        <span>{current.flag}</span>
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 px-2 py-1 rounded text-xs text-[#999] hover:text-[#00FFCC] hover:bg-[#00FFCC]/10 transition-colors"
+        title={current.label}
+      >
+        <Globe className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">{current.flag} {current.label}</span>
+        <span className="sm:hidden">{current.flag}</span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-1.5 w-36 rounded-xl border overflow-hidden z-50"
-          style={{ borderColor: '#ffffff15', backgroundColor: '#0f1420', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          {LOCALES.map(l => (
-            <button key={l.code} onClick={() => switchLocale(l.code, l)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs transition-all hover:bg-white/[0.06]"
-              style={{ color: current.code === l.code ? '#00FFCC' : '#ccc' }}>
+        <div className="absolute right-0 top-full mt-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded shadow-2xl z-50 min-w-[140px]">
+          {locales.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => switchLocale(l.code)}
+              className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
+                ctx?.locale === l.code ? 'text-[#00FFCC] bg-[#00FFCC]/5' : 'text-[#999]'
+              }`}
+            >
               <span>{l.flag}</span>
-              <span>{l.label}</span>
-              {current.code === l.code && <span className="ml-auto text-[10px] text-[#00FFCC]">✓</span>}
+              <span>{l.nativeLabel}</span>
+              {ctx?.locale === l.code && <span className="ml-auto text-[#00FFCC]">✓</span>}
             </button>
           ))}
         </div>

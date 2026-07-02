@@ -15,7 +15,7 @@ import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { fromTokenUnits, type VesselSession } from '@/lib/web5/types';
 import {
   Activity, Coins, Cpu, Terminal, RefreshCw, Zap, Shield,
-  TrendingUp, Clock, AlertCircle, Bell, Share2,
+  TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink,
 } from 'lucide-react';
 
 function toBigInt(v: any): bigint {
@@ -32,6 +32,7 @@ export function MyVessels({ session }: { session: VesselSession }) {
   const [alerts, setAlerts] = useState<{ unreadCount: number; alerts: any[] }>({ unreadCount: 0, alerts: [] });
   const [distroStats, setDistroStats] = useState<any>(null);
   const [refStats, setRefStats] = useState<any>(null);
+  const [fcProfile, setFcProfile] = useState<any>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +60,11 @@ export function MyVessels({ session }: { session: VesselSession }) {
     try {
       const refRes = await fetch('/api/arp/referral?did=' + encodeURIComponent(session.vesselDid));
       if (refRes.ok) setRefStats(await refRes.json());
+    } catch (_) {}
+    // Load Farcaster profile
+    try {
+      const fcRes = await fetch('/api/distribution/farcaster?action=profile');
+      if (fcRes.ok) setFcProfile(await fcRes.json());
     } catch (_) {}
   }, [session.vesselDid]);
 
@@ -283,6 +289,42 @@ export function MyVessels({ session }: { session: VesselSession }) {
                     <Progress value={92} className="h-2 bg-[#1a1a1a]" />
                   </div>
                 </>
+              )}
+              {/* @piaoshu Farcaster 档案 */}
+              {fcProfile?.profile && (
+                <div className="border-t border-[#1a1a1a] pt-3 mt-3">
+                  <h4 className="cyber-mono text-xs text-[#B080E8] mb-2">FARCASTER · @piaoshu</h4>
+                  <div className="flex items-center gap-3 p-3 border border-[#1a1a1a] rounded">
+                    <div className="w-10 h-10 rounded-full bg-[#1a1a1a] overflow-hidden flex-shrink-0">
+                      {fcProfile.profile.pfpUrl ? (
+                        <img src={fcProfile.profile.pfpUrl} alt="@piaoshu" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#666] text-sm">?</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#ddd]">{fcProfile.profile.displayName}</span>
+                        <span className="cyber-mono text-xs text-[#B080E8]">@{fcProfile.profile.username}</span>
+                        <a href="https://warpcast.com/piaoshu" target="_blank" rel="noopener noreferrer" className="text-[#0066FF] hover:underline text-xs">
+                          <ExternalLink className="w-3 h-3 inline" />
+                        </a>
+                      </div>
+                      {fcProfile.profile.bio && (
+                        <p className="text-xs text-[#666] mt-1 line-clamp-2">{fcProfile.profile.bio}</p>
+                      )}
+                      <div className="flex gap-3 mt-1 text-[10px] cyber-mono">
+                        <span className="text-[#FFCC00]">#{fcProfile.profile.fid || '?'}</span>
+                        {fcProfile.profile.followerCount !== undefined && (
+                          <span className="text-[#00FFCC]">{fcProfile.profile.followerCount} followers</span>
+                        )}
+                        {fcProfile.identity?.neynarConfigured && (
+                          <span className="text-[#00FFCC]">● 真实发布</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
               {/* 分发统计 */}
               <div className="border-t border-[#1a1a1a] pt-3 mt-3">

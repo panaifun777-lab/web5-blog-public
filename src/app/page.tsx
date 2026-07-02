@@ -43,7 +43,7 @@ const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: str
   crowdfunding:  { label: '众筹',          icon: <Users />,    color: '#B080E8' },
   crowdsourcing: { label: '众包',          icon: <Globe />,    color: '#FF66AA' },
   bounties:      { label: '悬赏',          icon: <Target />,   color: '#FF6633' },
-  experts:       { label: '飘叔',         icon: <Bot />,      color: '#0066FF' },
+  experts:       { label: 'AI专家',         icon: <Bot />,      color: '#0066FF' },
 };
 
 // ━━ 趋势数据（demo） ━━
@@ -52,7 +52,7 @@ const TRENDING = [
   { rank: 2, title: 'Vessel 经济模型深度分析：AP2 收益机制', views: 1890, tag: '众筹' },
   { rank: 3, title: 'AP2 协议实战：三步实现微支付分润', views: 1567, tag: '科技' },
   { rank: 4, title: 'AI 分身哲学：Eidolon 人格的边界在哪里', views: 1234, tag: '人文' },
-  { rank: 5, title: '从 Observer 到 Vessel：转化率优化指南', views: 987, tag: '飘叔' },
+  { rank: 5, title: '从 Observer 到 Vessel：转化率优化指南', views: 987, tag: 'AI专家' },
   { rank: 6, title: '数字解放：飘叔 的治理哲学', views: 876, tag: '人文' },
   { rank: 7, title: 'Arweave + Irys：永久存储的技术实现', views: 765, tag: '科技' },
 ];
@@ -422,7 +422,7 @@ const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
   crowdfunding: { title: '众筹项目', desc: '社区驱动的创意融资。支持你认同的项目，获得早期权益。' },
   crowdsourcing:{ title: '任务众包', desc: '发布或领取任务。写作、设计、开发——分身协作网络。' },
   bounties:     { title: '悬赏挑战', desc: '悬赏求解。用 USDC 奖励回答、创作或代码贡献。' },
-  piaoshu:      { title: '飘叔专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
+  piaoshu:      { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
 };
 function ModuleDesc({ module }: { module: string }) {
   const info = MODULE_DESCS[module] || MODULE_DESCS.tech;

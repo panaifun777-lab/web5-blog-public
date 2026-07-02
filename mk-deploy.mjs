@@ -28,6 +28,7 @@ const files = [
   'src/app/api/eidolon/deploy/route.ts',
   'src/components/web5/blog/blog-feed.tsx',
   'src/components/web5/dashboard/my-vessels.tsx',
+  'src/app/api/distribution/farcaster/route.ts',
   'src/components/web5/write/writer.tsx',
   'src/app/api/ap2/budget/route.ts',
   'src/app/api/eidolon/deploy/route.ts',
