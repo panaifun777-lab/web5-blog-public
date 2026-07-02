@@ -7,6 +7,7 @@ const files = [
   'src/lib/web5/ai/eidolon-writer.ts',
   'src/lib/web5/rag/retriever.ts',
   'src/lib/web5/rag/loader.ts',
+  'src/lib/web5/rag/embeddings.ts',
   'src/lib/web5/seo.ts',
   'scripts/seed-rag.mjs',
   'src/components/web5/effects/matrix-rain.tsx',
