@@ -45,6 +45,7 @@ const files = [
   'src/lib/web5/alerts/alerter.ts',
   'src/app/api/dashboard/route.ts',
   '.env',
+  'public/favicon.svg',
 ];
 
 const base = 'C:/Users/Administrator/Desktop/Web5.blog';

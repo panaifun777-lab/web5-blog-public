@@ -4,7 +4,6 @@
 // + TEE 模拟层（生产环境对接 Phala Network）
 // ════════════════════════════════════════════════════════════════
 
-import ZAI from 'z-ai-web-dev-sdk';
 
 export interface WriteParams {
   prompt: string;
@@ -39,12 +38,12 @@ function mockRagRetrieve(prompt: string): string {
 }
 
 /**
- * 流式写作 — 使用真实 LLM (z-ai-web-dev-sdk)
+ * 流式写作 — 使用真实 LLM API
  *
  * 生产环境架构：
  *   prompt → RAG 检索 → TEE 飞地（Phala Network） → LLM 推理 → SSE 流式输出
  * MVP 架构：
- *   prompt → mock RAG → 直接调用 z-ai-web-dev-sdk → 流式 chunk
+ *   prompt → mock RAG → LLM API (OpenAI-compatible) → 流式 chunk
  */
 export async function* streamWrite(
   params: WriteParams
@@ -55,45 +54,81 @@ export async function* streamWrite(
   const ragContext = mockRagRetrieve(prompt);
   const fullPrompt = `${prompt}${ragContext}\n\n请基于以上内容，以 Web5.blog 博客文章的形式展开写作（约 ${maxTokens} 字）。包含标题、核心观点、论证展开、价值主张等小节。`;
 
-  // Step 2: 调用 z-ai-web-dev-sdk（真实 LLM 推理）
+  // Step 2: 调用 OpenAI-compatible LLM API
   // 注：在生产环境中，此调用应在 Phala Network TEE 飞地中执行
-  try {
-    const zai = await ZAI.create();
+  // 配置环境变量 LLM_API_KEY + LLM_BASE_URL（替换 z-ai-web-dev-sdk）
+  const llmApiKey = process.env.LLM_API_KEY;
+  const llmBaseUrl = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
 
-    // 使用流式 API
-    const stream = await zai.chat.completions.create({
-      messages: [
-        { role: 'assistant', content: buildSystemPrompt(style) },
-        { role: 'user', content: fullPrompt },
-      ],
-      stream: true,
-      thinking: { type: 'disabled' },
-    });
+  if (llmApiKey) {
+    try {
+      const res = await fetch(`${llmBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${llmApiKey}`,
+        },
+        body: JSON.stringify({
+          model: process.env.LLM_MODEL || 'gpt-4o-mini',
+          messages: [
+            { role: 'assistant', content: buildSystemPrompt(style) },
+            { role: 'user', content: fullPrompt },
+          ],
+          stream: true,
+          max_tokens: maxTokens,
+        }),
+        signal,
+      });
 
-    let totalChars = 0;
-    for await (const chunk of stream) {
-      if (signal?.aborted) {
-        yield { text: '\n[INTERRUPTED]', done: true };
-        return;
-      }
+      if (!res.ok) throw new Error(`LLM API error: ${res.status}`);
 
-      const content = chunk.choices?.[0]?.delta?.content;
-      if (content) {
-        totalChars += content.length;
-        yield { text: content, done: false };
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No reader');
 
-        // 超过 maxTokens 时截断
-        if (totalChars >= maxTokens) {
-          yield { text: '\n\n[... truncated by maxTokens]', done: true };
+      const decoder = new TextDecoder();
+      let totalChars = 0;
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content || '';
+            if (content) {
+              totalChars += content.length;
+              yield { text: content, done: false };
+              if (totalChars >= maxTokens) {
+                yield { text: '\n\n[... truncated by maxTokens]', done: true };
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        if (signal?.aborted) {
+          yield { text: '\n[INTERRUPTED]', done: true };
           return;
         }
       }
-    }
 
-    yield { text: '', done: true };
-  } catch (err) {
-    // LLM 调用失败，回退到模拟生成
-    console.warn('[eidolon-writer] LLM call failed, using fallback:', err);
+      yield { text: '', done: true };
+    } catch (err) {
+      console.warn('[eidolon-writer] LLM API call failed, using fallback:', err);
+      yield* fallbackStreamWrite(prompt, style, maxTokens, signal);
+    }
+  } else {
+    console.warn('[eidolon-writer] No LLM_API_KEY, using fallback');
     yield* fallbackStreamWrite(prompt, style, maxTokens, signal);
   }
 }

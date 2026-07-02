@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: '/favicon.svg',
   },
   openGraph: {
     title: 'Web5.blog · 个人数字解放的协议级实现',
