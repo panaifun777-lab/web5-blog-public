@@ -54,7 +54,6 @@ async function main() {
 
   // 从数据库读取已发布内容
   const contents = await prisma.content.findMany({
-    where: { published: true },
     orderBy: { createdAt: 'desc' },
     take: 100,
   });
