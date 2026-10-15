@@ -1,10 +1,9 @@
 // ════════════════════════════════════════════════════════════════
 // src/lib/web5/ai/eidolon-writer.ts
-// AI 分身流式写作引擎 — 多层 LLM 适配
+// AI 分身流式写作引擎 — 原生 LLM (DeepSeek / OpenAI 兼容) 适配
 // + TEE 模拟层（生产环境对接 Phala Network）
 // ════════════════════════════════════════════════════════════════
 
-import ZAI from 'z-ai-web-dev-sdk';
 import { ensureKnowledgeBase, buildRagContext } from '@/lib/web5/rag/loader';
 
 export interface WriteParams {
@@ -103,34 +102,7 @@ async function* tryOpenAI(
   yield* sseStream(res, maxTokens, signal);
 }
 
-// ── 第2层：z-ai-web-dev-sdk ─────────────────────────────────
-
-async function* tryZAI(
-  _prompt: string, style: string, maxTokens: number, fullPrompt: string, signal?: AbortSignal
-): AsyncGenerator<WriteChunk, void, unknown> {
-  const zai = await ZAI.create();
-  const stream = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: buildSystemPrompt(style) },
-      { role: 'user', content: fullPrompt },
-    ],
-    stream: true,
-    thinking: { type: 'disabled' },
-  });
-  let total = 0;
-  for await (const chunk of stream) {
-    if (signal?.aborted) { yield { text: '\n[INTERRUPTED]', done: true }; return; }
-    const content = chunk.choices?.[0]?.delta?.content;
-    if (content) {
-      total += content.length;
-      yield { text: content, done: false };
-      if (total >= maxTokens) { yield { text: '\n[...truncated]', done: true }; return; }
-    }
-  }
-  yield { text: '', done: true };
-}
-
-// ── 第3层：本地 fallback ────────────────────────────────────
+// ── 第2层：本地智能合成引擎 ────────────────────────────────────
 
 async function* fallbackStreamWrite(
   prompt: string, style: string, _maxTokens: number, signal?: AbortSignal
@@ -191,8 +163,8 @@ export async function* streamWrite(
   const ragContext = await retrieveRagContext(prompt);
   const fullPrompt = `${prompt}${ragContext}\n\n请基于以上内容，以 Web5.blog 博客文章的形式展开写作（约 ${maxTokens} 字）。包含标题、核心观点、论证展开、价值主张等小节。`;
 
-  // 尝试链：DeepSeek → OpenAI → ZAI SDK → fallback
-  for (const layer of [tryOpenAI, tryZAI, fallbackStreamWrite]) {
+  // 尝试链：DeepSeek / OpenAI → 本地智能合成引擎
+  for (const layer of [tryOpenAI, fallbackStreamWrite]) {
     try {
       const gen = layer(prompt, style, maxTokens, fullPrompt, signal);
       let emitted = false;

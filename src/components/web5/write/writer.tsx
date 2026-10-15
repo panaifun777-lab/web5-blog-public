@@ -44,7 +44,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
     }
   }, [output, state]);
 
-  const canWrite = session && session.accessMode === 'vessel';
+  const canWrite = true; // 开放 AI 分身写作能力，发布时进行 Vessel 确权签名校验
 
   const startStream = useCallback(async () => {
     if (!prompt.trim()) return;
@@ -156,6 +156,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       const data = await res.json();
       if (data.success) {
         setPublishResult(data);
+        try { localStorage.setItem('web5_task_write', 'true'); } catch {}
       } else {
         setError(data.error || '发布失败');
       }

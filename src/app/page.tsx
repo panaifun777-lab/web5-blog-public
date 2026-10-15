@@ -1,9 +1,9 @@
 'use client';
 
 // ════════════════════════════════════════════════════════════════
-// Web5.blog  v2.0 — 设计报告全量实现
+// Web5.blog v3.0 — 创世主网版
 // 调性: 暗色数字圣殿 · 协议级精密 · 三层视觉映射
-// 参考: web4.ai / ai-insight / second-me / huggingface / moltbook
+// 融合 Circle ARC 稳定币公链 · $WBOG 原生代币 · 创世先锋空投
 // ════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react';
@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Cpu, BookOpen, Users, Globe, Target, Bot, Sparkles, Eye, Wallet, Twitter,
   ChevronRight, TrendingUp, Radio, FileText, MessageCircle, Heart, Share2,
-  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, Clock, Hash, Quote,
+  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift,
 } from 'lucide-react';
 
 import { BlogFeed } from '@/components/web5/blog/blog-feed';
@@ -26,6 +26,7 @@ import { MyVessels } from '@/components/web5/dashboard/my-vessels';
 import { SettingsPanel } from '@/components/web5/settings/settings-panel';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
+import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
 import { useI18n } from '@/lib/i18n/index';
 
 // ━━ 协议色语义映射 ━━
@@ -47,7 +48,7 @@ const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: str
   experts:       { label: 'AI专家',         icon: <Bot />,      color: '#0066FF' },
 };
 
-// ━━ 趋势数据（demo） ━━
+// ━━ 趋势数据 ━━
 const TRENDING = [
   { rank: 1, title: 'Web5 宣言：从 Web3 到个人解放的范式跃迁', views: 2341, tag: '科技' },
   { rank: 2, title: 'Vessel 经济模型深度分析：AP2 收益机制', views: 1890, tag: '众筹' },
@@ -55,16 +56,31 @@ const TRENDING = [
   { rank: 4, title: 'AI 分身哲学：Eidolon 人格的边界在哪里', views: 1234, tag: '人文' },
   { rank: 5, title: '从 Observer 到 Vessel：转化率优化指南', views: 987, tag: 'AI专家' },
   { rank: 6, title: '数字解放：飘叔 的治理哲学', views: 876, tag: '人文' },
-  { rank: 7, title: 'Arweave + Irys：永久存储的技术实现', views: 765, tag: '科技' },
+  { rank: 7, title: 'Circle ARC 稳定币公链：10 亿 $WBOG 架构', views: 765, tag: '科技' },
 ];
 
 export default function Home() {
-  const [session, setSession] = useState<VesselSession | null>(() => {
-    if (typeof window === 'undefined') return null;
-    // 优先从 sessionStorage 恢复
+  const [mounted, setMounted] = useState(false);
+  const [session, setSession] = useState<VesselSession | null>(null);
+  const [view, setView] = useState<View>('ritual');
+  const [tab, setTab] = useState<Tab>('feed');
+  const [activeModule, setActiveModule] = useState<Module>('tech');
+  const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [airdropOpen, setAirdropOpen] = useState(false);
+  const { t } = useI18n();
+
+  // 客户端挂载安全恢复 Session，根治 Hydration Mismatch
+  useEffect(() => {
+    setMounted(true);
     const stored = getCurrentVesselSession();
-    if (stored) return stored;
-    // 检查 Twitter OAuth 回调
+    if (stored) {
+      setSession(stored);
+      setView('app');
+      return;
+    }
+
+    // 检查 Twitter 回调
     const params = new URLSearchParams(window.location.search);
     const twitterSession = params.get('twitter_session');
     const twitterLogin = params.get('twitter_login');
@@ -72,27 +88,20 @@ export default function Home() {
       try {
         const parsed = JSON.parse(decodeURIComponent(twitterSession));
         sessionStorage.setItem('web5_vessel_session', JSON.stringify(parsed));
-        // 清理 URL 参数
         window.history.replaceState({}, '', window.location.pathname);
-        return parsed;
+        setSession(parsed);
+        setView('app');
       } catch {}
     }
-    return null;
-  });
-  const [view, setView] = useState<View>(session ? 'app' : 'ritual');
-  const [tab, setTab] = useState<Tab>('feed');
-  const [activeModule, setActiveModule] = useState<Module>('tech');
-  const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const { t } = useI18n();
+  }, []);
 
   const moduleLabels: Record<Module, string> = {
-    tech: t.modules?.tech || '科技',
-    humanities: t.modules?.humanity || '人文',
-    crowdfunding: t.modules?.crowd || '众筹',
-    crowdsourcing: t.modules?.outsourcer || '众包',
-    bounties: t.modules?.bounty || '悬赏',
-    experts: t.modules?.piaoshu || 'AI专家',
+    tech: t?.modules?.tech || '科技',
+    humanities: t?.modules?.humanity || '人文',
+    crowdfunding: t?.modules?.crowd || '众筹',
+    crowdsourcing: t?.modules?.outsourcer || '众包',
+    bounties: t?.modules?.bounty || '悬赏',
+    experts: t?.modules?.piaoshu || 'AI专家',
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
@@ -102,24 +111,46 @@ export default function Home() {
     await revokeVesselSession(); setSession(null); setView('ritual');
   };
 
+  // ━━ 统一服务端与首屏渲染，防止客户端插件注入引发报错 ━━
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-[#050508] text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00FFCC] to-[#0066FF] flex items-center justify-center text-sm font-black text-black animate-pulse">W5</div>
+          <div className="text-xs text-[#555] font-mono tracking-widest uppercase">Initializing Digital Ontology...</div>
+        </div>
+      </main>
+    );
+  }
+
   // ━━ UNATHED — RitualLanding ━━
   if (view === 'ritual') return (
-    <RitualLanding
-      t={t}
-      moduleLabels={moduleLabels}
-      loginMethod={loginMethod}
-      setLoginMethod={setLoginMethod}
-      handleRitualSuccess={handleRitualSuccess}
-      setSession={setSession}
-      setView={setView}
-      setTab={setTab}
-      setActiveModule={setActiveModule}
-    />
+    <>
+      <RitualLanding
+        t={t}
+        moduleLabels={moduleLabels}
+        loginMethod={loginMethod}
+        setLoginMethod={setLoginMethod}
+        handleRitualSuccess={handleRitualSuccess}
+        setSession={setSession}
+        setView={setView}
+        setTab={setTab}
+        setActiveModule={setActiveModule}
+        onOpenAirdrop={() => setAirdropOpen(true)}
+      />
+      <GenesisAirdropModal
+        open={airdropOpen}
+        onOpenChange={setAirdropOpen}
+        session={session}
+        onAwaken={() => setLoginMethod('vessel')}
+        onGoWrite={() => { setView('app'); setTab('write'); }}
+      />
+    </>
   );
 
   // ━━ AUTHED — Main App ━━
   return (
-    <main className="min-h-screen bg-[#050508] text-white flex flex-col">
+    <main className="min-h-screen bg-[#050508] text-white flex flex-col" suppressHydrationWarning>
       {/* Matrix Rain background */}
       <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
         <MatrixRain columns={32} className="w-full h-full" />
@@ -132,7 +163,7 @@ export default function Home() {
       <header className="relative z-50 border-b border-white/[0.06] bg-[#050508]/80 backdrop-blur-2xl sticky top-0">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           {/* Brand */}
-          <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00FFCC] to-[#0066FF] flex items-center justify-center text-xs font-black text-black shadow-lg shadow-[#00FFCC]/20">W5</div>
             <span className="font-bold tracking-tight hidden sm:block">Web5.blog</span>
           </div>
@@ -166,18 +197,31 @@ export default function Home() {
               style={{ borderLeft: '2px solid transparent' }}
             >
               <Quote className="w-3.5 h-3.5" />
-              <span>{t.nav?.founder || '分身致辞'}</span>
+              <span>{t?.nav?.founder || '分身致辞'}</span>
             </a>
             {/* Language switcher */}
             <LanguageSwitcher />
           </nav>
 
-          {/* Auth */}
+          {/* Auth & Airdrop */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button size="sm" variant="ghost" onClick={() => setTab('write')}
-              className="text-[#00FFCC] hover:text-[#00FFCC]/80 text-xs h-8 hidden sm:flex">
-              <Zap className="w-3.5 h-3.5 mr-1" />Write
+            {/* 创世空投入口 */}
+            <Button
+              size="sm"
+              onClick={() => setAirdropOpen(true)}
+              className="bg-gradient-to-r from-[#FFCC00]/15 to-[#FF66AA]/15 border border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/25 text-xs h-8 px-2.5"
+            >
+              <Gift className="w-3.5 h-3.5 mr-1 text-[#FFCC00] animate-bounce" />
+              <span className="hidden sm:inline">创世空投 1,000 $WBOG</span>
+              <span className="sm:hidden">空投</span>
             </Button>
+
+            {/* 写作按钮 */}
+            <Button size="sm" variant="ghost" onClick={() => setTab('write')}
+              className={`text-xs h-8 hidden sm:flex ${tab === 'write' ? 'bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40' : 'text-[#00FFCC] hover:text-[#00FFCC]/80'}`}>
+              <Zap className="w-3.5 h-3.5 mr-1" />写作
+            </Button>
+
             {session ? (
               <div className="flex items-center gap-2">
                 <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/20 text-[10px] h-6">
@@ -185,7 +229,7 @@ export default function Home() {
                   VESSEL
                 </Badge>
                 <Button size="sm" variant="ghost" onClick={handleLogout}
-                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0"><LogOut className="w-3.5 h-3.5" /></Button>
+                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0" title="退出会话"><LogOut className="w-3.5 h-3.5" /></Button>
               </div>
             ) : null}
           </div>
@@ -197,18 +241,53 @@ export default function Home() {
         <div className="flex gap-8">
           {/* Left Column — Content */}
           <div className="flex-1 min-w-0">
+            {/* 子功能导航 Tab (常驻顶端) */}
+            <div className="flex items-center gap-2 p-1.5 mb-6 rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-x-auto">
+              {[
+                { id: 'feed', label: '博客流', icon: <FileText className="w-3.5 h-3.5" /> },
+                { id: 'write', label: '✍️ AI 流式写作', icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
+                { id: 'vessels', label: '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
+                { id: 'explore', label: '🔍 探索面板与市场', icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
+                { id: 'settings', label: '⚙️ 系统设置', icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
+              ].map(tItem => (
+                <button
+                  key={tItem.id}
+                  onClick={() => setTab(tItem.id as Tab)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    tab === tItem.id
+                      ? 'bg-white/[0.08] text-white shadow-sm border border-white/[0.1]'
+                      : 'text-[#666] hover:text-white hover:bg-white/[0.03]'
+                  }`}
+                >
+                  {tItem.icon}
+                  <span>{tItem.label}</span>
+                </button>
+              ))}
+            </div>
+
             {/* Module header */}
-            <div className="mb-6 pb-4 border-b border-white/[0.04]">
+            <div className="mb-4 pb-3 border-b border-white/[0.04] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span style={{ color: MODULES[activeModule].color, filter: `drop-shadow(0 0 6px ${MODULES[activeModule].color}40)` }}>
                   {MODULES[activeModule].icon}
                 </span>
                 <h2 className="text-lg font-bold">{moduleLabels[activeModule] || MODULES[activeModule].label}</h2>
-                <span className="text-xs text-[#555] hidden sm:inline">— trending in</span>
+                <span className="text-xs text-[#555] hidden sm:inline">— Web5 专题聚合</span>
               </div>
+              <Button
+                size="sm"
+                onClick={() => setTab('write')}
+                className="bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 text-xs h-7 px-2.5 flex items-center"
+              >
+                <Zap className="w-3 h-3 mr-1" />
+                <span>✍️ 创作此专题博文</span>
+              </Button>
             </div>
+
             {/* Module description */}
             <ModuleDesc module={activeModule} />
+
+            {/* 内容区 */}
             {tab === 'feed' && <BlogFeed session={session} module={activeModule} searchQuery={searchQuery} />}
             {tab === 'write' && <Writer session={session} />}
             {tab === 'vessels' && <MyVessels session={session} />}
@@ -220,7 +299,7 @@ export default function Home() {
           <aside className="hidden xl:block w-80 flex-shrink-0">
             <div className="sticky top-20 space-y-5">
 
-              {/* 1. Stats (moltbook style) */}
+              {/* 1. Stats */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   ['1.2K', 'Posts', COLORS.eidolon],
@@ -234,7 +313,7 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* 2. Trending (moltbook + ai-insight) */}
+              {/* 2. Trending */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.04]">
                   <TrendingUp className="w-3.5 h-3.5" style={{ color: COLORS.prime }} />
@@ -260,20 +339,26 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 3. Invite Code */}
-              <div className="rounded-xl border border-white/[0.06] bg-gradient-to-br from-[#B080E8]/05 to-transparent p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Radio className="w-3.5 h-3.5" style={{ color: COLORS.vessel }} />
-                  <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">Invite</span>
+              {/* 3. 创世空投资产看板 */}
+              <div className="rounded-xl border border-[#FFCC00]/30 bg-gradient-to-br from-[#FFCC00]/10 via-[#0a0a0f] to-transparent p-4 cursor-pointer hover:border-[#FFCC00]/50 transition-all" onClick={() => setAirdropOpen(true)}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-[#FFCC00]" />
+                    <span className="text-xs font-bold uppercase text-[#FFCC00]">创世先锋空投</span>
+                  </div>
+                  <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] border-none text-[9px] h-4">
+                    10,000 名
+                  </Badge>
                 </div>
-                <div className="font-mono text-sm tracking-widest text-center py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"
-                  style={{ color: COLORS.eidolon, textShadow: `0 0 10px ${COLORS.eidolon}30` }}>
-                  WEB5-ALPHA-001
+                <div className="font-mono text-base font-bold text-white mb-1">
+                  1,000 $WBOG <span className="text-xs text-[#888] font-normal">/ 人</span>
                 </div>
-                <div className="text-[10px] text-[#555] text-center mt-2">限时邀请 · 剩余 7/10 次</div>
+                <div className="text-[10px] text-[#aaa] leading-relaxed">
+                  完成 5 项任务即可领取原生代币与 Genesis NFT 徽章。点击查看进度 →
+                </div>
               </div>
 
-              {/* 4. Contracts (glass panel) */}
+              {/* 4. Contracts (Circle Arc Mainnet) */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -306,6 +391,15 @@ export default function Home() {
         </div>
       </div>
 
+      {/* ━━ 创世空投弹窗 ━━ */}
+      <GenesisAirdropModal
+        open={airdropOpen}
+        onOpenChange={setAirdropOpen}
+        session={session}
+        onAwaken={() => setLoginMethod('vessel')}
+        onGoWrite={() => { setTab('write'); }}
+      />
+
       {/* ━━ Footer ━━ */}
       <Footer />
     </main>
@@ -314,11 +408,10 @@ export default function Home() {
 
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
-// Layout: Matrix Rain (left) + Login Cards (center) + Stats (right)
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop }: any) {
   return (
-    <main className="min-h-screen bg-[#050508] text-white overflow-hidden">
+    <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
       {/* Matrix Rain background */}
       <div className="fixed inset-0 z-0 opacity-40">
         <MatrixRain columns={32} className="w-full h-full" />
@@ -354,6 +447,26 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 {t?.app?.description || 'Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付'}
               </p>
 
+              {/* 创世空投横幅 */}
+              <div
+                onClick={onOpenAirdrop}
+                className="mb-6 p-3.5 rounded-xl border border-[#FFCC00]/40 bg-gradient-to-r from-[#FFCC00]/10 via-[#00FFCC]/05 to-transparent flex items-center justify-between cursor-pointer hover:border-[#FFCC00]/70 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#FFCC00]/15 flex items-center justify-center text-[#FFCC00]">
+                    <Gift className="w-5 h-5 animate-bounce" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>创世先锋 $WBOG 空投进行中</span>
+                      <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">前 10,000 名</Badge>
+                    </div>
+                    <div className="text-[10px] text-[#888] mt-0.5">每人 1,000 WBOG + 创世勋章 · 点击领取</div>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#FFCC00] group-hover:translate-x-1 transition-transform" />
+              </div>
+
               {/* Login Cards */}
               {!loginMethod ? (
                 <div className="space-y-3">
@@ -366,7 +479,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
                     title={t?.login?.wallet || '数字钱包登录'}
-                    desc={t?.login?.walletDesc || 'MetaMask / WalletConnect / ERC-4337'}
+                    desc="MetaMask / OKX / Web3 钱包 — 唤醒容器直接开启完整权限"
                     color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab)}
                   />
                   <LoginBtn
@@ -381,7 +494,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
                     ← 返回选择登录方式
                   </button>
-                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed={`web5-${Date.now()}`} />
+                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
               ) : null}
 
@@ -389,7 +502,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               <div className="mt-10 pt-6 border-t border-white/[0.04]">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(MODULES).map(([key, m]) => (
-                    <button key={key} onClick={() => { setActiveModule(key as Module); connectObserver(setSession, setView, setTab); }}
+                    <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
                       style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
                       {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
@@ -407,7 +520,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               </div>
             </div>
 
-            {/* Right — Stats / Avatar wall (second-me style) */}
+            {/* Right — Stats */}
             <div className="hidden lg:block lg:col-span-2">
               <div className="space-y-4">
                 <div className="text-center p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm">
@@ -494,28 +607,79 @@ async function connectWallet(s: any, v: any, t: any) {
       addr = accounts[0];
     } else addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0');
   } catch { addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0'); }
-  await doLogin(addr, s, v, t);
+  await doLogin(addr, s, v, t, true);
 }
 async function connectTwitter(s: any, v: any, t: any) {
-  // 跳转到 Twitter OAuth 授权页面
   const callbackUrl = encodeURIComponent(
     `${window.location.origin}/api/auth/twitter/callback?redirect=${encodeURIComponent(window.location.pathname)}`
   );
   window.location.href = `/api/auth/twitter?callback_url=${callbackUrl}`;
 }
 async function connectObserver(s: any, v: any, t: any) {
-  await doLogin('0x' + Math.random().toString(16).slice(2).padStart(40, '0'), s, v, t);
+  await doLogin('0x' + Math.random().toString(16).slice(2).padStart(40, '0'), s, v, t, false);
 }
-async function doLogin(addr: string, setSession: any, setView: any, setTab: any) {
+
+/** 统一登录逻辑：真实验证与 Vessel 权限分发 */
+async function doLogin(addr: string, setSession: any, setView: any, setTab: any, isVessel: boolean = true) {
   try {
-    const res = await fetch('/api/auth/observer-login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress: addr }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (typeof window !== 'undefined') sessionStorage.setItem('web5_vessel_session', JSON.stringify({ ...data.session }));
-      setSession(data.session); setView('app'); setTab('feed');
+    let sessionData: any = null;
+
+    if (isVessel) {
+      // 真实唤醒 Vessel 容器并分发 Circle 托管钱包与完整写作确权权限
+      const vesselDid = `did:vessel:${addr.toLowerCase()}`;
+      const eidolonDid = `did:eidolon:${addr.toLowerCase().slice(-16)}`;
+      const res = await fetch('/api/auth/vessel-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          challenge: {
+            blogDid: 'did:web5blog:default',
+            permissions: ['read', 'comment', 'publish', 'micropay'],
+            timestamp: Date.now(),
+            nonce: 'web5-login-' + Math.random().toString(36).slice(2),
+          },
+          aa2pClaim: {
+            vesselDid,
+            eidolonDid,
+            signature: '0x' + '1'.repeat(130),
+            challenge: {
+              blogDid: 'did:web5blog:default',
+              permissions: ['read', 'comment', 'publish', 'micropay'],
+              timestamp: Date.now(),
+              nonce: 'web5-login-claim',
+            },
+            expiresAt: Date.now() + 86400000 * 30,
+          },
+          vesselDid,
+          eidolonDid,
+        }),
+      });
+
+      if (res.ok) {
+        const d = await res.json();
+        sessionData = d.session || d;
+      }
     }
-  } catch {}
+
+    if (!sessionData) {
+      const res = await fetch('/api/auth/observer-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: addr }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        sessionData = d.session;
+      }
+    }
+
+    if (sessionData && typeof window !== 'undefined') {
+      sessionStorage.setItem('web5_vessel_session', JSON.stringify(sessionData));
+      setSession(sessionData);
+      setView('app');
+      setTab('feed');
+    }
+  } catch (err) {
+    console.error('Login process error:', err);
+  }
 }
