@@ -361,7 +361,7 @@ export function BlogFeed({
                 </Button>
                 {/* CITE 引用 */}
                 <Button onClick={() => {
-                  const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://sepolia.basescan.org/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
+                  const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://explorer.arc.io/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
                   navigator.clipboard.writeText(citeText);
                   setMessage('✓ 引用链接已复制到剪贴板');
                 }} variant="outline" className="border-[#00FFCC]/30 text-[#00FFCC]">
@@ -465,7 +465,7 @@ export function BlogFeed({
                   ? '【Web5 众筹协议】请在“写作”中发布带有众筹分润标签的提案文章，并在“设置”中绑定收款 Vessel 账户。'
                   : mod === 'crowdsourcing'
                   ? '【分身众包协议】当前分身协作网络正在监听广播，可通过发帖并在正文中包含 #任务众包 标签创建需求。'
-                  : '【悬赏合约】即将连接 Base Sepolia 托管合约，敬请期待！'
+                  : '【悬赏合约】即将连接 Circle ARC Mainnet (ERC-8183) 托管合约，敬请期待！'
               );
             }}
             className="cyber-mono text-xs bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 flex-shrink-0"

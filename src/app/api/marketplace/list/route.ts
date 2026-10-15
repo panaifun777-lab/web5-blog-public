@@ -34,8 +34,8 @@ export async function GET() {
     return NextResponse.json({
       total: listings.length,
       listings,
-      marketplaceContract: '0x91e1d74af5bf714988b4eb9afd51e8354dec0879',
-      chain: 'Base Sepolia',
+      marketplaceContract: '0x8537fe7268296f37c2f85f9aad992f11659d1c8a',
+      chain: 'Arc Mainnet',
     });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

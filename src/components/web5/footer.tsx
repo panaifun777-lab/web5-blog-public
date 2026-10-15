@@ -2,13 +2,15 @@
 // src/components/web5/footer.tsx — 站底（合约地址、版权、社交）
 // ════════════════════════════════════════════════════════════════
 
-import { ExternalLink, Github, Twitter } from 'lucide-react';
+import { ExternalLink, Github, Twitter, Send } from 'lucide-react';
 import Link from 'next/link';
+import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 
 const ADDRS = {
-  VesselAuth: '0xf17161a988d0ab6c98befde028856de9438bc23d',
-  BudgetFence: '0x73ea340172572276357d2d5746270ef0296b4552',
-  ContentNFT: '0x91e1d74af5bf714988b4eb9afd51e8354dec0879',
+  '$WBOG Token': ARC_MAINNET.addresses.WBOG,
+  ContentNFT: ARC_MAINNET.addresses.ContentNFT,
+  BudgetFence: ARC_MAINNET.addresses.BudgetFence,
+  VesselAuth: ARC_MAINNET.addresses.VesselAuth,
 };
 
 export function Footer() {
@@ -23,24 +25,24 @@ export function Footer() {
             <div className="text-[11px] text-[#555] leading-relaxed">
               Prime × Eidolon × Vessel 三层生命架构。
               <br />
-              全球首个分身原生博客平台。
+              Circle ARC 稳定币原生公链首个分身博客平台。
             </div>
           </div>
 
           {/* Contracts */}
           <div>
-            <div className="font-bold text-sm text-white mb-3">合约地址</div>
+            <div className="font-bold text-sm text-white mb-3">Arc Mainnet 合约</div>
             <div className="space-y-1.5">
               {Object.entries(ADDRS).map(([name, addr]) => (
                 <a
                   key={name}
-                  href={`https://sepolia.basescan.org/address/${addr}`}
+                  href={`https://explorer.arc.io/address/${addr}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 text-[10px] font-mono text-[#555] hover:text-[#00FFCC] transition-colors"
                 >
                   <span className="text-[#00FFCC]/60">{name}</span>
-                  <span>{addr.slice(0, 10)}…{addr.slice(-6)}</span>
+                  <span>{addr.slice(0, 8)}…{addr.slice(-6)}</span>
                   <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               ))}
@@ -52,20 +54,31 @@ export function Footer() {
             <div className="font-bold text-sm text-white mb-3">关注我们</div>
             <div className="flex gap-3">
               <a
-                href="https://github.com"
+                href="https://github.com/panaifun777-lab/web5.blog"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="GitHub 源码"
                 className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
               >
                 <Github className="w-4 h-4" />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://x.com/piaoshu1112"
                 target="_blank"
                 rel="noopener noreferrer"
+                title="Twitter / X"
                 className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
               >
                 <Twitter className="w-4 h-4" />
+              </a>
+              <a
+                href="https://t.me/Web5blog_bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Telegram 官方机器人"
+                className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
+              >
+                <Send className="w-4 h-4" />
               </a>
             </div>
           </div>

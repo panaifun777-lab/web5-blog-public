@@ -241,9 +241,10 @@ function InvitesSection() {
 
 function ContractsSection({ copied, setCopied }: { copied: string; setCopied: (s: string) => void }) {
   const contracts = [
-    { name: 'VesselAuth', addr: '0xF17161a988d0Ab6c98BefDE028856De9438Bc23D', color: '#00FFCC' },
-    { name: 'BudgetFence', addr: '0x73eA340172572276357d2D5746270Ef0296b4552', color: '#FFCC00' },
-    { name: 'ContentNFT', addr: '0x91e1d74aF5BF714988b4eB9AFd51E8354deC0879', color: '#B080E8' },
+    { name: '$WBOG Token', addr: '0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f', color: '#FFCC00' },
+    { name: 'ContentNFT', addr: '0x8537fe7268296f37c2f85f9aad992f11659d1c8a', color: '#FF66AA' },
+    { name: 'BudgetFence', addr: '0xe0d246c09d7a3097bab3148f89201157dd531eea', color: '#0066FF' },
+    { name: 'VesselAuth', addr: '0x2d4aebbd5d3e318c0deb91f927019835ecd9a120', color: '#00FFCC' },
   ];
 
   const copyAddr = (addr: string) => {
@@ -265,7 +266,7 @@ function ContractsSection({ copied, setCopied }: { copied: string; setCopied: (s
               <Button size="sm" variant="ghost" className="h-8" onClick={() => copyAddr(c.addr)}>
                 {copied === c.addr ? <Check className="w-3.5 h-3.5 text-[#00FFCC]" /> : <Copy className="w-3.5 h-3.5" />}
               </Button>
-              <a href={`https://sepolia.basescan.org/address/${c.addr}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://explorer.arc.io/address/${c.addr}`} target="_blank" rel="noopener noreferrer">
                 <Button size="sm" variant="ghost" className="h-8 text-[#0066FF]">
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Button>

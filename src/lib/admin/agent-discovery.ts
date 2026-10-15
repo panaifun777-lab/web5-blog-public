@@ -27,9 +27,10 @@ export const AGENT_META: AgentDiscoveryMeta = {
   version: '2.0.0',
   protocols: ['AP2', 'ARP', 'AA2P', 'ERC-4337', 'ERC-721', 'ERC-2981'],
   contracts: {
-    VesselAuth: '0xF17161a988d0Ab6c98BefDE028856De9438Bc23D',
-    BudgetFence: '0x73eA340172572276357d2D5746270Ef0296b4552',
-    ContentNFT: '0x91e1d74aF5BF714988b4eB9AFd51E8354deC0879',
+    WBOG: '0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f',
+    ContentNFT: '0x8537fe7268296f37c2f85f9aad992f11659d1c8a',
+    BudgetFence: '0xe0d246c09d7a3097bab3148f89201157dd531eea',
+    VesselAuth: '0x2d4aebbd5d3e318c0deb91f927019835ecd9a120',
     Superadmin: SUPERADMIN,
   },
   superadmin: SUPERADMIN,
