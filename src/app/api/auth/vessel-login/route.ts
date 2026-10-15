@@ -11,6 +11,7 @@ import {
 } from '@/lib/web5/types';
 import { verifyAA2PSignature, queryPrimeDelegation } from '@/lib/web5/vessel-verifier';
 import { issueVesselToken } from '@/lib/web5/token-issuer';
+import { createVesselWallet } from '@/lib/web5/circle/client';
 import { createHash } from 'crypto';
 
 // ━━ 全局 BigInt JSON 序列化修复 ━━
@@ -107,15 +108,27 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // 为 Vessel 分身派发 Circle 托管钱包 (ARC 链兼容)
+    const circleWallet = await createVesselWallet({
+      eidolonDid: eidolonDid || eidolon.did,
+      blockchain: 'ARC-TESTNET',
+    });
+
     // Upsert Vessel
     const vessel = await db.vessel.upsert({
       where: { did: vesselDid },
-      update: { status: 'ACTIVE', lastActiveAt: new Date(now) },
+      update: {
+        status: 'ACTIVE',
+        lastActiveAt: new Date(now),
+        smartAccountAddress: circleWallet.address,
+        sessionKeyConfig: JSON.stringify(circleWallet),
+      },
       create: {
         did: vesselDid,
         eidolonId: eidolon.id,
         primeId: prime.id,
-        smartAccountAddress: `0x${vesselDid.slice(-40).padStart(40, '0')}`,
+        smartAccountAddress: circleWallet.address,
+        sessionKeyConfig: JSON.stringify(circleWallet),
         status: 'ACTIVE',
       },
     });

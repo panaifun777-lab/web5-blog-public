@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- 渐变色定义 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e1a"/>
+      <stop offset="50%" stop-color="#121829"/>
+      <stop offset="100%" stop-color="#05070d"/>
+    </linearGradient>
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#4facfe"/>
+    </linearGradient>
+    <linearGradient id="neonPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b176fc"/>
+      <stop offset="100%" stop-color="#e0c3fc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 代币圆形底盘 -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)" stroke="url(#neonCyan)" stroke-width="8"/>
+  
+  <!-- 外围 Web3 / ARC 网关去中心化轨道环 -->
+  <circle cx="256" cy="256" r="218" fill="none" stroke="#25324d" stroke-width="3" stroke-dasharray="12 16"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#neonPurple)" stroke-width="4" stroke-opacity="0.6"/>
+
+  <!-- 节点链条微章点 -->
+  <circle cx="256" cy="38" r="8" fill="#00f2fe"/>
+  <circle cx="445" cy="190" r="6" fill="#b176fc"/>
+  <circle cx="67" cy="322" r="6" fill="#00f2fe"/>
+
+  <!-- 核心中央图形：双重 AI 分身与博客羽笔融合剪影 -->
+  <g transform="translate(136, 126) scale(0.95)">
+    <!-- 实体面：人类创作者侧影 (代表原生思想) -->
+    <path d="M 60 210 C 50 180, 50 140, 70 100 C 90 60, 130 40, 160 40 C 150 70, 145 100, 150 130 C 155 160, 170 190, 190 210 Z" 
+          fill="url(#neonCyan)"/>
+    
+    <!-- 虚体面：数字 AI 分身与神经网络连线 (代表孪生产物) -->
+    <path d="M 190 210 C 205 185, 215 155, 215 125 C 215 85, 195 55, 165 40 C 200 45, 230 70, 240 110 C 250 150, 235 185, 215 210 Z" 
+          fill="url(#neonPurple)" fill-opacity="0.85"/>
+          
+    <!-- 博客创作笔尖光束贯穿 -->
+    <path d="M 120 220 L 230 110 L 245 125 L 135 235 Z" fill="#ffffff" opacity="0.95"/>
+    <circle cx="245" cy="110" r="12" fill="#00f2fe"/>
+  </g>
+
+  <!-- 底部微缩标刻 -->
+  <text x="256" y="440" font-family="monospace, sans-serif" font-size="28" font-weight="900" fill="#4facfe" text-anchor="middle" letter-spacing="6">WEB5.BOG</text>
+</svg>

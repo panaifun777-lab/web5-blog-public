@@ -7,6 +7,7 @@
 import { db } from '@/lib/db';
 import { getCurrentVesselSession } from '@/lib/web5/vessel-auth';
 import type { ContentLicense } from '@prisma/client';
+import type { VesselSession } from '@/lib/web5/types';
 import { createHash } from 'crypto';
 
 export interface PublishParams {
@@ -36,6 +37,7 @@ async function uploadToArweave(content: {
   bodyMd: string;
   authorDid: string;
   timestamp: number;
+  coverImageHash?: string;
 }): Promise<{ hash: string; fallback: boolean; size: number }> {
   const result = await irysUpload(content);
   return {
@@ -65,8 +67,11 @@ async function createArpVc(params: {
   return `vc:arp:${createHash('sha256').update(JSON.stringify(params)).digest('hex').slice(0, 16)}`;
 }
 
-export async function publishContent(params: PublishParams): Promise<PublishResult> {
-  const session = getCurrentVesselSession();
+export async function publishContent(
+  params: PublishParams,
+  sessionOverride?: VesselSession | null
+): Promise<PublishResult> {
+  const session = sessionOverride || getCurrentVesselSession();
   if (!session) {
     throw new Error('Vessel session not found. Please awaken vessel first.');
   }

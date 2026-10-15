@@ -1,0 +1,12 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "deployedAt": "2026-10-15T11:04:26.489Z",
+  "superadmin": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1",
+  "contracts": {
+    "WBOG": "0xb3f174ae34b4273ae6dfd4488327c1d1784d35eb",
+    "ContentNFT": "0x7c3b4a0b96231569948580fee9cacf249eef9b06",
+    "BudgetFence": "0x6d2b033bec90760773d15faaab3ab02a7230d020",
+    "VesselAuth": "0xb0375be87f3a8ebb7006ec2be8aac789d71bdc26"
+  }
+}

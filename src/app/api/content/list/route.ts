@@ -10,8 +10,18 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const limit = Number(url.searchParams.get('limit') || 20);
     const offset = Number(url.searchParams.get('offset') || 0);
+    const search = url.searchParams.get('q') || url.searchParams.get('search') || '';
+
+    const where = search.trim() ? {
+      OR: [
+        { title: { contains: search.trim() } },
+        { excerpt: { contains: search.trim() } },
+        { bodyMd: { contains: search.trim() } },
+      ],
+    } : undefined;
 
     const contents = await db.content.findMany({
+      where,
       orderBy: { publishedAt: 'desc' },
       take: limit,
       skip: offset,

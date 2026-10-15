@@ -7,7 +7,7 @@
 
 import { db } from '@/lib/db';
 import {
-  type MicropaymentIntent, type BudgetFence, type AP2Category,
+  type MicropaymentIntent, type BudgetFence, type AP2Category, type VesselSession,
   RFC_CONSTANTS, toTokenUnits, fromTokenUnits,
 } from '@/lib/web5/types';
 import { getCurrentVesselSession } from '@/lib/web5/vessel-auth';
@@ -64,9 +64,10 @@ export function checkBudgetFence(
  * 写入 off-chain ledger，触发批量结算检查
  */
 export async function ap2Pay(
-  intent: MicropaymentIntent
+  intent: MicropaymentIntent,
+  sessionOverride?: VesselSession | null
 ): Promise<{ accepted: boolean; reason?: string; ledgerId?: string }> {
-  const session = getCurrentVesselSession();
+  const session = sessionOverride || getCurrentVesselSession();
   if (!session) {
     return { accepted: false, reason: 'No vessel session' };
   }

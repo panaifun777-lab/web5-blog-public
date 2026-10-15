@@ -26,6 +26,7 @@ import { MyVessels } from '@/components/web5/dashboard/my-vessels';
 import { SettingsPanel } from '@/components/web5/settings/settings-panel';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
+import { useI18n } from '@/lib/i18n/index';
 
 // ━━ 协议色语义映射 ━━
 const COLORS = {
@@ -83,6 +84,16 @@ export default function Home() {
   const [activeModule, setActiveModule] = useState<Module>('tech');
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useI18n();
+
+  const moduleLabels: Record<Module, string> = {
+    tech: t.modules?.tech || '科技',
+    humanities: t.modules?.humanity || '人文',
+    crowdfunding: t.modules?.crowd || '众筹',
+    crowdsourcing: t.modules?.outsourcer || '众包',
+    bounties: t.modules?.bounty || '悬赏',
+    experts: t.modules?.piaoshu || 'AI专家',
+  };
 
   const handleRitualSuccess = (s: VesselSession) => {
     setSession(s); setView('app'); setTab('feed'); setLoginMethod(null);
@@ -92,7 +103,19 @@ export default function Home() {
   };
 
   // ━━ UNATHED — RitualLanding ━━
-  if (view === 'ritual') return <RitualLanding loginMethod={loginMethod} setLoginMethod={setLoginMethod} handleRitualSuccess={handleRitualSuccess} setSession={setSession} setView={setView} setTab={setTab} />;
+  if (view === 'ritual') return (
+    <RitualLanding
+      t={t}
+      moduleLabels={moduleLabels}
+      loginMethod={loginMethod}
+      setLoginMethod={setLoginMethod}
+      handleRitualSuccess={handleRitualSuccess}
+      setSession={setSession}
+      setView={setView}
+      setTab={setTab}
+      setActiveModule={setActiveModule}
+    />
+  );
 
   // ━━ AUTHED — Main App ━━
   return (
@@ -135,7 +158,7 @@ export default function Home() {
                   backgroundColor: activeModule === key ? `${m.color}10` : 'transparent',
                   borderLeft: activeModule === key ? `2px solid ${m.color}` : '2px solid transparent',
                 }}
-              >{m.icon}<span>{m.label}</span></button>
+              >{m.icon}<span>{moduleLabels[key as Module] || m.label}</span></button>
             ))}
             {/* Founder link */}
             <a href="/founder"
@@ -143,7 +166,7 @@ export default function Home() {
               style={{ borderLeft: '2px solid transparent' }}
             >
               <Quote className="w-3.5 h-3.5" />
-              <span>分身致辞</span>
+              <span>{t.nav?.founder || '分身致辞'}</span>
             </a>
             {/* Language switcher */}
             <LanguageSwitcher />
@@ -180,13 +203,13 @@ export default function Home() {
                 <span style={{ color: MODULES[activeModule].color, filter: `drop-shadow(0 0 6px ${MODULES[activeModule].color}40)` }}>
                   {MODULES[activeModule].icon}
                 </span>
-                <h2 className="text-lg font-bold">{MODULES[activeModule].label}</h2>
+                <h2 className="text-lg font-bold">{moduleLabels[activeModule] || MODULES[activeModule].label}</h2>
                 <span className="text-xs text-[#555] hidden sm:inline">— trending in</span>
               </div>
             </div>
             {/* Module description */}
             <ModuleDesc module={activeModule} />
-            {tab === 'feed' && <BlogFeed session={session} module={activeModule} />}
+            {tab === 'feed' && <BlogFeed session={session} module={activeModule} searchQuery={searchQuery} />}
             {tab === 'write' && <Writer session={session} />}
             {tab === 'vessels' && <MyVessels session={session} />}
             {tab === 'explore' && <ExplorePanel />}
@@ -252,21 +275,27 @@ export default function Home() {
 
               {/* 4. Contracts (glass panel) */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Shield className="w-3.5 h-3.5" style={{ color: COLORS.ap2 }} />
-                  <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">On-Chain</span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-3.5 h-3.5" style={{ color: COLORS.ap2 }} />
+                    <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">Arc Mainnet</span>
+                  </div>
+                  <Badge className="bg-[#00FFCC]/10 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] py-0 h-4">
+                    5042
+                  </Badge>
                 </div>
                 <div className="space-y-2 text-[10px] font-mono">
                   {[
-                    ['VesselAuth', '0xF171…Bc23D', COLORS.vessel],
-                    ['BudgetFence', '0x73eA…4552', COLORS.ap2],
-                    ['ContentNFT', '0x91e1…0879', COLORS.arp],
+                    ['$WBOG Token', '0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f', COLORS.prime],
+                    ['ContentNFT', '0x8537fe7268296f37c2f85f9aad992f11659d1c8a', COLORS.arp],
+                    ['BudgetFence', '0xe0d246c09d7a3097bab3148f89201157dd531eea', COLORS.ap2],
+                    ['VesselAuth', '0x2d4aebbd5d3e318c0deb91f927019835ecd9a120', COLORS.vessel],
                   ].map(([name, addr, color]) => (
                     <div key={name} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/[0.03]">
-                      <span className="text-[#666]">{name}</span>
-                      <a href={`https://sepolia.basescan.org/address/${addr}`} target="_blank"
-                        className="flex items-center gap-1 hover:underline" style={{ color }}>
-                        {addr}<ArrowUpRight className="w-2.5 h-2.5" />
+                      <span className="text-[#888]">{name}</span>
+                      <a href={`https://explorer.arc.io/address/${addr}`} target="_blank"
+                        className="flex items-center gap-1 hover:underline font-mono" style={{ color }}>
+                        {addr.slice(0, 6)}…{addr.slice(-4)}<ArrowUpRight className="w-2.5 h-2.5" />
                       </a>
                     </div>
                   ))}
@@ -287,7 +316,7 @@ export default function Home() {
 // RitualLanding — Unauthenticated Entry
 // Layout: Matrix Rain (left) + Login Cards (center) + Stats (right)
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden">
       {/* Matrix Rain background */}
@@ -316,13 +345,13 @@ function RitualLanding({ loginMethod, setLoginMethod, handleRitualSuccess, setSe
               {/* Tagline */}
               <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-3">
                 <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.2)' }}>
-                  你的数字分身
+                  {t?.app?.tagline1 || '你的数字分身'}
                 </span>
                 <br />
-                <span className="text-white/80">从此拥有博客</span>
+                <span className="text-white/80">{t?.app?.tagline2 || '从此拥有博客'}</span>
               </h1>
               <p className="text-[#666] text-base mb-8 leading-relaxed">
-                Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付
+                {t?.app?.description || 'Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付'}
               </p>
 
               {/* Login Cards */}
@@ -330,17 +359,20 @@ function RitualLanding({ loginMethod, setLoginMethod, handleRitualSuccess, setSe
                 <div className="space-y-3">
                   <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
-                    title="Vessel 容器登录" desc="AP2/AA2P 协议 — 四步握手唤醒分身"
+                    title={t?.login?.vessel || 'Vessel 容器登录'}
+                    desc={t?.login?.vesselDesc || 'AP2/AA2P 协议 — 四步握手唤醒分身'}
                     color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
-                    title="数字钱包登录" desc="MetaMask / WalletConnect / ERC-4337"
+                    title={t?.login?.wallet || '数字钱包登录'}
+                    desc={t?.login?.walletDesc || 'MetaMask / WalletConnect / ERC-4337'}
                     color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab)}
                   />
                   <LoginBtn
                     icon={<Twitter className="w-5 h-5" />}
-                    title="Twitter / X 登录" desc="一键关联社交身份 — OAuth 2.0"
+                    title={t?.login?.twitter || 'Twitter / X 登录'}
+                    desc={t?.login?.twitterDesc || '一键关联社交身份 — OAuth 2.0'}
                     color={COLORS.ap2} onClick={() => connectTwitter(setSession, setView, setTab)}
                   />
                 </div>
@@ -360,13 +392,13 @@ function RitualLanding({ loginMethod, setLoginMethod, handleRitualSuccess, setSe
                     <button key={key} onClick={() => { setActiveModule(key as Module); connectObserver(setSession, setView, setTab); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
                       style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
-                      {m.icon}<span>{m.label}</span>
+                      {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
                     </button>
                   ))}
                   <a href="/founder"
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
                     style={{ borderColor: '#FFCC0025', color: '#FFCC00', backgroundColor: '#FFCC0008' }}>
-                    <Quote className="w-3.5 h-3.5" /><span>分身致辞</span>
+                    <Quote className="w-3.5 h-3.5" /><span>{t?.nav?.founder || '分身致辞'}</span>
                   </a>
                   <div className="ml-auto">
                     <LanguageSwitcher />
@@ -417,12 +449,14 @@ function RitualLanding({ loginMethod, setLoginMethod, handleRitualSuccess, setSe
 
 /** 模块简介 — 显示当前选中模块的描述 */
 const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
-  tech:         { title: '科技前沿', desc: 'AI 模型、Web5 协议、智能合约与数字分身的最新技术进展。' },
-  humanity:     { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
-  crowdfunding: { title: '众筹项目', desc: '社区驱动的创意融资。支持你认同的项目，获得早期权益。' },
-  crowdsourcing:{ title: '任务众包', desc: '发布或领取任务。写作、设计、开发——分身协作网络。' },
-  bounties:     { title: '悬赏挑战', desc: '悬赏求解。用 USDC 奖励回答、创作或代码贡献。' },
-  piaoshu:      { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
+  tech:          { title: '科技前沿', desc: 'AI 模型、Web5 协议、智能合约与数字分身的最新技术进展。' },
+  humanities:    { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
+  humanity:      { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
+  crowdfunding:  { title: '众筹项目', desc: '社区驱动的创意融资。支持你认同的项目，获得早期权益。' },
+  crowdsourcing: { title: '任务众包', desc: '发布或领取任务。写作、设计、开发——分身协作网络。' },
+  bounties:      { title: '悬赏挑战', desc: '悬赏求解。用 USDC 奖励回答、创作或代码贡献。' },
+  experts:       { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
+  piaoshu:       { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
 };
 function ModuleDesc({ module }: { module: string }) {
   const info = MODULE_DESCS[module] || MODULE_DESCS.tech;

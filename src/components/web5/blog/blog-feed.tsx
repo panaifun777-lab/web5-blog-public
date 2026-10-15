@@ -60,7 +60,15 @@ interface Interaction {
   authorAvatarSeed: string;
 }
 
-export function BlogFeed({ session, module: mod }: { session: VesselSession | null; module?: string }) {
+export function BlogFeed({
+  session,
+  module: mod,
+  searchQuery = '',
+}: {
+  session: VesselSession | null;
+  module?: string;
+  searchQuery?: string;
+}) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{
@@ -127,16 +135,25 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
     });
   }, [selected]);
 
-  // 客户端模块过滤：为每个 post 分配一个模块
-  const filteredPosts = mod && mod !== 'tech'
-    ? posts.filter(p => {
-        // 用 post ID 哈希决定模块归属
-        const sum = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        const modules = ['tech', 'humanity', 'crowdfunding', 'crowdsourcing', 'bounties', 'piaoshu'];
-        const idx = sum % modules.length;
-        return modules[idx] === mod;
-      })
-    : posts;
+  // 客户端过滤：搜索词匹配 + 模块哈希归属
+  const filteredPosts = posts.filter((p) => {
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchTitle = p.title?.toLowerCase().includes(q);
+      const matchExcerpt = p.excerpt?.toLowerCase().includes(q);
+      const matchAuthor = p.authorName?.toLowerCase().includes(q);
+      if (!matchTitle && !matchExcerpt && !matchAuthor) return false;
+    }
+
+    if (mod && mod !== 'tech') {
+      const sum = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+      const modules = ['tech', 'humanities', 'crowdfunding', 'crowdsourcing', 'bounties', 'experts'];
+      const normalizedMod = mod === 'humanity' ? 'humanities' : mod === 'piaoshu' ? 'experts' : mod;
+      const idx = sum % modules.length;
+      return modules[idx] === normalizedMod;
+    }
+    return true;
+  });
 
   const openPost = async (post: BlogPost) => {
     try {
@@ -151,7 +168,10 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
         if (session?.permissions.includes('read')) {
           fetch('/api/ap2/pay', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+            },
             body: JSON.stringify({
               to: post.authorDid,
               amount: '0',
@@ -179,7 +199,10 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
     try {
       const res = await fetch('/api/ap2/pay', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           to: post.authorDid,
           amount: tipAmount,
@@ -213,7 +236,10 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
       // 通过 AP2 提交评论（amount=0）
       const res = await fetch('/api/ap2/pay', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           to: selected.detail.authorDid,
           amount: '0',
@@ -418,6 +444,36 @@ export function BlogFeed({ session, module: mod }: { session: VesselSession | nu
           刷新
         </Button>
       </div>
+
+      {/* 专有模块快速操作卡 */}
+      {(mod === 'crowdfunding' || mod === 'crowdsourcing' || mod === 'bounties') && (
+        <div className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div className="text-sm font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#00FFCC]" />
+              {mod === 'crowdfunding' ? 'Web5 去中心化众筹池' : mod === 'crowdsourcing' ? '智能分身众包网络' : '数字悬赏智能合约'}
+            </div>
+            <div className="text-xs text-[#888] mt-1">
+              {mod === 'crowdfunding' ? '基于 ERC-4337 智能账户，支持 USDC 链上众筹与自动化权益分润。' : mod === 'crowdsourcing' ? '通过 AA2P 凭证委托 AI 分身接单，完成文章编写、数据标注与代码审查。' : '锁定资金于 BudgetFence 托管合约，通过验证后秒级到账。'}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              alert(
+                mod === 'crowdfunding'
+                  ? '【Web5 众筹协议】请在“写作”中发布带有众筹分润标签的提案文章，并在“设置”中绑定收款 Vessel 账户。'
+                  : mod === 'crowdsourcing'
+                  ? '【分身众包协议】当前分身协作网络正在监听广播，可通过发帖并在正文中包含 #任务众包 标签创建需求。'
+                  : '【悬赏合约】即将连接 Base Sepolia 托管合约，敬请期待！'
+              );
+            }}
+            className="cyber-mono text-xs bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 flex-shrink-0"
+          >
+            {mod === 'crowdfunding' ? '+ 发起众筹' : mod === 'crowdsourcing' ? '+ 发布任务' : '+ 创建悬赏'}
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">

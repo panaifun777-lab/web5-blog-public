@@ -6,12 +6,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { publishContent } from '@/lib/web5/content/publisher';
 import { serializeForJson } from '@/lib/web5/types';
+import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    const session = await resolveVesselSessionFromToken(token);
+
     const body = await req.json();
-    const result = await publishContent(body);
-    return NextResponse.json({ success: true, ...serializeForJson(result) });
+    const result = await publishContent(body, session);
+    return NextResponse.json({
+      success: true,
+      ...(serializeForJson(result) as Record<string, unknown>),
+    });
   } catch (err) {
     const e = err as Error;
     console.error('[content/publish] Error:', e);

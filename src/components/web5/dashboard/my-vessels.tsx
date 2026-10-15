@@ -26,7 +26,7 @@ function toBigInt(v: any): bigint {
   return 0n;
 }
 
-export function MyVessels({ session }: { session: VesselSession }) {
+export function MyVessels({ session }: { session: VesselSession | null }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState<{ unreadCount: number; alerts: any[] }>({ unreadCount: 0, alerts: [] });
@@ -35,6 +35,10 @@ export function MyVessels({ session }: { session: VesselSession }) {
   const [fcProfile, setFcProfile] = useState<any>(null);
 
   const load = useCallback(async () => {
+    if (!session?.vesselDid) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/dashboard', {
@@ -66,11 +70,25 @@ export function MyVessels({ session }: { session: VesselSession }) {
       const fcRes = await fetch('/api/distribution/farcaster?action=profile');
       if (fcRes.ok) setFcProfile(await fcRes.json());
     } catch (_) {}
-  }, [session.vesselDid]);
+  }, [session?.vesselDid]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (!session) {
+    return (
+      <Card className="cyber-panel">
+        <CardContent className="p-8 text-center">
+          <Shield className="w-12 h-12 mx-auto mb-4 text-[#B080E8]" />
+          <h3 className="text-xl font-bold mb-2">需要容器权限</h3>
+          <p className="text-[#999] mb-4">
+            请先唤醒容器以查看分身矩阵、DeFi 收益与自治交互日志。
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading || !data) {
     return (

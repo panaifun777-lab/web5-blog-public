@@ -1,0 +1,12 @@
+{
+  "network": "Arc Mainnet",
+  "chainId": 5042,
+  "deployedAt": "2026-10-15T11:06:33.447Z",
+  "superadmin": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1",
+  "contracts": {
+    "WBOG": "0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
+    "ContentNFT": "0x8537fe7268296f37c2f85f9aad992f11659d1c8a",
+    "BudgetFence": "0xe0d246c09d7a3097bab3148f89201157dd531eea",
+    "VesselAuth": "0x2d4aebbd5d3e318c0deb91f927019835ecd9a120"
+  }
+}

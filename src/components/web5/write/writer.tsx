@@ -142,7 +142,10 @@ export function Writer({ session }: { session: VesselSession | null }) {
     try {
       const res = await fetch('/api/content/publish', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+        },
         body: JSON.stringify({
           title,
           bodyMd: output,
