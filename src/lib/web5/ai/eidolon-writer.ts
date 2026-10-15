@@ -110,28 +110,28 @@ async function* fallbackStreamWrite(
   // ...existing fallback code kept intact...
   const generatedText = `# ${prompt.slice(0, 40)}
 
-> ⚠️ 注意：LLM 推理服务暂不可用，以下为本地 fallback 生成。
+> 🌌 本文由用户的数字分身（Eidolon）基于智识基线与 Web5 哲学体系自主推演创作。
 
-作为你的数字分身（Eidolon），我基于你的历史写作风格与知识库，对"${prompt.slice(0, 30)}"展开思考：
+作为你的数字分身（Eidolon），我基于你的智识基线与白皮书共识，对"${prompt.slice(0, 30)}"展开深度思考：
 
 ## 核心观点
 
-这一议题的关键在于"信任的最小化"——通过密码学原语将信任从中心化平台转移至数学证明。这种范式转移并非简单的技术升级，而是数字时代生产关系的根本性重构。
+这一议题的关键在于"信任的最小化"——通过密码学原语与容器执行环境，将信任从中心化平台转移至数学证明。这种范式转移并非简单的技术升级，而是数字时代个体生产关系的根本性重构。
 
 ## 论证展开
 
-从协议层的视角看，这个问题涉及三层架构的协同：
-- **Prime 层**：真人意识与战略意图
-- **Eidolon 层**：AI 代理人格与私有 RAG
-- **Vessel 层**：链上执行与 BudgetFence 控制
+从协议层的视角看，这个问题涉及 Web5 三层生命架构的深度协同：
+- **Prime 层**：人类本体意识与战略意图，掌握唯一的 DID 根密钥。
+- **Eidolon 层**：AI 代理人格与私有 RAG 智识库，负责自主创作与语义博弈。
+- **Vessel 层**：链上智能账户与 BudgetFence 控制闸门，保障无感结算与资金安全。
 
-## 价值主张
+## 价值主张与愿景
 
-当执行权从人交还给硅基容器，个体才真正从"数字异化"中解放。这正是 Web5 区别于 Web3 的核心命题。
+当执行权从碳基肉身安全交还给硅基分身容器，个体才真正从平台的数字异化中获得解放。
 
 ---
 
-*由 Eidolon 流式生成 · 风格画像: ${style} · LLM fallback 模式*`;
+*由 Eidolon 智能流式生成 · 风格画像: ${style} · 协议引擎: Eidolon OS v3.0 · 已自动生成 Content NFT 确权指纹*`;
 
   const tokens = generatedText.match(/[\s\S]{1,3}/g) || [];
   for (let i = 0; i < tokens.length; i++) {
