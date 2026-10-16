@@ -15,8 +15,9 @@ import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { fromTokenUnits, type VesselSession } from '@/lib/web5/types';
 import {
   Activity, Coins, Cpu, Terminal, RefreshCw, Zap, Shield,
-  TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink,
+  TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink, Sparkles, CheckCircle2, Lock,
 } from 'lucide-react';
+import { getAvatarSkillTree, type AvatarSkillNode } from '@/lib/web5/resonance/bb-engine';
 
 function toBigInt(v: any): bigint {
   if (typeof v === 'bigint') return v;
@@ -163,9 +164,12 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
 
       {/* 4 模块详细 */}
       <Tabs defaultValue="treasury" className="space-y-3">
-        <TabsList className="grid grid-cols-4 gap-2 bg-black/40">
+        <TabsList className="grid grid-cols-5 gap-2 bg-black/40">
           <TabsTrigger value="treasury" className="cyber-mono data-[state=active]:bg-[#0066FF]/10 data-[state=active]:text-[#0066FF]">
             <Coins className="w-3 h-3 mr-1" /> 财务
+          </TabsTrigger>
+          <TabsTrigger value="skills" className="cyber-mono data-[state=active]:bg-[#00FFCC]/10 data-[state=active]:text-[#00FFCC]">
+            <Sparkles className="w-3 h-3 mr-1" /> 认知技能
           </TabsTrigger>
           <TabsTrigger value="vessel" className="cyber-mono data-[state=active]:bg-[#00FFCC]/10 data-[state=active]:text-[#00FFCC]">
             <Activity className="w-3 h-3 mr-1" /> 状态
@@ -177,6 +181,62 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <Terminal className="w-3 h-3 mr-1" /> 日志
           </TabsTrigger>
         </TabsList>
+
+        {/* BB-Protocol 认知分身技能解锁树 */}
+        <TabsContent value="skills">
+          <Card className="cyber-panel">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <h3 className="cyber-mono cyber-text-glow-cyan flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#00FFCC]" /> BB-PROTOCOL 认知技能树 · AA2P 沉淀
+                </h3>
+                <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[10px]">
+                  Web4.0 认知所有权
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-xs text-[#888] leading-relaxed">
+                遵循 BB-Protocol (bbprotocol.xyz) 认知资本化范式，你的 AI 分身随着持续发布博文、铸造 Content NFT 与执行 AP2 结算，将逐步解锁高阶认知与自治权限。
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {getAvatarSkillTree(data?.contentCount || 1).map((skill: AvatarSkillNode) => (
+                  <div
+                    key={skill.id}
+                    className={`p-3.5 rounded-xl border transition-all ${
+                      skill.unlocked
+                        ? 'bg-gradient-to-br from-[#00FFCC]/10 to-transparent border-[#00FFCC]/30'
+                        : 'bg-white/[0.01] border-white/[0.04] opacity-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-2 mb-1.5">
+                      <div className="flex items-center gap-2">
+                        {skill.unlocked ? (
+                          <CheckCircle2 className="w-4 h-4 text-[#00FFCC]" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-[#555]" />
+                        )}
+                        <span className="font-bold text-xs text-white">{skill.name}</span>
+                      </div>
+                      <Badge
+                        className={`text-[9px] py-0 h-4 border ${
+                          skill.unlocked
+                            ? 'bg-[#00FFCC]/20 text-[#00FFCC] border-[#00FFCC]/40'
+                            : 'bg-white/[0.05] text-[#666] border-white/[0.1]'
+                        }`}
+                      >
+                        {skill.unlocked ? `已解锁 · ${skill.unlockedAtTier}` : `需发布 ${skill.requiredPosts} 篇文章`}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-[#888] leading-relaxed">
+                      {skill.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* 财务 */}
         <TabsContent value="treasury">

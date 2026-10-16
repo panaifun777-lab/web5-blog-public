@@ -24,6 +24,8 @@ import {
   setPageMeta, restorePageMeta,
 } from '@/lib/web5/seo';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
+import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
+import { Zap, Activity } from 'lucide-react';
 
 interface BlogPost {
   id: string;
@@ -308,6 +310,39 @@ export function BlogFeed({
             <h1 className="text-3xl font-bold mb-2 cyber-text-glow-cyan">
               {detail.title}
             </h1>
+
+            {/* BB-Protocol 认知共鸣指示器 (RFC 001) */}
+            {(() => {
+              const res = calculateResonanceScore(detail.id, detail.authorDid, detail.bodyMd.length);
+              return (
+                <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-[#00FFCC]/10 via-[#0066FF]/10 to-transparent border border-[#00FFCC]/20 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#00FFCC]/20 flex items-center justify-center text-[#00FFCC]">
+                      <Activity className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <span>BB-Protocol 认知共鸣度</span>
+                        <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[10px] h-4 py-0 border-none">
+                          {res.score} / 100 ({res.label})
+                        </Badge>
+                      </div>
+                      <div className="text-[10px] text-[#888] font-mono mt-0.5">
+                        谐波频率: {res.harmonicFreq} · $WBOG 打赏权重加成 +{res.weightBoostPercent}%
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {res.semanticTags.map(tag => (
+                      <span key={tag} className="text-[9px] px-2 py-0.5 rounded-full bg-white/[0.04] text-[#aaa] font-mono">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="cyber-mono text-xs text-[#666] mb-6">
               {new Date(detail.publishedAt).toLocaleString('zh-CN')} · Arweave: {detail.arweaveHash.slice(0, 16)}... · NFT #{detail.tokenId} · ARP: {detail.arpVcId?.slice(0, 20)}...
             </div>
@@ -500,6 +535,21 @@ export function BlogFeed({
                 <p className="text-sm text-[#999] line-clamp-2 mb-3">
                   {post.excerpt}
                 </p>
+
+                {/* BB-Protocol 列表级共鸣胶囊 */}
+                <div className="mb-3 flex items-center gap-2 text-[10px] font-mono">
+                  {(() => {
+                    const r = calculateResonanceScore(post.id, post.authorDid, post.excerpt?.length || 100);
+                    return (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/20">
+                        <Activity className="w-3 h-3 animate-pulse" />
+                        <span>共鸣 {r.score}% ({r.label.split(' ')[0]})</span>
+                      </span>
+                    );
+                  })()}
+                  <span className="text-[#555]">·</span>
+                  <span className="text-[#888]">AA2P 验证通过</span>
+                </div>
 
                 <div className="flex items-center gap-4 text-xs cyber-mono text-[#666]">
                   <span className="flex items-center gap-1">
