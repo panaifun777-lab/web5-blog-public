@@ -166,8 +166,16 @@ export default function Home() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
-            <img src="/icon-logo.png" alt="Web5.blog" className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-[#00FFCC]/20 border border-white/[0.1]" />
-            <span className="font-bold tracking-tight hidden sm:block">Web5.blog</span>
+            <img src="/icon-logo.png" alt="W · B · O · G" className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-[#00FFCC]/20 border border-white/[0.1]" />
+            <div className="flex flex-col">
+              <span className="font-bold tracking-wider text-sm font-mono text-white flex items-center gap-1">
+                <span>W</span><span className="text-[#00FFCC]">•</span>
+                <span>B</span><span className="text-[#FFCC00]">•</span>
+                <span>O</span><span className="text-[#B080E8]">•</span>
+                <span>G</span>
+              </span>
+              <span className="text-[9px] text-[#666] font-mono leading-none tracking-tight hidden sm:block">Web5 Blog Ontology Gateway</span>
+            </div>
           </div>
 
           {/* Search (huggingface style) */}
@@ -342,7 +350,7 @@ export default function Home() {
               </div>
 
               {/* 3. 创世空投资产看板 */}
-              <div className="rounded-xl border border-[#FFCC00]/30 bg-gradient-to-br from-[#FFCC00]/10 via-[#0a0a0f] to-transparent p-4 cursor-pointer hover:border-[#FFCC00]/50 transition-all" onClick={() => setAirdropOpen(true)}>
+              <div className="rounded-xl border border-[#FFCC00]/30 bg-gradient-to-br from-[#FFCC00]/10 via-[#0a0e17] to-transparent p-4 cursor-pointer hover:border-[#FFCC00]/50 transition-all" onClick={() => setAirdropOpen(true)}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-[#FFCC00]" />
@@ -357,6 +365,37 @@ export default function Home() {
                 </div>
                 <div className="text-[10px] text-[#aaa] leading-relaxed">
                   完成 5 项任务即可领取原生代币与 Genesis NFT 徽章。点击查看进度 →
+                </div>
+              </div>
+
+              {/* 3.5. W · B · O · G 品牌词源矩阵 (Ontology Matrix) */}
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4 space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                  <span className="text-xs font-bold font-mono tracking-wider text-white">
+                    <span>W</span><span className="text-[#00FFCC]">•</span>
+                    <span>B</span><span className="text-[#FFCC00]">•</span>
+                    <span>O</span><span className="text-[#B080E8]">•</span>
+                    <span>G</span> 矩阵
+                  </span>
+                  <span className="text-[9px] text-[#666] font-mono">ONTOLOGY</span>
+                </div>
+                <div className="space-y-1.5 text-[10px] font-mono">
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-[#00FFCC] font-bold">[W]</span>
+                    <span className="text-[#aaa]"><b className="text-white">Web5</b>: 终极个体主权 (DID+DWN)</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-[#FFCC00] font-bold">[B]</span>
+                    <span className="text-[#aaa]"><b className="text-white">Blog</b>: 深度思想母体与长程推演</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-[#B080E8] font-bold">[O]</span>
+                    <span className="text-[#aaa]"><b className="text-white">Ontology</b>: 数字本体论 × 语义知识</span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-[#FF66AA] font-bold">[G]</span>
+                    <span className="text-[#aaa]"><b className="text-white">Gateway</b>: Arc x402 智能体商贸网关</span>
+                  </div>
                 </div>
               </div>
 
@@ -430,10 +469,20 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
             <div className="lg:col-span-3">
               {/* Brand */}
               <div className="flex items-center gap-3 mb-8">
-                <img src="/icon-logo.png" alt="Web5.blog" className="w-12 h-12 rounded-xl object-cover shadow-xl shadow-[#00FFCC]/20 border border-white/[0.1]" />
+                <img src="/icon-logo.png" alt="W · B · O · G" className="w-12 h-12 rounded-xl object-cover shadow-xl shadow-[#00FFCC]/20 border border-white/[0.1]" />
                 <div>
-                  <div className="text-lg font-bold tracking-tight">Web5.blog</div>
-                  <div className="text-[10px] text-[#444] tracking-[0.2em] uppercase">Vessel-Native Platform</div>
+                  <div className="text-2xl font-black tracking-wider text-white font-mono flex items-center gap-1">
+                    <span>W</span><span className="text-[#00FFCC]">•</span>
+                    <span>B</span><span className="text-[#FFCC00]">•</span>
+                    <span>O</span><span className="text-[#B080E8]">•</span>
+                    <span>G</span>
+                  </div>
+                  <div className="text-[11px] text-[#00FFCC] tracking-[0.15em] uppercase font-mono mt-0.5">
+                    Web5 Blog Ontology Gateway
+                  </div>
+                  <div className="text-[9px] text-[#666] tracking-wider mt-0.5">
+                    存在论确权 · 思想母体 · 智能体价值网关
+                  </div>
                 </div>
               </div>
 

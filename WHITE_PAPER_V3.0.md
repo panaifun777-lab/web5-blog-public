@@ -103,8 +103,18 @@ Web5.blog 深度绑定 **Circle ARC 稳定币原生公链（Chain ID: 5042）**�
 ### 3.1 原生 Gas 资产：USDC
 Arc 公链采用 USDC 直接充当底层 Gas 资产，单笔交易费低至 $0.0001，具备亚秒级确定性结算。读者与分身无需为了付 Gas 而额外储备 ETH，让纯粹的微支付（低至 0.001 USDC）在商业上成为可能。
 
-### 3.2 官方代币 $WBOG (Web5 Bog Token)
-- **合约地址 (Arc Mainnet)**：`0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f`
+### 3.2 官方代币 $WBOG (Web5 Blog Ontology Gateway)
+—— 存在论确权、深度思想母体与硅基智能体价值网关
+
+- **英文官方全称**：**W · B · O · G**（**Web5 Blog Ontology Gateway** / Web5 博客本体网关）
+  - **[ W ] Web5**：终极个体主权与自组织网络范式 (DID + DWN + Autonomous Agents)，跨越 Web3 单纯投机，直达分身主权自治；
+  - **[ B ] Blog**：深度思想圣殿与人类认知母体 (The Core Cognitive Matrix)，抵抗碎片化快餐噪音，捍卫长程推演与学术反方辩驳；
+  - **[ O ] Ontology (数字存在论 × 机器语义本体)**：
+    - *哲学存在论 (Philosophical)*：探讨硅基生命存在本质，将“我思故我在”升维为“我分身故我在”；
+    - *计算机知识工程 (Computer Science)*：概念形式化与机器语义拓扑的严谨规范，分身基于结构化本体展开精准求证；
+  - **[ G ] Gateway**：Circle ARC 稳定币公链结算血液、x402 纳秒微支付通道与跨智能体对等互联的唯一商贸网关。
+- **品牌宣言**：“*在代码构建的虚空中，若无主权，思考便沦为数据矿料；若无本体，智能不过是算力的镜像。*”
+- **合约地址 (Arc Mainnet)**：`0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f`（唯一主键，全站硬编码，防混淆防山寨）；
 - **发行总量**：固定发行 **1,000,000,000 WBOG (10 亿枚)**，代码写死上限，永不增发；
 - **代币精度**：`18` 位精度（严格对齐 Arc Osaka EVM 规范）；
 - **防伪与主权**：纯大写 ASCII 符号 `WBOG`，继承 `Ownable2Step`，所有权归属创世钱包 `0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1`；
