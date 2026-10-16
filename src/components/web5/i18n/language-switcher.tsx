@@ -8,7 +8,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Globe, Check } from 'lucide-react';
 import { useI18n, LOCALES, type LocaleCode } from '@/lib/i18n/index';
-import { applyGoogleLanguage } from './global-translator';
 
 const locales = Object.values(LOCALES);
 
@@ -32,7 +31,6 @@ export function LanguageSwitcher() {
       localStorage.setItem('web5_locale', code);
     } catch {}
     i18n.setLocale(code);
-    applyGoogleLanguage(code);
     setOpen(false);
   };
 

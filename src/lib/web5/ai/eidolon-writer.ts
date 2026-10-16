@@ -146,13 +146,12 @@ async function* fallbackStreamWrite(
 // ── 主入口：多层链式调用 ────────────────────────────────────
 
 /**
- * 流式写作 — 多层 LLM 适配
+ * 流式写作 — 多层原生 LLM 适配
  *
  * 调用优先级：
- *   1. DEEPSEEK_API_KEY → DeepSeek API
+ *   1. DEEPSEEK_API_KEY → DeepSeek 深度长文推理
  *   2. LLM_API_KEY → OpenAI-compatible API
- *   3. z-ai-web-dev-sdk → ZAI SDK
- *   4. fallbackStreamWrite → 本地模拟
+ *   3. fallbackStreamWrite → 本地原生确定性本体推演引擎
  *
  * 未来：Web5.proto LLM API 协议 → 第三方付费调用 Agent/Avatar
  */
