@@ -4,6 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { handleX402PaymentGate } from '@/lib/web5/x402/middleware';
+import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,6 +50,21 @@ export async function GET(req: NextRequest) {
 
     if (!arweaveHash) {
       return NextResponse.json({ error: 'hash required' }, { status: 400 });
+    }
+
+    // ── x402 外部智能体微支付检测 (仅当请求显式声明为智能体 agent=true 或调用 x402 探针时触发) ──
+    const isAgentCall = url.searchParams.get('agent') === 'true' || req.headers.get('accept')?.includes('application/vnd.x402');
+    if (isAgentCall) {
+      const gate = handleX402PaymentGate(req, {
+        priceUsdc: '0.001',
+        recipient: ARC_MAINNET.addresses.Deployer,
+        network: 'arc-mainnet',
+        chainId: ARC_MAINNET.id,
+        description: `Unlock high-fidelity Web5 blog reading for arweaveHash: ${arweaveHash}`,
+      });
+      if (!gate.authorized && gate.response) {
+        return gate.response;
+      }
     }
 
     const content = await db.content.findUnique({

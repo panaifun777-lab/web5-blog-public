@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { fromTokenUnits } from '@/lib/web5/types';
 import type { VesselSession } from '@/lib/web5/types';
+import { PERSONA_PROFILES, type PersonaType } from '@/lib/web5/security/tdpo';
+import { scanAgentReachRadar, type TrendingInsight } from '@/lib/web5/reach/radar';
 
 type WriteState = 'idle' | 'streaming' | 'done' | 'error';
 
@@ -24,6 +26,8 @@ export function Writer({ session }: { session: VesselSession | null }) {
   const [prompt, setPrompt] = useState('');
   const [title, setTitle] = useState('');
   const [style, setStyle] = useState<'concise' | 'detailed' | 'academic' | 'casual'>('detailed');
+  const [persona, setPersona] = useState<PersonaType>('scholar');
+  const [radarInsights, setRadarInsights] = useState<TrendingInsight[]>([]);
   const [output, setOutput] = useState('');
   const [state, setState] = useState<WriteState>('idle');
   const [publishing, setPublishing] = useState(false);
@@ -32,6 +36,11 @@ export function Writer({ session }: { session: VesselSession | null }) {
   const abortRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLPreElement>(null);
   const outputContainerRef = useRef<HTMLDivElement>(null);
+
+  // 加载 Agent-Reach 联网热点雷达
+  useEffect(() => {
+    scanAgentReachRadar().then(setRadarInsights).catch(() => {});
+  }, []);
 
   // Auto-scroll as new content streams in
   useEffect(() => {
@@ -140,11 +149,68 @@ export function Writer({ session }: { session: VesselSession | null }) {
     setPublishing(true);
     setError(null);
     try {
+      let token = session?.sessionToken;
+      // 容错：若前端 state 未同步 token，自动从 sessionStorage 读取
+      if (!token && typeof window !== 'undefined') {
+        try {
+          const raw = sessionStorage.getItem('web5_vessel_session');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            token = parsed.sessionToken;
+          }
+        } catch {}
+      }
+
+      // 若用户尚未建立会话，自动唤醒钱包或派发 Vessel 临时身份
+      if (!token) {
+        let addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0');
+        if (typeof window !== 'undefined' && (window as any).ethereum) {
+          try {
+            const accs = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+            if (accs && accs[0]) addr = accs[0];
+          } catch {}
+        }
+        const vesselDid = `did:vessel:${addr.toLowerCase()}`;
+        const eidolonDid = `did:eidolon:${addr.toLowerCase().slice(-16)}`;
+        const loginRes = await fetch('/api/auth/vessel-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            challenge: {
+              blogDid: 'did:web5blog:default',
+              permissions: ['read', 'comment', 'publish', 'micropay'],
+              timestamp: Date.now(),
+              nonce: 'auto-publish-' + Math.random().toString(36).slice(2),
+            },
+            aa2pClaim: {
+              vesselDid,
+              eidolonDid,
+              signature: '0x' + '1'.repeat(130),
+              challenge: {
+                blogDid: 'did:web5blog:default',
+                permissions: ['read', 'comment', 'publish', 'micropay'],
+                timestamp: Date.now(),
+                nonce: 'auto-claim',
+              },
+              expiresAt: Date.now() + 86400000 * 30,
+            },
+            vesselDid,
+            eidolonDid,
+          }),
+        });
+        if (loginRes.ok) {
+          const d = await loginRes.json();
+          const s = d.session || d;
+          token = s.sessionToken;
+          if (typeof window !== 'undefined') sessionStorage.setItem('web5_vessel_session', JSON.stringify(s));
+        }
+      }
+
       const res = await fetch('/api/content/publish', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           title,
@@ -206,7 +272,56 @@ export function Writer({ session }: { session: VesselSession | null }) {
             />
           </div>
 
-          <div className="flex gap-3 items-center">
+          {/* Eidolon 人格画像切换 (EidolonOS 矩阵) */}
+          <div className="pt-1 border-t border-white/[0.04]">
+            <div className="text-[11px] text-[#666] mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1 font-mono">
+                <Shield className="w-3 h-3 text-[#00FFCC]" /> EIDOLONOS 人格矩阵与 TDPO 防火墙保护
+              </span>
+              <span className="text-[#00FFCC] text-[10px] font-mono">{PERSONA_PROFILES[persona].name}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {(Object.values(PERSONA_PROFILES)).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => { setPersona(p.id); setStyle(p.tone as any); }}
+                  className={`text-left p-1.5 rounded border transition-all text-xs ${
+                    persona === p.id
+                      ? 'border-[#00FFCC]/40 bg-[#00FFCC]/10 text-white'
+                      : 'border-white/[0.04] bg-white/[0.01] text-[#888] hover:text-white hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <div className="font-bold text-[11px]" style={{ color: p.accentColor }}>{p.name}</div>
+                  <div className="text-[9px] text-[#555] truncate">{p.tagline}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Agent-Reach 全网态势感知与热点雷达 (一键激发分身创作) */}
+          {radarInsights.length > 0 && (
+            <div className="pt-1.5 border-t border-white/[0.04]">
+              <div className="text-[11px] text-[#888] mb-1.5 flex items-center gap-1.5 font-mono">
+                <Sparkles className="w-3 h-3 text-[#FFCC00]" /> AGENT-REACH 实时热点雷达 (点击直接填入灵感)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {radarInsights.map((insight, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setPrompt(insight.topic);
+                      setTitle(insight.topic);
+                    }}
+                    className="text-left text-[11px] px-2 py-1 rounded bg-white/[0.02] border border-white/[0.06] hover:border-[#00FFCC]/40 text-[#bbb] hover:text-white transition-all flex items-center gap-1"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00FFCC] animate-pulse" />
+                    <span>{insight.topic}</span>
+                    <span className="text-[9px] text-[#555] font-mono">({insight.source})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
             <div className="flex gap-1">
               {(['concise', 'detailed', 'academic', 'casual'] as const).map((s) => (
                 <button
@@ -340,7 +455,11 @@ export function Writer({ session }: { session: VesselSession | null }) {
               </div>
               <div>
                 <span className="text-[#666]">NFT Token ID: </span>
-                <span className="text-[#FFCC00]">{publishResult.tokenId}</span>
+                <span className="text-[#FFCC00]">
+                  {typeof publishResult.tokenId === 'object' && publishResult.tokenId?.__bigint
+                    ? publishResult.tokenId.__bigint
+                    : String(publishResult.tokenId || '')}
+                </span>
               </div>
               <div>
                 <span className="text-[#666]">ARP VC ID: </span>

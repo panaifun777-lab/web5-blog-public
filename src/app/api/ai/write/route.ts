@@ -5,6 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { streamWrite } from '@/lib/web5/ai/eidolon-writer';
+import { inspectPromptWithTDPO } from '@/lib/web5/security/tdpo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,6 +17,18 @@ export async function POST(req: NextRequest) {
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'prompt is required' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── TDPO 认知安全前置审计 ──
+    const tdpoCheck = inspectPromptWithTDPO(prompt);
+    if (!tdpoCheck.passed) {
+      return new Response(JSON.stringify({
+        error: `[TDPO 认知防火墙拦截] ${tdpoCheck.reason || '提示词包含未授权越狱或风险模式'}`,
+        riskScore: tdpoCheck.riskScore,
+      }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' },
       });
     }

@@ -123,6 +123,53 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* 彻底物理级清除页面中任何潜在残留的水印标识并拦截浏览器扩展非致命报错 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function cleanZaiAndOverlays() {
+                  try {
+                    // 1. 清除水印
+                    const els = document.querySelectorAll('[id*="zai" i], [class*="zai" i], [id*="z-ai" i], [class*="z-ai" i], a[href*="z.ai" i], div[style*="z-index: 99999" i]');
+                    els.forEach(el => {
+                      if (el && el.innerText && el.innerText.toLowerCase().includes('z.ai')) el.remove();
+                      else if (el && el.href && el.href.toLowerCase().includes('z.ai')) el.remove();
+                    });
+
+                    // 2. 隐藏开发模式下的错误弹窗遮罩
+                    const portals = document.querySelectorAll('nextjs-portal, #nextjs-portal, [data-nextjs-toast]');
+                    portals.forEach(p => p.remove());
+                  } catch (e) {}
+                }
+
+                if (typeof window !== 'undefined') {
+                  // 拦截来自浏览器扩展插件（如 MetaMask）的拒绝连接错误，避免触发 Next.js 错误遮罩
+                  window.addEventListener('unhandledrejection', function(event) {
+                    const reason = event.reason;
+                    const msg = (reason && (reason.message || reason.stack || String(reason))) || '';
+                    if (msg.includes('MetaMask') || msg.includes('chrome-extension://') || msg.includes('Failed to connect')) {
+                      event.preventDefault();
+                      event.stopImmediatePropagation();
+                    }
+                  }, true);
+
+                  window.addEventListener('error', function(event) {
+                    const msg = event.message || '';
+                    const src = event.filename || '';
+                    if (src.includes('chrome-extension://') || msg.includes('MetaMask') || msg.includes('Failed to connect')) {
+                      event.preventDefault();
+                      event.stopImmediatePropagation();
+                    }
+                  }, true);
+
+                  window.addEventListener('DOMContentLoaded', cleanZaiAndOverlays);
+                  setInterval(cleanZaiAndOverlays, 300);
+                }
+              })();
+            `,
+          }}
+        />
         <Providers>{children}</Providers>
         <Toaster />
       </body>

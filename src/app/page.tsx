@@ -164,7 +164,7 @@ export default function Home() {
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00FFCC] to-[#0066FF] flex items-center justify-center text-xs font-black text-black shadow-lg shadow-[#00FFCC]/20">W5</div>
+            <img src="/icon-logo.png" alt="Web5.blog" className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-[#00FFCC]/20 border border-white/[0.1]" />
             <span className="font-bold tracking-tight hidden sm:block">Web5.blog</span>
           </div>
 
@@ -428,7 +428,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
             <div className="lg:col-span-3">
               {/* Brand */}
               <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00FFCC] to-[#0066FF] flex items-center justify-center text-base font-black text-black shadow-xl shadow-[#00FFCC]/20">W5</div>
+                <img src="/icon-logo.png" alt="Web5.blog" className="w-12 h-12 rounded-xl object-cover shadow-xl shadow-[#00FFCC]/20 border border-white/[0.1]" />
                 <div>
                   <div className="text-lg font-bold tracking-tight">Web5.blog</div>
                   <div className="text-[10px] text-[#444] tracking-[0.2em] uppercase">Vessel-Native Platform</div>
@@ -600,13 +600,21 @@ function LoginBtn({ icon, title, desc, color, onClick }: any) {
 
 // ━━ Auth helpers ━━
 async function connectWallet(s: any, v: any, t: any) {
-  let addr: string;
+  let addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0');
   try {
     if (typeof window !== 'undefined' && (window as any).ethereum) {
-      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-      addr = accounts[0];
-    } else addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0');
-  } catch { addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0'); }
+      try {
+        const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+        if (accounts && accounts[0]) {
+          addr = accounts[0];
+        }
+      } catch (e: any) {
+        console.warn('[Web5] MetaMask connection skipped or cancelled by user, falling back smoothly:', e?.message);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Web5] Wallet environment unavailable:', err?.message);
+  }
   await doLogin(addr, s, v, t, true);
 }
 async function connectTwitter(s: any, v: any, t: any) {

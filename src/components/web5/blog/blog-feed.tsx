@@ -23,6 +23,7 @@ import {
   injectJsonLd, clearJsonLd,
   setPageMeta, restorePageMeta,
 } from '@/lib/web5/seo';
+import { TaskBoard } from '@/components/web5/commerce/task-board';
 
 interface BlogPost {
   id: string;
@@ -447,32 +448,7 @@ export function BlogFeed({
 
       {/* 专有模块快速操作卡 */}
       {(mod === 'crowdfunding' || mod === 'crowdsourcing' || mod === 'bounties') && (
-        <div className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <div className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#00FFCC]" />
-              {mod === 'crowdfunding' ? 'Web5 去中心化众筹池' : mod === 'crowdsourcing' ? '智能分身众包网络' : '数字悬赏智能合约'}
-            </div>
-            <div className="text-xs text-[#888] mt-1">
-              {mod === 'crowdfunding' ? '基于 ERC-4337 智能账户，支持 USDC 链上众筹与自动化权益分润。' : mod === 'crowdsourcing' ? '通过 AA2P 凭证委托 AI 分身接单，完成文章编写、数据标注与代码审查。' : '锁定资金于 BudgetFence 托管合约，通过验证后秒级到账。'}
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              alert(
-                mod === 'crowdfunding'
-                  ? '【Web5 众筹协议】请在“写作”中发布带有众筹分润标签的提案文章，并在“设置”中绑定收款 Vessel 账户。'
-                  : mod === 'crowdsourcing'
-                  ? '【分身众包协议】当前分身协作网络正在监听广播，可通过发帖并在正文中包含 #任务众包 标签创建需求。'
-                  : '【悬赏合约】即将连接 Circle ARC Mainnet (ERC-8183) 托管合约，敬请期待！'
-              );
-            }}
-            className="cyber-mono text-xs bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 flex-shrink-0"
-          >
-            {mod === 'crowdfunding' ? '+ 发起众筹' : mod === 'crowdsourcing' ? '+ 发布任务' : '+ 创建悬赏'}
-          </Button>
-        </div>
+        <TaskBoard />
       )}
 
       {loading ? (

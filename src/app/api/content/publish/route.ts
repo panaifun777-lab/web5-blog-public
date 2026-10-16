@@ -18,7 +18,12 @@ export async function POST(req: NextRequest) {
     const result = await publishContent(body, session);
     return NextResponse.json({
       success: true,
-      ...(serializeForJson(result) as Record<string, unknown>),
+      arweaveHash: result.arweaveHash,
+      tokenId: result.tokenId ? result.tokenId.toString() : null,
+      arpVcId: result.arpVcId,
+      contentId: result.contentId,
+      uploadFallback: Boolean(result.uploadFallback),
+      uploadSize: Number(result.uploadSize || 0),
     });
   } catch (err) {
     const e = err as Error;
