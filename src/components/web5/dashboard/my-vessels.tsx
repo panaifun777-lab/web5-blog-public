@@ -18,6 +18,8 @@ import {
   TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink, Sparkles, CheckCircle2, Lock,
 } from 'lucide-react';
 import { getAvatarSkillTree, type AvatarSkillNode } from '@/lib/web5/resonance/bb-engine';
+import { CognitivePanel } from './cognitive-panel';
+import { Brain } from 'lucide-react';
 
 function toBigInt(v: any): bigint {
   if (typeof v === 'bigint') return v;
@@ -163,8 +165,11 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       </Card>
 
       {/* 4 模块详细 */}
-      <Tabs defaultValue="treasury" className="space-y-3">
-        <TabsList className="grid grid-cols-5 gap-2 bg-black/40">
+      <Tabs defaultValue="cognitive" className="space-y-3">
+        <TabsList className="grid grid-cols-6 gap-2 bg-black/40">
+          <TabsTrigger value="cognitive" className="cyber-mono data-[state=active]:bg-[#FFCC00]/10 data-[state=active]:text-[#FFCC00]">
+            <Brain className="w-3 h-3 mr-1" /> 灵魂态
+          </TabsTrigger>
           <TabsTrigger value="treasury" className="cyber-mono data-[state=active]:bg-[#0066FF]/10 data-[state=active]:text-[#0066FF]">
             <Coins className="w-3 h-3 mr-1" /> 财务
           </TabsTrigger>
@@ -181,6 +186,11 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <Terminal className="w-3 h-3 mr-1" /> 日志
           </TabsTrigger>
         </TabsList>
+
+        {/* 具象化灵魂态面板 (Cognitive Core Dashboard) */}
+        <TabsContent value="cognitive">
+          <CognitivePanel vesselDid={session.vesselDid} />
+        </TabsContent>
 
         {/* BB-Protocol 认知分身技能解锁树 */}
         <TabsContent value="skills">

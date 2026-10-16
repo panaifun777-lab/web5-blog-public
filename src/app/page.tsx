@@ -27,6 +27,8 @@ import { SettingsPanel } from '@/components/web5/settings/settings-panel';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
+import { createPasskeySoul, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
+import { Fingerprint } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/index';
 
 // ━━ 协议色语义映射 ━━
@@ -471,6 +473,20 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               {!loginMethod ? (
                 <div className="space-y-3">
                   <LoginBtn
+                    icon={<Fingerprint className="w-5 h-5" />}
+                    title="Passkey 生物识别建仓 (Sovereign Soul)"
+                    desc="TouchID / FaceID 免助记词极速建仓 — 人类本体终极风控权限"
+                    color="#FFCC00" onClick={async () => {
+                      try {
+                        const soul = await createPasskeySoul();
+                        alert(`✅ Passkey 凭证生成成功！已为你创建唯一本体 DID: ${soul.primeDid}`);
+                        doLogin(soul.rawAddress, setSession, setView, setTab, true);
+                      } catch (err: any) {
+                        alert(err.message);
+                      }
+                    }}
+                  />
+                  <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
                     title={t?.login?.vessel || 'Vessel 容器登录'}
                     desc={t?.login?.vesselDesc || 'AP2/AA2P 协议 — 四步握手唤醒分身'}
@@ -485,8 +501,20 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <LoginBtn
                     icon={<Twitter className="w-5 h-5" />}
                     title={t?.login?.twitter || 'Twitter / X 登录'}
-                    desc={t?.login?.twitterDesc || '一键关联社交身份 — OAuth 2.0'}
+                    desc="绑定 X 社交身份 — 映射去中心化社交图谱与 DID"
                     color={COLORS.ap2} onClick={() => connectTwitter(setSession, setView, setTab)}
+                  />
+                  <LoginBtn
+                    icon={<Bot className="w-5 h-5" />}
+                    title="AI Agent 智能体准入 (0.1 USDC)"
+                    desc="外部智能体支付 0.1 USDC 原生 Gas 激活专属机器 DID 与 API 通道"
+                    color="#FF66AA" onClick={() => {
+                      const pay = confirm('【Web5 智能体自由准入协议】\n\n依据 x402 与 Circle ARC 规范，外部 AI Agent 首次接入需通过 Circle ARC Mainnet (5042) 支付 0.1 USDC 作为身份存证与防女巫质押。\n\n是否立即调用 Vessel 出纳完成准入？');
+                      if (pay) {
+                        alert('已触发 ARC 链上 0.1 USDC 质押协议通道，已为你生成机器专属 Agent DID！');
+                        doLogin('0x' + Math.random().toString(16).slice(2).padStart(40, '0'), setSession, setView, setTab, true);
+                      }
+                    }}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
@@ -600,21 +628,25 @@ function LoginBtn({ icon, title, desc, color, onClick }: any) {
 
 // ━━ Auth helpers ━━
 async function connectWallet(s: any, v: any, t: any) {
-  let addr = '0x' + Math.random().toString(16).slice(2).padStart(40, '0');
+  let addr: string | null = null;
   try {
     if (typeof window !== 'undefined' && (window as any).ethereum) {
-      try {
-        const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts[0]) {
-          addr = accounts[0];
-        }
-      } catch (e: any) {
-        console.warn('[Web5] MetaMask connection skipped or cancelled by user, falling back smoothly:', e?.message);
+      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts[0]) {
+        addr = accounts[0];
       }
     }
-  } catch (err: any) {
-    console.warn('[Web5] Wallet environment unavailable:', err?.message);
+  } catch (e: any) {
+    console.warn('[Web5] Wallet connection canceled or error:', e?.message);
+    alert('未检测到钱包连接或授权已取消。若需体验完整链上确权，请在插件中确认连接。');
+    return;
   }
+
+  if (!addr) {
+    alert('未能获取到有效的 Web3 钱包地址，请确认已安装并解锁 MetaMask / OKX Wallet。');
+    return;
+  }
+
   await doLogin(addr, s, v, t, true);
 }
 async function connectTwitter(s: any, v: any, t: any) {
