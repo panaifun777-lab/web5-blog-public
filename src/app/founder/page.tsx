@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Quote, Cpu, Globe, Zap, Sparkles, Shield, Bot, Coins, Network, Eye } from 'lucide-react';
 import Link from 'next/link';
+import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 
 export default function FounderPage() {
   const [expanded, setExpanded] = useState(false);
@@ -18,10 +19,13 @@ export default function FounderPage() {
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,204,0.015),transparent_60%)] pointer-events-none" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-12">
-        {/* Back */}
-        <Link href="/" className="inline-flex items-center gap-2 text-[#555] hover:text-[#00FFCC] text-sm mb-8 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Web5.blog
-        </Link>
+        {/* Back & Language */}
+        <div className="flex items-center justify-between mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-[#555] hover:text-[#00FFCC] text-sm transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to W · B · O · G
+          </Link>
+          <LanguageSwitcher />
+        </div>
 
         {/* Header */}
         <div className="mb-12">
