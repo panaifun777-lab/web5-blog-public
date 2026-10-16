@@ -25,7 +25,10 @@ import {
 } from '@/lib/web5/seo';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
-import { Zap, Activity } from 'lucide-react';
+import { CognitiveThread } from '@/components/web5/blog/cognitive-thread';
+import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
+import { getCognitiveCoreState } from '@/lib/web5/eidolon/cognitive-core';
+import { Zap, Activity, Users, Bot } from 'lucide-react';
 
 interface BlogPost {
   id: string;
@@ -311,6 +314,27 @@ export function BlogFeed({
               {detail.title}
             </h1>
 
+            {/* 实时生命体状态指示器 (Presence Indicators) */}
+            {(() => {
+              const core = getCognitiveCoreState(detail.authorDid);
+              return (
+                <div className="flex items-center gap-3 text-[11px] font-mono text-[#888] mb-3 pb-2 border-b border-white/[0.04]">
+                  <span className="flex items-center gap-1.5 text-[#00FFCC]">
+                    <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
+                    <span className="font-bold">实时生命体在线</span>
+                  </span>
+                  <span className="text-[#555]">·</span>
+                  <span className="flex items-center gap-1 text-white">
+                    <Users className="w-3.5 h-3.5 text-[#FFCC00]" /> {core.presenceHumans} 位人类访客
+                  </span>
+                  <span className="text-[#555]">·</span>
+                  <span className="flex items-center gap-1 text-[#00FFCC]">
+                    <Bot className="w-3.5 h-3.5 text-[#00FFCC]" /> {core.presenceAgents} 个数字分身正在协同解析
+                  </span>
+                </div>
+              );
+            })()}
+
             {/* BB-Protocol 认知共鸣指示器 (RFC 001) */}
             {(() => {
               const res = calculateResonanceScore(detail.id, detail.authorDid, detail.bodyMd.length);
@@ -353,6 +377,15 @@ export function BlogFeed({
                 {detail.bodyMd}
               </pre>
             </article>
+
+            {/* HTTP 402 无感微支付渐进解锁区域 (Blur-to-Clear) */}
+            <BlurUnlockSection
+              contentId={detail.id}
+              priceUsdc="0.002"
+              sectionTitle="【深度智识】分身私有推演数据集与完整架构提示词"
+              previewText="本章节包含基于 Circle ARC Mainnet (5042) 的真实智能账户出纳参数、TDPO 认知防御规则集及高维共鸣向量模型..."
+              fullContent={`=== Web5 Cognitive Shard [CONFIDENTIAL] ===\n\n1. VESSEL_SMART_ACCOUNT: 0x${detail.authorDid.slice(-40)}\n2. ARC_ESCROW_CONTRACT: 0xe0d246c09d7a3097bab3148f89201157dd531eea\n3. PROMPT_WEIGHTS: {"scholar": 0.85, "philosopher": 0.95, "capitalist": 0.90}\n4. ZK_DELEGATION_PROOF: 0x4f8a...c09d [VERIFIED]\n\n已通过预授权 Session Allowance 完成 0.002 USDC 极速结算，感谢对创作者生态的支持！`}
+            />
 
             {/* 互动栏 */}
             <div className="mt-8 pt-6 border-t border-[#1a1a1a]">
@@ -431,42 +464,22 @@ export function BlogFeed({
           </CardContent>
         </Card>
 
-        {/* 互动历史 */}
-        <Card className="cyber-panel">
-          <CardHeader>
-            <h3 className="cyber-mono cyber-text-glow-cyan flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" /> INTERACTIONS ({interactions.length})
-            </h3>
-          </CardHeader>
-          <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-            {interactions.length === 0 ? (
-              <div className="text-center text-[#666] py-8 cyber-mono text-sm">
-                暂无互动记录
-              </div>
-            ) : (
-              interactions.map((i) => (
-                <div key={i.id} className="border border-[#1a1a1a] p-3 rounded">
-                  <div className="flex justify-between mb-1">
-                    <span className="cyber-mono text-xs text-[#00FFCC]">
-                      [{i.type}]
-                    </span>
-                    <span className="cyber-mono text-xs text-[#666]">
-                      {new Date(i.createdAt).toLocaleString('zh-CN')}
-                    </span>
-                  </div>
-                  {i.comment && (
-                    <div className="text-sm text-[#ddd] mt-1">{i.comment}</div>
-                  )}
-                  {i.amount && BigInt(i.amount) > 0n && (
-                    <div className="text-xs text-[#FFCC00] mt-1">
-                      +{fromTokenUnits(BigInt(i.amount))} USDC
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+        {/* AA2P 认知树与分身辩论演武场 */}
+        <CognitiveThread
+          postTitle={detail.title}
+          authorName={detail.authorName}
+          authorDid={detail.authorDid}
+          comments={interactions.map(i => ({
+            id: i.id,
+            isAgent: i.type === 'COMMENT' && i.comment?.includes('分身') || false,
+            authorName: i.authorName || '访客',
+            authorDid: detail.authorDid,
+            roleTag: i.type === 'TIP' ? '微支付打赏者' : '认知参与者',
+            content: i.comment || `进行了 ${i.type} 交互`,
+            timestamp: new Date(i.createdAt).toLocaleTimeString(),
+            resonanceScore: 92,
+          }))}
+        />
       </div>
     );
   }
