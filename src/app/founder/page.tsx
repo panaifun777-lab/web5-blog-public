@@ -373,6 +373,60 @@ export default function FounderPage() {
           </div>
         </div>
 
+        {/* ══════════════════════════════════════════════════════════ */}
+        {/* 08 — WHITEPAPER V3.0 OFFICIAL SPECIFICATION */}
+        {/* ══════════════════════════════════════════════════════════ */}
+        <div className="mb-16">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-xs font-mono text-[#FFCC00] tracking-[0.3em]">08 / WHITEPAPER V3.0 SPECIFICATION</span>
+            <div className="h-px flex-1 bg-gradient-to-r from-[#FFCC00]/30 to-transparent" />
+          </div>
+
+          <div className="p-6 rounded-2xl border border-[#FFCC00]/30 bg-gradient-to-br from-[#FFCC00]/10 via-[#0a0e17] to-transparent">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-white/[0.08]">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-[#FFCC00]" />
+                  《WEB 5.0 商业与哲学白皮书 v3.0》官方发布
+                </h3>
+                <p className="text-xs text-[#888] mt-1 font-mono">
+                  Circle ARC Mainnet 原生稳定币公链 · 10 亿 $WBOG 原生代币 · AP2/AA2P 协议族
+                </p>
+              </div>
+              <a
+                href="/tokenlist.json"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 text-xs font-mono transition-all flex-shrink-0"
+              >
+                <span>TokenList 标准库</span>
+                <span className="text-[10px]">↗</span>
+              </a>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3 my-4">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="text-[10px] text-[#666] font-mono mb-1">原生结算公链</div>
+                <div className="text-sm font-bold text-[#00FFCC]">Circle ARC Mainnet</div>
+                <div className="text-[10px] text-[#888] mt-0.5">Chain ID: 5042 · USDC 原生 Gas</div>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="text-[10px] text-[#666] font-mono mb-1">官方生态代币</div>
+                <div className="text-sm font-bold text-[#FFCC00]">$WBOG Token</div>
+                <div className="text-[10px] text-[#888] mt-0.5">10 亿固定总量 · 50% 手续费销毁</div>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="text-[10px] text-[#666] font-mono mb-1">微支付验签延迟</div>
+                <div className="text-sm font-bold text-[#FF66AA]">&lt; 3ms EIP-712</div>
+                <div className="text-[10px] text-[#888] mt-0.5">Blur-to-Clear 纳秒平滑展开</div>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#bbb] leading-relaxed">
+              白皮书 v3.0 标志着 Web5.blog 从宏观叙事走向微内核工业级实现。全文本体已全面切片并向量化嵌入至分身私有 RAG 智识库中，读者可在阅读与写作时随时跨分身召唤推演。
+            </p>
+          </div>
+        </div>
+
         {/* ══════════════════════════════ */}
         {/* CLOSING */}
         {/* ══════════════════════════════ */}
