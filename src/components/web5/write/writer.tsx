@@ -322,6 +322,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
               </div>
             </div>
           )}
+          <div className="flex gap-3 items-center">
             <div className="flex gap-1">
               {(['concise', 'detailed', 'academic', 'casual'] as const).map((s) => (
                 <button
