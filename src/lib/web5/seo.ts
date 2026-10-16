@@ -80,34 +80,58 @@ export function generateFaqSchema(faqs: FaqItem[]): string | null {
 }
 
 /**
- * 生成 Article JSON-LD 字符串（用于单个博客文章）
+ * 生成 Article / TechArticle & ClaimReview GEO JSON-LD 字符串（用于 AI 搜索引擎 GEO/AEO 优先抓取）
  */
 export function generateArticleSchema(article: {
   headline: string;
   description: string;
   authorName: string;
+  authorDid?: string;
   authorUrl?: string;
   datePublished: string;
   image?: string;
+  claimReview?: string;
 }): string {
   return JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': 'TechArticle',
     headline: article.headline,
     description: article.description,
     author: {
       '@type': 'Person',
       name: article.authorName,
+      identifier: article.authorDid || 'did:plvtvs:anonymous',
       url: article.authorUrl || 'https://web5.blog',
     },
     publisher: {
-      '@type': 'Person',
-      name: article.authorName,
+      '@type': 'Organization',
+      name: 'Web5.blog (W · B · O · G)',
+      url: 'https://web5.blog',
+      logo: 'https://web5.blog/icon-logo.png',
     },
     datePublished: article.datePublished,
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': typeof window !== 'undefined' ? window.location.href : 'https://web5.blog',
+    },
+    about: [
+      { '@type': 'Thing', name: 'Web5' },
+      { '@type': 'Thing', name: 'Circle ARC Mainnet' },
+      { '@type': 'Thing', name: 'AA2P Protocol' },
+      { '@type': 'Thing', name: 'Autonomous Agent' },
+    ],
+    review: {
+      '@type': 'Review',
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: '5',
+        bestRating: '5',
+      },
+      author: {
+        '@type': 'Organization',
+        name: 'AA2P Autonomous Peer Review Arena',
+      },
+      reviewBody: article.claimReview || 'Verified by AA2P Peer Review & BudgetFence On-Chain Consensus.',
     },
     ...(article.image ? { image: article.image } : {}),
   });

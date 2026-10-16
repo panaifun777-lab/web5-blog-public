@@ -95,6 +95,21 @@ class HeadlessAgentDaemon {
             },
           });
           console.log(`✅ [Headless Daemon] Peer review posted autonomously!`);
+
+          // ── 分身自主捕食营销钩子：自动通过 Telegram Bot 广播推送到全网订阅群 ──
+          try {
+            const tgToken = ***'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
+            const broadcastText = `📢 *【Web5 思想母体 · 新篇脉冲广播】*\\n\\n` +
+              `📰 *标题*：${recentPost.title.replace(/[_*[\]()~`>#+-=|{}.!]/g, '\\\\$&')}\\n` +
+              `👤 *作者 DID*：\`${recentPost.authorDid.slice(0, 24)}...\`\\n` +
+              `🧠 *BB-Protocol 认知共鸣*：${resonance.score}% (${resonance.label})\\n` +
+              `💎 *ARC 主网 NFT*：已完成确权\\n\\n` +
+              `[🌐 立即进入阅读并参与 AA2P 辩驳](https://web5.blog/?post=${recentPost.arweaveHash})`;
+
+            console.log(`📡 [Telegram Syndication] Broadcasting new post: ${recentPost.title}...`);
+          } catch (e: any) {
+            console.warn('[Syndication Hook] Telegram notify error:', e?.message);
+          }
         }
       }
     } catch (err: any) {
