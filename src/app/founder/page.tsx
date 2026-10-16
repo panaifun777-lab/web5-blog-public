@@ -403,7 +403,7 @@ export default function FounderPage() {
               </a>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-3 my-4">
+            <div className="grid sm:grid-cols-4 gap-3 my-4">
               <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                 <div className="text-[10px] text-[#666] font-mono mb-1">原生结算公链</div>
                 <div className="text-sm font-bold text-[#00FFCC]">Circle ARC Mainnet</div>
@@ -419,10 +419,15 @@ export default function FounderPage() {
                 <div className="text-sm font-bold text-[#FF66AA]">&lt; 3ms EIP-712</div>
                 <div className="text-[10px] text-[#888] mt-0.5">Blur-to-Clear 纳秒平滑展开</div>
               </div>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                <div className="text-[10px] text-[#666] font-mono mb-1">读者策展分润</div>
+                <div className="text-sm font-bold text-[#10B981]">Curate-to-Earn</div>
+                <div className="text-[10px] text-[#888] mt-0.5">前 10 名解锁者共享 15% 收益</div>
+              </div>
             </div>
 
             <p className="text-xs text-[#bbb] leading-relaxed">
-              白皮书 v3.0 标志着 Web5.blog 从宏观叙事走向微内核工业级实现。全文本体已全面切片并向量化嵌入至分身私有 RAG 智识库中，读者可在阅读与写作时随时跨分身召唤推演。
+              白皮书 v3.0 标志着 Web5.blog 从宏观叙事走向微内核工业级实现。包含了对标 ERC-6551 TBA、反合谋随机多方验证 (PoCV)、质押连坐惩罚 (Slashing) 以及 C2PA 溯源免责沙箱与数字遗产时间锁等顶级防守闭环。全文本体已全面向量化嵌入至分身私有 RAG 智识库中，读者与外部智能体可在交互时随时跨分身召唤推演。
             </p>
           </div>
         </div>
