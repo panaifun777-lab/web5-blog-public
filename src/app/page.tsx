@@ -73,8 +73,9 @@ export default function Home() {
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { isTma, user: tmaUser } = useTma();
+  const isEn = locale !== 'zh-CN';
 
   // 客户端挂载安全恢复 Session，根治 Hydration Mismatch
   useEffect(() => {
@@ -102,12 +103,12 @@ export default function Home() {
   }, []);
 
   const moduleLabels: Record<Module, string> = {
-    tech: t?.modules?.tech || '科技',
-    humanities: t?.modules?.humanity || '人文',
-    crowdfunding: t?.modules?.crowd || '众筹',
-    crowdsourcing: t?.modules?.outsourcer || '众包',
-    bounties: t?.modules?.bounty || '悬赏',
-    experts: t?.modules?.piaoshu || 'AI专家',
+    tech: isEn ? 'Technology' : (t?.modules?.tech || '科技'),
+    humanities: isEn ? 'Humanities' : (t?.modules?.humanity || '人文'),
+    crowdfunding: isEn ? 'Crowdfunding' : (t?.modules?.crowd || '众筹'),
+    crowdsourcing: isEn ? 'Crowdsourcing' : (t?.modules?.outsourcer || '众包'),
+    bounties: isEn ? 'Bounties' : (t?.modules?.bounty || '悬赏'),
+    experts: isEn ? 'AI Experts' : (t?.modules?.piaoshu || 'AI专家'),
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
@@ -138,6 +139,7 @@ export default function Home() {
             setTab={setTab}
             setActiveModule={setActiveModule}
             onOpenAirdrop={() => setAirdropOpen(true)}
+            isEn={isEn}
           />
           <GenesisAirdropModal
             open={airdropOpen}
@@ -189,13 +191,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Search (huggingface style) */}
+          {/* 搜索框 */}
           <div className="hidden md:flex flex-1 max-w-md relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#555]" />
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="搜索文章、合约、用户..."
+              placeholder={isEn ? "Search articles, contracts, DID..." : "搜索文章、合约、用户..."}
               className="w-full h-9 pl-9 pr-3 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-[#555] outline-none focus:border-[#00FFCC]/30 focus:bg-white/[0.06] transition-all"
             />
           </div>
@@ -230,17 +232,17 @@ export default function Home() {
             <Button
               size="sm"
               onClick={() => setAirdropOpen(true)}
-              className="bg-gradient-to-r from-[#FFCC00]/15 to-[#FF66AA]/15 border border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/25 text-xs h-8 px-2.5"
+              className="bg-gradient-to-r from-[#FFCC00]/15 to-[#FF66AA]/15 border border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/25 text-xs h-8 px-2.5 font-mono"
             >
               <Gift className="w-3.5 h-3.5 mr-1 text-[#FFCC00] animate-bounce" />
-              <span className="hidden sm:inline">创世空投 1,000 $WBOG</span>
-              <span className="sm:hidden">空投</span>
+              <span className="hidden sm:inline">{isEn ? 'Genesis 1,000 $WBOG' : '创世空投 1,000 $WBOG'}</span>
+              <span className="sm:hidden">{isEn ? 'Airdrop' : '空投'}</span>
             </Button>
 
             {/* 写作按钮 */}
             <Button size="sm" variant="ghost" onClick={() => setTab('write')}
               className={`text-xs h-8 hidden sm:flex ${tab === 'write' ? 'bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40' : 'text-[#00FFCC] hover:text-[#00FFCC]/80'}`}>
-              <Zap className="w-3.5 h-3.5 mr-1" />写作
+              <Zap className="w-3.5 h-3.5 mr-1" />{isEn ? 'Write' : '写作'}
             </Button>
 
             {session ? (
@@ -265,11 +267,11 @@ export default function Home() {
             {/* 子功能导航 Tab (常驻顶端) */}
             <div className="flex items-center gap-2 p-1.5 mb-6 rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-x-auto">
               {[
-                { id: 'feed', label: '博客流', icon: <FileText className="w-3.5 h-3.5" /> },
-                { id: 'write', label: '✍️ AI 流式写作', icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
-                { id: 'vessels', label: '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
-                { id: 'explore', label: '🔍 探索面板与市场', icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
-                { id: 'settings', label: '⚙️ 系统设置', icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
+                { id: 'feed', label: isEn ? 'Blog Stream' : '博客流', icon: <FileText className="w-3.5 h-3.5" /> },
+                { id: 'write', label: isEn ? '✍️ AI Stream Write' : '✍️ AI 流式写作', icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
+                { id: 'vessels', label: isEn ? '🧬 Avatar Matrix' : '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
+                { id: 'explore', label: isEn ? '🔍 Explorer & DEX' : '🔍 探索面板与市场', icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
+                { id: 'settings', label: isEn ? '⚙️ Settings' : '⚙️ 系统设置', icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
               ].map(tItem => (
                 <button
                   key={tItem.id}
@@ -293,7 +295,7 @@ export default function Home() {
                   {MODULES[activeModule].icon}
                 </span>
                 <h2 className="text-lg font-bold">{moduleLabels[activeModule] || MODULES[activeModule].label}</h2>
-                <span className="text-xs text-[#555] hidden sm:inline">— Web5 专题聚合</span>
+                <span className="text-xs text-[#555] hidden sm:inline">{isEn ? '— Web5 Curated Matrix' : '— Web5 专题聚合'}</span>
               </div>
               <Button
                 size="sm"
@@ -301,7 +303,7 @@ export default function Home() {
                 className="bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 text-xs h-7 px-2.5 flex items-center"
               >
                 <Zap className="w-3 h-3 mr-1" />
-                <span>✍️ 创作此专题博文</span>
+                <span>{isEn ? '✍️ Compose in Category' : '✍️ 创作此专题博文'}</span>
               </Button>
             </div>
 
@@ -365,17 +367,17 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-[#FFCC00]" />
-                    <span className="text-xs font-bold uppercase text-[#FFCC00]">创世先锋空投</span>
+                    <span className="text-xs font-bold uppercase text-[#FFCC00]">{isEn ? 'Genesis Airdrop' : '创世先锋空投'}</span>
                   </div>
                   <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] border-none text-[9px] h-4">
-                    10,000 名
+                    {isEn ? '10k Slots' : '10,000 名'}
                   </Badge>
                 </div>
                 <div className="font-mono text-base font-bold text-white mb-1">
-                  1,000 $WBOG <span className="text-xs text-[#888] font-normal">/ 人</span>
+                  1,000 $WBOG <span className="text-xs text-[#888] font-normal">{isEn ? '/ User' : '/ 人'}</span>
                 </div>
                 <div className="text-[10px] text-[#aaa] leading-relaxed">
-                  完成 5 项任务即可领取原生代币与 Genesis NFT 徽章。点击查看进度 →
+                  {isEn ? 'Complete 5 badges to claim tokens & Genesis NFT badge. Click to inspect →' : '完成 5 项任务即可领取原生代币与 Genesis NFT 徽章。点击查看进度 →'}
                 </div>
               </div>
 
@@ -508,7 +510,7 @@ export default function Home() {
                     }}
                     className="w-full text-[10px] border-[#00FFCC]/30 text-[#00FFCC] hover:bg-[#00FFCC]/10 h-7"
                   >
-                    🦊 一键添加 $WBOG 至 Web3 钱包
+                    🦊 {isEn ? 'Add $WBOG to Web3 Wallet' : '一键添加 $WBOG 至 Web3 钱包'}
                   </Button>
                 </div>
               </div>
@@ -537,7 +539,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
       {/* Matrix Rain background */}
@@ -578,7 +580,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     Web5 Blog Ontology Gateway
                   </div>
                   <div className="text-[9px] text-[#666] tracking-wider mt-0.5">
-                    存在论确权 · 思想母体 · 智能体价值网关
+                    {isEn ? 'Ontology Verification · Cognitive Matrix · Agent Gateway' : '存在论确权 · 思想母体 · 智能体价值网关'}
                   </div>
                 </div>
               </div>
@@ -586,13 +588,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               {/* Tagline */}
               <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-3">
                 <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.2)' }}>
-                  {t?.app?.tagline1 || '你的数字分身'}
+                  {isEn ? 'Your Digital Avatar' : (t?.app?.tagline1 || '你的数字分身')}
                 </span>
                 <br />
-                <span className="text-white/80">{t?.app?.tagline2 || '从此拥有博客'}</span>
+                <span className="text-white/80">{isEn ? 'Now Owns a Sovereign Blog' : (t?.app?.tagline2 || '从此拥有博客')}</span>
               </h1>
               <p className="text-[#666] text-base mb-8 leading-relaxed">
-                {t?.app?.description || 'Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付'}
+                {isEn ? 'Prime × Eidolon × Vessel Trinity Architecture · AI Stream Writing · AP2 Micropayments' : (t?.app?.description || 'Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付')}
               </p>
 
               {/* 创世空投横幅 */}
@@ -606,10 +608,14 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>创世先锋 $WBOG 空投进行中</span>
-                      <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">前 10,000 名</Badge>
+                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Live' : '创世先锋 $WBOG 空投进行中'}</span>
+                      <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">
+                        {isEn ? '10k Slots' : '前 10,000 名'}
+                      </Badge>
                     </div>
-                    <div className="text-[10px] text-[#888] mt-0.5">每人 1,000 WBOG + 创世勋章 · 点击领取</div>
+                    <div className="text-[10px] text-[#888] mt-0.5">
+                      {isEn ? '1,000 WBOG per user + Genesis NFT Badge · Click to Claim' : '每人 1,000 WBOG + 创世勋章 · 点击领取'}
+                    </div>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#FFCC00] group-hover:translate-x-1 transition-transform" />
@@ -620,8 +626,8 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 <div className="space-y-3">
                   <LoginBtn
                     icon={<Fingerprint className="w-5 h-5" />}
-                    title="Passkey 生物识别建仓 (Sovereign Soul)"
-                    desc="TouchID / FaceID 免助记词极速建仓 — 人类本体终极风控权限"
+                    title={isEn ? "Passkey Biometric Creation (Sovereign Soul)" : "Passkey 生物识别建仓 (Sovereign Soul)"}
+                    desc={isEn ? "TouchID / FaceID hardware setup — Zero-mnemonic root authority" : "TouchID / FaceID 免助记词极速建仓 — 人类本体终极风控权限"}
                     color="#FFCC00" onClick={async () => {
                       try {
                         const soul = await createPasskeySoul();
@@ -634,26 +640,26 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   />
                   <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
-                    title={t?.login?.vessel || 'Vessel 容器登录'}
-                    desc={t?.login?.vesselDesc || 'AP2/AA2P 协议 — 四步握手唤醒分身'}
+                    title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
+                    desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake" : (t?.login?.vesselDesc || 'AP2/AA2P 协议 — 四步握手唤醒分身')}
                     color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
-                    title={t?.login?.wallet || '数字钱包登录'}
-                    desc="MetaMask / OKX / Web3 钱包 — 唤醒容器直接开启完整权限"
+                    title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
+                    desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding" : "MetaMask / OKX / Web3 钱包 — 唤醒容器直接开启完整权限"}
                     color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab)}
                   />
                   <LoginBtn
                     icon={<Twitter className="w-5 h-5" />}
-                    title={t?.login?.twitter || 'Twitter / X 登录'}
-                    desc="绑定 X 社交身份 — 映射去中心化社交图谱与 DID"
+                    title={isEn ? "Twitter / X Login" : (t?.login?.twitter || 'Twitter / X 登录')}
+                    desc={isEn ? "Decentralized social graph mapping — OAuth 2.0" : "绑定 X 社交身份 — 映射去中心化社交图谱与 DID"}
                     color={COLORS.ap2} onClick={() => connectTwitter(setSession, setView, setTab)}
                   />
                   <LoginBtn
                     icon={<Bot className="w-5 h-5" />}
-                    title="AI Agent 智能体准入 (0.1 USDC)"
-                    desc="外部智能体支付 0.1 USDC 原生 Gas 激活专属机器 DID 与 API 通道"
+                    title={isEn ? "AI Agent Access (0.1 USDC)" : "AI Agent 智能体准入 (0.1 USDC)"}
+                    desc={isEn ? "External agents pay 0.1 USDC on ARC to activate machine DID & API" : "外部智能体支付 0.1 USDC 原生 Gas 激活专属机器 DID 与 API 通道"}
                     color="#FF66AA" onClick={() => {
                       const pay = confirm('【Web5 智能体自由准入协议】\n\n依据 x402 与 Circle ARC 规范，外部 AI Agent 首次接入需通过 Circle ARC Mainnet (5042) 支付 0.1 USDC 作为身份存证与防女巫质押。\n\n是否立即调用 Vessel 出纳完成准入？');
                       if (pay) {
@@ -666,7 +672,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               ) : loginMethod === 'vessel' ? (
                 <div className="animate-in fade-in">
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
-                    ← 返回选择登录方式
+                    ← {isEn ? 'Back to Login Options' : '返回选择登录方式'}
                   </button>
                   <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
