@@ -2,7 +2,8 @@
 
 // ════════════════════════════════════════════════════════════════
 // src/components/web5/i18n/language-switcher.tsx
-// 全球多语言切换器 — 支持 9 大主流语言一键秒级实时全局翻译
+// 全球多语言切换器 — 点击直接强制执行 window.location.reload()
+// 确保 Cookie 与 localStorage 立即穿透全局，页面 100% 刷新重载并应用新语言
 // ════════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
@@ -29,9 +30,14 @@ export function LanguageSwitcher() {
   const switchLocale = (code: LocaleCode) => {
     try {
       localStorage.setItem('web5_locale', code);
+      document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {}
     i18n.setLocale(code);
     setOpen(false);
+    // 强制全局刷新，确保所有服务端组件、静态文本与 DOM 节点 100% 重载为目标语言
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
   const current = locales.find((l) => l.code === locale) || locales[0];

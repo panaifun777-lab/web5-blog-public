@@ -248,24 +248,22 @@ function translateDOM(root: Node, dict: Record<string, string>) {
 export function GlobalTranslator() {
   useEffect(() => {
     const executeTranslation = () => {
-      const locale = localStorage.getItem('web5_locale') || 'zh-CN';
+      const cookieLocale = (document.cookie.match(/NEXT_LOCALE=([^;]+)/) || [])[1];
+      const locale = cookieLocale || localStorage.getItem('web5_locale') || 'zh-CN';
       if (locale === 'zh-CN' || !DICTIONARY[locale]) return;
 
       const dict = DICTIONARY[locale];
       translateDOM(document.body, dict);
     };
 
-    // 页面初次加载时执行
-    executeTranslation();
+    // 延迟 50ms 与 300ms 双重触发，确保 React hydration 渲染完成后立刻深度遍历替换
+    const t1 = setTimeout(executeTranslation, 50);
+    const t2 = setTimeout(executeTranslation, 300);
 
-    // 监听语言切换广播事件
-    const handleLocaleChange = () => {
-      // 重载使 DOM 恢复基准并应用新语言
-      window.location.reload();
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
     };
-
-    window.addEventListener('web5_language_changed', handleLocaleChange);
-    return () => window.removeEventListener('web5_language_changed', handleLocaleChange);
   }, []);
 
   return null;
