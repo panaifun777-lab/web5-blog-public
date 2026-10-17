@@ -25,6 +25,9 @@ type WriteState = 'idle' | 'streaming' | 'done' | 'error';
 export function Writer({ session }: { session: VesselSession | null }) {
   const [prompt, setPrompt] = useState('');
   const [title, setTitle] = useState('');
+  const [outline, setOutline] = useState('');
+  const [wordTarget, setWordTarget] = useState<500 | 1000>(1000);
+  const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [style, setStyle] = useState<'concise' | 'detailed' | 'academic' | 'casual'>('detailed');
   const [persona, setPersona] = useState<PersonaType>('scholar');
   const [radarInsights, setRadarInsights] = useState<TrendingInsight[]>([]);
@@ -55,6 +58,50 @@ export function Writer({ session }: { session: VesselSession | null }) {
 
   const canWrite = true; // 开放 AI 分身写作能力，发布时进行 Vessel 确权签名校验
 
+  // Step 1: 毫秒级自动罗列大纲与章节要点
+  const handleGenerateOutline = async () => {
+    if (!prompt.trim()) {
+      alert('请先输入你的标题或核心观点种子！');
+      return;
+    }
+    setIsGeneratingOutline(true);
+    try {
+      const res = await fetch('/api/ai/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          title: title || prompt.slice(0, 30),
+          mode: 'outline',
+          style,
+        }),
+      });
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let acc = '';
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        for (const line of text.split('\n\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) acc += data.text;
+            } catch {}
+          }
+        }
+      }
+      setOutline(acc.trim());
+      if (!title) setTitle(prompt.slice(0, 25));
+    } catch (e: any) {
+      alert('大纲生成异常: ' + e?.message);
+    } finally {
+      setIsGeneratingOutline(false);
+    }
+  };
+
   const startStream = useCallback(async () => {
     if (!prompt.trim()) return;
     setState('streaming');
@@ -76,8 +123,10 @@ export function Writer({ session }: { session: VesselSession | null }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: currentPrompt,
+          title: title || currentPrompt.slice(0, 30),
+          outline,
+          wordTarget,
           style: currentStyle,
-          maxTokens: 800,
         }),
         signal: ac.signal,
       });
@@ -322,6 +371,59 @@ export function Writer({ session }: { session: VesselSession | null }) {
               </div>
             </div>
           )}
+          {/* 意识种子两步流水线：字数档位与结构大纲控制 */}
+          <div className="pt-2 border-t border-white/[0.04] space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#666] font-mono">篇幅规格:</span>
+                <div className="flex gap-1">
+                  {[500, 1000].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setWordTarget(num as any)}
+                      className={`text-xs px-2.5 py-0.5 rounded border transition-all ${
+                        wordTarget === num
+                          ? 'border-[#00FFCC] text-[#00FFCC] bg-[#00FFCC]/10 font-bold'
+                          : 'border-white/[0.06] text-[#666] hover:text-white'
+                      }`}
+                    >
+                      {num} 字短长篇
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 毫秒级主题大纲生成按钮 */}
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={handleGenerateOutline}
+                disabled={isGeneratingOutline || !prompt.trim() || state === 'streaming'}
+                className="text-xs h-7 border-[#FFCC00]/40 text-[#FFCC00] hover:bg-[#FFCC00]/10 flex items-center"
+              >
+                <Sparkles className="w-3 h-3 mr-1" />
+                <span>{isGeneratingOutline ? '正在提炼大纲...' : 'Step 1: 毫秒生成章节大纲'}</span>
+              </Button>
+            </div>
+
+            {/* 可视化大纲展示与微调框 */}
+            {outline && (
+              <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-1">
+                <div className="flex justify-between items-center text-[10px] text-[#888] font-mono">
+                  <span>拟定章节结构与逻辑骨架 (可编辑调整):</span>
+                  <button type="button" onClick={() => setOutline('')} className="text-[#ff4444] hover:underline">清空大纲</button>
+                </div>
+                <Textarea
+                  value={outline}
+                  onChange={(e) => setOutline(e.target.value)}
+                  className="bg-transparent border-none text-xs font-mono text-[#ddd] p-0 min-h-[60px] focus-visible:ring-0"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-3 items-center">
             <div className="flex gap-1">
               {(['concise', 'detailed', 'academic', 'casual'] as const).map((s) => (

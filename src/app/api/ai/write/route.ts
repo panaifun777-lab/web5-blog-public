@@ -6,13 +6,22 @@
 import { NextRequest } from 'next/server';
 import { streamWrite } from '@/lib/web5/ai/eidolon-writer';
 import { inspectPromptWithTDPO } from '@/lib/web5/security/tdpo';
+import { buildOutlinePrompt, buildArticleExpansionPrompt } from '@/lib/web5/ai/free-pool';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, style, maxTokens } = await req.json();
+    const {
+      prompt,
+      title,
+      mode = 'article', // 'outline' | 'article'
+      outline,
+      wordTarget = 1000,
+      style,
+      maxTokens,
+    } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return new Response(JSON.stringify({ error: 'prompt is required' }), {
@@ -33,15 +42,33 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // ── 两步式“意识种子”流水线构建 ──
+    let dynamicPrompt = prompt;
+    let targetTokens = maxTokens || (wordTarget === 500 ? 500 : 1000);
+
+    if (mode === 'outline') {
+      // Step 1: 毫秒级主题大纲与层次罗列
+      dynamicPrompt = buildOutlinePrompt(title || prompt.slice(0, 30), prompt, '');
+      targetTokens = 250;
+    } else if (outline) {
+      // Step 2: 结合大纲与 DWN 记忆切片进行结构化扩写
+      dynamicPrompt = buildArticleExpansionPrompt({
+        title: title || prompt.slice(0, 30),
+        seedThesis: prompt,
+        wordTarget: wordTarget === 500 ? 500 : 1000,
+        style: style || 'detailed',
+      }, outline);
+    }
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         const ac = new AbortController();
         try {
           for await (const chunk of streamWrite({
-            prompt,
+            prompt: dynamicPrompt,
             style: style || 'detailed',
-            maxTokens: maxTokens || 600,
+            maxTokens: targetTokens,
             signal: ac.signal,
           })) {
             const data = `data: ${JSON.stringify(chunk)}\n\n`;
