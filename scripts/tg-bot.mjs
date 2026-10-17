@@ -82,8 +82,8 @@ function handleMessage(msg) {
         { text: '🧬 我的分身矩阵与资产', web_app: { url: 'https://web5.blog/?tab=vessels' } },
       ],
       [
+        { text: '🚀 创世金库 3000U 冲刺认购', web_app: { url: 'https://web5.blog' } },
         { text: '🎯 悬赏广场 (做任务赚 USDC)', web_app: { url: 'https://web5.blog' } },
-        { text: '✍️ 分身流式写作', web_app: { url: 'https://web5.blog/?tab=write' } },
       ],
       [
         { text: '💎 $WBOG 代币资产 (ArcScan)', url: 'https://explorer.arc.io/token/0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f' },

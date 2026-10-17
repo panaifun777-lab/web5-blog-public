@@ -14,10 +14,11 @@ import { getCurrentVesselSession, revokeVesselSession } from '@/lib/web5/vessel-
 import type { VesselSession } from '@/lib/web5/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Cpu, BookOpen, Users, Globe, Target, Bot, Sparkles, Eye, Wallet, Twitter,
   ChevronRight, TrendingUp, Radio, FileText, MessageCircle, Heart, Share2,
-  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift,
+  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket,
 } from 'lucide-react';
 
 import { BlogFeed } from '@/components/web5/blog/blog-feed';
@@ -29,6 +30,7 @@ import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
 import { SponsorModal } from '@/components/web5/trending/sponsor-modal';
+import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
@@ -76,6 +78,7 @@ export default function Home() {
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
+  const [curveModalOpen, setCurveModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [sponsoredAd, setSponsoredAd] = useState<any>(null);
   const [targetPostHash, setTargetPostHash] = useState<string | null>(null);
@@ -496,6 +499,31 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* 3.1 创世金库 3000U 冲刺认购看板 (GenesisCurveVault) */}
+              <div
+                onClick={() => setCurveModalOpen(true)}
+                className="rounded-xl border border-[#00FFCC]/30 bg-gradient-to-br from-[#00FFCC]/10 via-[#0a0e17] to-transparent p-4 cursor-pointer hover:border-[#00FFCC]/60 transition-all group shadow-lg shadow-[#00FFCC]/05"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Rocket className="w-4 h-4 text-[#00FFCC] animate-pulse" />
+                    <span className="text-xs font-bold uppercase text-[#00FFCC]">{isEn ? 'Angel Vault 3k Cap' : '创世金库 3000U 冲刺'}</span>
+                  </div>
+                  <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] h-4 font-mono">
+                    {isEn ? 'LP Lock Vault' : '锁池倒计时'}
+                  </Badge>
+                </div>
+                <div className="font-mono text-base font-bold text-white mb-1 flex items-center justify-between">
+                  <span>380 / 3,000 <span className="text-xs text-[#888] font-normal">USDC</span></span>
+                  <span className="text-xs text-[#FFCC00] font-bold">12.7%</span>
+                </div>
+                <Progress value={12.7} className="h-1.5 bg-white/[0.08] mb-2" />
+                <div className="text-[10px] text-[#aaa] leading-relaxed flex items-center justify-between">
+                  <span>{isEn ? 'Max 20U/tx · 100% Locked on Cap' : '单笔限额 20U 防鲸 · 满额丢弃权限'}</span>
+                  <ArrowRight className="w-3 h-3 text-[#00FFCC] group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+
               {/* 3.5. W · B · O · G 品牌词源矩阵 (Ontology Matrix) */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4 space-y-2">
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
@@ -648,6 +676,13 @@ export default function Home() {
         open={sponsorModalOpen}
         onOpenChange={setSponsorModalOpen}
         onSuccess={fetchSponsor}
+      />
+
+      {/* ━━ 创世金库 3000U 冲刺认购弹窗 ━━ */}
+      <GenesisCurveModal
+        open={curveModalOpen}
+        onOpenChange={setCurveModalOpen}
+        session={session}
       />
 
       {/* ━━ Footer ━━ */}
