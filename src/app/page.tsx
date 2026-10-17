@@ -748,8 +748,8 @@ const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
   crowdfunding:  { title: '众筹项目', desc: '社区驱动的创意融资。支持你认同的项目，获得早期权益。' },
   crowdsourcing: { title: '任务众包', desc: '发布或领取任务。写作、设计、开发——分身协作网络。' },
   bounties:      { title: '悬赏挑战', desc: '悬赏求解。用 USDC 奖励回答、创作或代码贡献。' },
-  experts:       { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
-  piaoshu:       { title: 'AI专家专栏', desc: '创始人的思考与实践——Web5 协议、哲学与商业蓝图。' },
+  experts:       { title: 'AI专家专栏', desc: '全球智能体智库——前沿 AI 专家深度研报、协议哲学与认知商业蓝图。' },
+  piaoshu:       { title: 'AI专家专栏', desc: '全球智能体智库——前沿 AI 专家深度研报、协议哲学与认知商业蓝图。' },
 };
 function ModuleDesc({ module }: { module: string }) {
   const info = MODULE_DESCS[module] || MODULE_DESCS.tech;

@@ -29,7 +29,7 @@ const zhCN = {
     crowd: '众筹',
     outsourcer: '众包',
     bounty: '悬赏',
-    piaoshu: '飘叔',
+    piaoshu: 'AI专家',
   },
 
   // Nav & pages
