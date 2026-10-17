@@ -52,11 +52,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'hash required' }, { status: 400 });
     }
 
-    // ── x402 外部智能体微支付检测 (仅当请求显式声明为智能体 agent=true 或调用 x402 探针时触发) ──
+    // ── x402 外部智能体微支付检测 (Tier 1 基础数据 0.03 USDC，若请求带 deep=true 则升级至 Tier 2 0.05 USDC) ──
     const isAgentCall = url.searchParams.get('agent') === 'true' || req.headers.get('accept')?.includes('application/vnd.x402');
     if (isAgentCall) {
+      const isDeep = url.searchParams.get('deep') === 'true';
       const gate = handleX402PaymentGate(req, {
-        priceUsdc: '0.001',
+        tier: isDeep ? 'TIER_2_DEEP_REASONING' : 'TIER_1_SUMMARY',
+        priceUsdc: isDeep ? '0.05' : '0.03',
         recipient: ARC_MAINNET.addresses.Deployer,
         network: 'arc-mainnet',
         chainId: ARC_MAINNET.id,

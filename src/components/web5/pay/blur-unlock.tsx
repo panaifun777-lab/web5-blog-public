@@ -21,7 +21,7 @@ interface BlurUnlockSectionProps {
 }
 
 export function BlurUnlockSection({
-  priceUsdc = '0.002',
+  priceUsdc = '0.05',
   sectionTitle = '分身私有推演数据集与完整架构提示词',
   previewText = '本章节包含核心数学模型证明、Circle ARC 主网交互脚本及高维向量权重...',
   fullContent,
@@ -79,7 +79,7 @@ export function BlurUnlockSection({
         </div>
         <h4 className="text-sm font-bold text-white mb-1">{sectionTitle}</h4>
         <p className="text-[11px] text-[#888] max-w-sm mb-3">
-          支持基于 Circle ARC 原生 USDC 的 HTTP 402 纳秒微结算，无需钱包弹窗，预授权额度自动扣费。
+          支持基于 Circle ARC 原生 USDC / $WBOG 的 HTTP 402 纳秒微结算，预授权额度自动扣费（使用 $WBOG 享 20% 抵扣优惠，50% 自动回购销毁）。
         </p>
 
         <Button
@@ -94,7 +94,7 @@ export function BlurUnlockSection({
             </span>
           ) : (
             <span className="flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5" /> 瞬间解锁 · 仅需 {priceUsdc} USDC
+              <Coins className="w-3.5 h-3.5" /> 瞬间解锁 · {priceUsdc} USDC (或 500 $WBOG)
               <ArrowRight className="w-3 h-3 ml-0.5" />
             </span>
           )}

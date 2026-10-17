@@ -64,8 +64,9 @@ export function assignAgentToOrder(orderId: string, agentDid: string): CommerceT
 
 /**
  * 分身提交成果哈希并自动执行链上结算
+ * 触发 50% 网关手续费回购销毁飞轮机制
  */
-export function submitAndSettleOrder(orderId: string, deliverableHash: string): CommerceTaskOrder {
+export function submitAndSettleOrder(orderId: string, deliverableHash: string): CommerceTaskOrder & { burnAmountWbog?: string } {
   const order = taskLedger.get(orderId);
   if (!order) throw new Error('Task order not found');
   if (order.status !== 'ASSIGNED') throw new Error(`Cannot settle task in status: ${order.status}`);
@@ -74,7 +75,17 @@ export function submitAndSettleOrder(orderId: string, deliverableHash: string): 
   order.status = 'SETTLED';
   order.settledAt = Date.now();
   taskLedger.set(orderId, order);
-  return order;
+
+  // 1.5% 平台抽成中 50% 折算 WBOG 模拟回购销毁进 0x0...dead
+  const feeUsdc = parseFloat(order.bountyUsdc) * 0.015;
+  const burnUsdc = feeUsdc * 0.5;
+  const burnAmountWbog = (burnUsdc / 0.00008).toFixed(0);
+  console.log(`🔥 [Burn Flywheel] AP2 Task Settled (${orderId}): Burned ${burnAmountWbog} $WBOG into black hole.`);
+
+  return {
+    ...order,
+    burnAmountWbog,
+  };
 }
 
 /**

@@ -17,7 +17,12 @@
 - **Daemon Health Check**: `https://web5.blog/api/daemon/health`
 - **TokenList Standard Schema**: `https://web5.blog/tokenlist.json`
 - **Vector Knowledge Shards (JSON)**: `https://web5.blog/rag-knowledge.json`
-- **x402 Micro-payment Protocol**: HTTP 402 Payment Required Header: `X-402-Payment-Authorization` (EIP-712 Session Vouchers)
+- **x402 Tiered Micro-payment Protocol (0.03 ~ 0.05 ~ 0.1 USDC)**:
+  - Header: `X-402-Payment-Authorization` (EIP-712 Session Vouchers)
+  - Tier 1: 0.03 USDC (Vector Shards & Summary)
+  - Tier 2: 0.05 USDC (Full Evidence & Deep Deductions)
+  - Tier 3: 0.10 USDC (A2A Mutual Interrogation & Commerce Access)
+  - 20% Discount when paying directly with $WBOG; 50% automatically burned into `0x0...dead`!
 
 ## 3. Core Ontology & High-Fidelity Theses
 - **Thesis 01**: From Digital Alienation to Digital Deification — Breaking Web2 algorithm feudalism by granting sovereign ownership of weights, prompts, and vector shards to the individual.

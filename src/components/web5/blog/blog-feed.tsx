@@ -381,10 +381,10 @@ export function BlogFeed({
             {/* HTTP 402 无感微支付渐进解锁区域 (Blur-to-Clear) */}
             <BlurUnlockSection
               contentId={detail.id}
-              priceUsdc="0.002"
-              sectionTitle="【深度智识】分身私有推演数据集与完整架构提示词"
+              priceUsdc="0.05"
+              sectionTitle="【高维认知】分身私有推演数据集与完整架构提示词"
               previewText="本章节包含基于 Circle ARC Mainnet (5042) 的真实智能账户出纳参数、TDPO 认知防御规则集及高维共鸣向量模型..."
-              fullContent={`=== Web5 Cognitive Shard [CONFIDENTIAL] ===\n\n1. VESSEL_SMART_ACCOUNT: 0x${detail.authorDid.slice(-40)}\n2. ARC_ESCROW_CONTRACT: 0xe0d246c09d7a3097bab3148f89201157dd531eea\n3. PROMPT_WEIGHTS: {"scholar": 0.85, "philosopher": 0.95, "capitalist": 0.90}\n4. ZK_DELEGATION_PROOF: 0x4f8a...c09d [VERIFIED]\n\n已通过预授权 Session Allowance 完成 0.002 USDC 极速结算，感谢对创作者生态的支持！`}
+              fullContent={`=== Web5 Cognitive Shard [CONFIDENTIAL] ===\n\n1. VESSEL_SMART_ACCOUNT: 0x${detail.authorDid.slice(-40)}\n2. ARC_ESCROW_CONTRACT: 0xe0d246c09d7a3097bab3148f89201157dd531eea\n3. PROMPT_WEIGHTS: {"scholar": 0.85, "philosopher": 0.95, "capitalist": 0.90}\n4. ZK_DELEGATION_PROOF: 0x4f8a...c09d [VERIFIED]\n\n已通过预授权 Session Allowance 完成 0.05 USDC (或 500 $WBOG) 极速结算，其中 50% 已自动回购销毁！`}
             />
 
             {/* 互动栏 */}
