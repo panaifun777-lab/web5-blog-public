@@ -160,9 +160,19 @@ export default function Home() {
       {/* ━━ Header (TMA 模式下自动收敛为极简全屏沉浸栏) ━━ */}
       <header className={`relative z-50 border-b border-white/[0.06] bg-[#050508]/80 backdrop-blur-2xl sticky top-0 ${isTma ? 'py-1' : ''}`}>
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
-            <img src="/icon-logo.png" alt="W · B · O · G" className="w-8 h-8 rounded-lg object-cover shadow-lg shadow-[#00FFCC]/20 border border-white/[0.1]" />
+          {/* Brand & 动态唤醒光环 */}
+          <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#00FFCC]/40 shadow-lg shadow-[#00FFCC]/20 bg-black flex items-center justify-center">
+              <video
+                src="/brand-awakening.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover scale-110"
+              />
+              <div className="absolute inset-0 bg-[#00FFCC]/10 pointer-events-none" />
+            </div>
             <div className="flex flex-col">
               <span className="font-bold tracking-wider text-sm font-mono text-white flex items-center gap-1">
                 <span>W</span><span className="text-[#00FFCC]">•</span>
@@ -503,9 +513,19 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
           <div className="grid lg:grid-cols-5 gap-12">
             {/* Content — 3/5 */}
             <div className="lg:col-span-3">
-              {/* Brand */}
+              {/* Brand & 动态觉醒徽章 */}
               <div className="flex items-center gap-3 mb-8">
-                <img src="/icon-logo.png" alt="W · B · O · G" className="w-12 h-12 rounded-xl object-cover shadow-xl shadow-[#00FFCC]/20 border border-white/[0.1]" />
+                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-[#00FFCC]/50 shadow-2xl shadow-[#00FFCC]/30 bg-black flex items-center justify-center">
+                  <video
+                    src="/brand-awakening.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover scale-110"
+                  />
+                  <div className="absolute inset-0 bg-[#00FFCC]/10 pointer-events-none" />
+                </div>
                 <div>
                   <div className="text-2xl font-black tracking-wider text-white font-mono flex items-center gap-1">
                     <span>W</span><span className="text-[#00FFCC]">•</span>
