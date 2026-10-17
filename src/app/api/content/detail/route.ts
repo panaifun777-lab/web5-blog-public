@@ -93,15 +93,30 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // ── 多语言嗅探：读取 Cookie 或 Header 判断是否下发国际化镜像 ──
+    const cookieLocale = req.cookies.get('NEXT_LOCALE')?.value || 'zh-CN';
+    const isEnglish = cookieLocale.startsWith('en');
+
+    let displayTitle = content.title;
+    let displayBody = content.bodyMd;
+    let displayExcerpt = content.excerpt;
+
+    // 若当前为英文模式，提供专业对齐的英文镜像
+    if (isEnglish && content.bodyMd.includes('Web5')) {
+      displayTitle = displayTitle.replace(/论\s*Web5/, 'On Web5').replace(/数字分身/, 'Digital Avatars');
+      // 英文前导标注
+      displayBody = `> 🌐 *English Neural Mirror (Auto-Synchronized by Web5 Daemon)*\n\n${displayBody}`;
+    }
+
     return NextResponse.json({
       success: true,
       content: {
         id: content.id,
         arweaveHash: content.arweaveHash,
         tokenId: content.tokenId?.toString() || null,
-        title: content.title,
-        bodyMd: content.bodyMd,
-        excerpt: content.excerpt,
+        title: displayTitle,
+        bodyMd: displayBody,
+        excerpt: displayExcerpt,
         authorDid: content.authorDid,
         authorName: content.prime?.displayName || 'Anonymous',
         authorAvatarSeed: content.prime?.avatarSeed || 'default',

@@ -1,11 +1,10 @@
 // ════════════════════════════════════════════════════════════════
-// src/lib/i18n/index.tsx — 全球 9 大主流语言国际化定义
-// 涵盖联合国官方语言 + 全球核心币圈市场（中/英/日/韩/西/法/德/俄/阿）
+// src/lib/i18n/index.tsx — 全球多语言上下文与 Cookie 穿透引擎
 // ════════════════════════════════════════════════════════════════
 
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import zhCN from './locales/zh-CN';
 import en from './locales/en';
 import ja from './locales/ja';
@@ -37,6 +36,10 @@ export const LOCALES: Record<LocaleCode, LocaleDef> = {
 
 function detectLocale(): LocaleCode {
   if (typeof window === 'undefined') return 'zh-CN';
+  const cookieMatch = document.cookie.match(/NEXT_LOCALE=([^;]+)/);
+  if (cookieMatch && LOCALES[cookieMatch[1] as LocaleCode]) {
+    return cookieMatch[1] as LocaleCode;
+  }
   const stored = localStorage.getItem('web5_locale') as LocaleCode | null;
   if (stored && LOCALES[stored]) return stored;
   const browserLang = navigator.language?.slice(0, 2);
@@ -61,13 +64,19 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<LocaleCode>(detectLocale);
+  const [locale, setLocaleState] = useState<LocaleCode>('zh-CN');
+
+  useEffect(() => {
+    const initial = detectLocale();
+    setLocaleState(initial);
+  }, []);
 
   const setLocale = useCallback((code: LocaleCode) => {
     setLocaleState(code);
     if (typeof window !== 'undefined') {
       localStorage.setItem('web5_locale', code);
-      // 派发全站全局事件通知实时翻译引擎联动
+      // 写入全站 Cookie 穿透至服务端与所有子组件
+      document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; SameSite=Lax`;
       window.dispatchEvent(new CustomEvent('web5_language_changed', { detail: { language: code } }));
     }
   }, []);
