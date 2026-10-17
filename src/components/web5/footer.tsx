@@ -72,6 +72,17 @@ export function Footer() {
                 <Twitter className="w-4 h-4" />
               </a>
               <a
+                href="https://farcaster.xyz/piaoshu"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Farcaster (@piaoshu)"
+                className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#8A63D2]/50 hover:text-[#8A63D2] transition-all text-[#555]"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 1000 1000">
+                  <path d="M257.778 155.556h484.444v688.889h-72.222V367.778H330v476.667h-72.222V155.556zm-102.222 212.222h72.222v476.667h-72.222V367.778zm688.889 0h72.222v476.667h-72.222V367.778zM155.556 257.778h688.889v72.222H155.556v-72.222z"/>
+                </svg>
+              </a>
+              <a
                 href="https://t.me/Web5blog_bot"
                 target="_blank"
                 rel="noopener noreferrer"

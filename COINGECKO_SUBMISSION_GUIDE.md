@@ -19,6 +19,7 @@
 - **Whitepaper URL (白皮书链接)**: `https://web5.blog/founder`
 - **Official Telegram (官方 Telegram 机器人/群组)**: `https://t.me/Web5blog_bot`
 - **Official Twitter / X**: `https://x.com/PiaoshuAgent`
+- **Official Farcaster**: `https://farcaster.xyz/piaoshu`
 - **GitHub Repository**: `https://github.com/panaifun777-lab/web5.blog`
 
 ---

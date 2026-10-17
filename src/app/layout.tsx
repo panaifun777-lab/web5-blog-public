@@ -87,7 +87,7 @@ export default function RootLayout({
         name: 'piaoshu.eth',
         url: 'https://web5.blog',
         sameAs: [
-          'https://warpcast.com/piaoshu',
+          'https://farcaster.xyz/piaoshu',
           'https://x.com/PiaoshuAgent',
           'https://github.com/piaoshu',
         ],
