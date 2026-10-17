@@ -62,8 +62,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Web5.blog',
     description: '全球首个分身原生博客平台',
-    site: '@piaoshu1112',
-    creator: '@piaoshu1112',
+    site: '@PiaoshuAgent',
+    creator: '@PiaoshuAgent',
   },
   other: {
     // Agent discovery headers
@@ -88,7 +88,7 @@ export default function RootLayout({
         url: 'https://web5.blog',
         sameAs: [
           'https://warpcast.com/piaoshu',
-          'https://x.com/piaoshu1112',
+          'https://x.com/PiaoshuAgent',
           'https://github.com/piaoshu',
         ],
         knowsAbout: ['Web5', 'Decentralized Identity', 'AI Agent', 'Smart Contracts'],

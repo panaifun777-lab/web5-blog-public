@@ -18,7 +18,7 @@
 - **Official Website (官方网址)**: `https://web5.blog`
 - **Whitepaper URL (白皮书链接)**: `https://web5.blog/founder`
 - **Official Telegram (官方 Telegram 机器人/群组)**: `https://t.me/Web5blog_bot`
-- **Official Twitter / X**: `https://x.com/piaoshu1112`
+- **Official Twitter / X**: `https://x.com/PiaoshuAgent`
 - **GitHub Repository**: `https://github.com/panaifun777-lab/web5.blog`
 
 ---

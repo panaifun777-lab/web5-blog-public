@@ -63,10 +63,10 @@ export function Footer() {
                 <Github className="w-4 h-4" />
               </a>
               <a
-                href="https://x.com/piaoshu1112"
+                href="https://x.com/PiaoshuAgent"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Twitter / X"
+                title="Twitter / X (@PiaoshuAgent)"
                 className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
               >
                 <Twitter className="w-4 h-4" />
