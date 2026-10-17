@@ -30,6 +30,7 @@ import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
+import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
 import { createPasskeySoul, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { Fingerprint } from 'lucide-react';
@@ -756,36 +757,9 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               </div>
             </div>
 
-            {/* Right — Stats */}
+            {/* Right — 3D Cyber Hologram Avatar Stage (from plvtvs.one) */}
             <div className="hidden lg:block lg:col-span-2">
-              <div className="space-y-4">
-                <div className="text-center p-5 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm">
-                  <div className="flex justify-center gap-6 mb-4">
-                    {['#FFCC00', '#00FFCC', '#B080E8'].map((c, i) => (
-                      <div key={i} className="flex flex-col items-center">
-                        <div className="w-3 h-3 rounded-full mb-1.5 animate-pulse" style={{ backgroundColor: c, boxShadow: `0 0 12px ${c}60` }} />
-                        <div className="text-lg font-bold font-mono" style={{ color: c }}>{['12', '234', '47'][i]}</div>
-                        <div className="text-[9px] text-[#444] tracking-wider">{['Activated', 'Vessels', 'Articles'][i]}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent my-3" />
-                  <div className="text-[10px] text-[#555]">66.7% Observer → Vessel 转化率</div>
-                </div>
-
-                {/* Quick links */}
-                <div className="text-[11px] text-[#555] space-y-2 p-4 rounded-2xl border border-white/[0.04]">
-                  <a href="/admin" className="block hover:text-[#00FFCC] transition-colors flex items-center gap-2">
-                    <Shield className="w-3 h-3" /> Admin Dashboard
-                  </a>
-                  <a href="/api/openapi.json" className="block hover:text-[#00FFCC] transition-colors flex items-center gap-2">
-                    <Hash className="w-3 h-3" /> API Schema (OpenAPI)
-                  </a>
-                  <a href="/llms.txt" className="block hover:text-[#00FFCC] transition-colors flex items-center gap-2">
-                    <FileText className="w-3 h-3" /> Agent Discovery (LLMs.txt)
-                  </a>
-                </div>
-              </div>
+              <HologramAvatarStage />
             </div>
           </div>
         </div>
