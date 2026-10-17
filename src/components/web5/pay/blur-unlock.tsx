@@ -50,10 +50,41 @@ export function BlurUnlockSection({
               已通过 HTTP 402 亚秒级解锁
             </Badge>
           </div>
-          <span className="text-[10px] text-[#666] font-mono">ARC 结算回执: 0x{contentId.slice(0, 8)}...</span>
+          <a
+            href="https://explorer.arc.io/address/0xe0d246c09d7a3097bab3148f89201157dd531eea"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-[#00FFCC] hover:underline font-mono flex items-center gap-1"
+            title="在 Circle ARC 官方区块链浏览器查验此智能合约"
+          >
+            <span>ARC 托管合约: 0xe0d2...1eea (ArcScan 查验 ↗)</span>
+          </a>
         </div>
         <div className="text-xs text-[#ddd] leading-relaxed whitespace-pre-wrap font-mono">
           {fullContent}
+        </div>
+        <div className="mt-3 pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-[#888]">
+          <span className="flex items-center gap-1 text-[#00FFCC]">
+            <Check className="w-3 h-3" /> 链上存证哈希: 0x{contentId.slice(0, 16)}...
+          </span>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://explorer.arc.io/token/0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white underline"
+            >
+              $WBOG 销毁记录 ↗
+            </a>
+            <a
+              href="https://explorer.arc.io/address/0xe0d246c09d7a3097bab3148f89201157dd531eea?tab=contract"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#00FFCC] font-bold hover:underline"
+            >
+              BudgetFence 开源合约 ↗
+            </a>
+          </div>
         </div>
       </div>
     );
