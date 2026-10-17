@@ -916,8 +916,8 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               </div>
             </div>
 
-            {/* Right — 3D Cyber Hologram Avatar Stage (with Real Yield HUD) + 分类导航 (右侧垂直对齐) */}
-            <div className="hidden lg:block lg:col-span-2 space-y-3">
+            {/* Right — 3D Cyber Hologram Avatar Stage (with Real Yield HUD) + 分类导航 (向下对齐左侧条目栏) */}
+            <div className="hidden lg:block lg:col-span-2 space-y-4 lg:pt-36">
               <HologramAvatarStage />
 
               {/* Module badges + 分身致辞 + 语言切换 (右侧整齐对齐) */}

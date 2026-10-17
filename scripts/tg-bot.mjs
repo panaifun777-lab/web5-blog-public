@@ -36,14 +36,10 @@ async function init() {
     ],
   });
 
-  console.log('2. Setting chat menu button (Web App)...');
+  console.log('2. Setting chat menu button (Commands)...');
   await request('setChatMenuButton', {
     menu_button: {
-      type: 'web_app',
-      text: '🌐 打开 Web5.blog',
-      web_app: {
-        url: 'https://web5.blog',
-      },
+      type: 'commands',
     },
   });
 
