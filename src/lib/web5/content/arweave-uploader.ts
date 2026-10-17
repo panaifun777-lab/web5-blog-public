@@ -15,28 +15,27 @@ export interface UploadResult {
 }
 
 /**
- * 获取 Irys Uploader（Ethereum 钱包）
- * 支持生产环境配置的 IRYS_PRIVATE_KEY，或自动接入 Web5 专属 Devnet 节点
+ * 获取 Irys Uploader（Polygon Matic / POL 主网钱包）
+ * 支持生产环境配置的 IRYS_PRIVATE_KEY，真实直连 Arweave Mainnet Permaweb
  */
 async function getIrysUploader() {
   try {
     const { Uploader } = await import('@irys/upload');
-    const { Ethereum } = await import('@irys/upload-ethereum');
-    const privateKey = process.env.IRYS_PRIVATE_KEY || '0x1e44093e4b785d9921bc62f8319f20e487920ab3051493021984710293847102';
-    const rpcURL = process.env.IRYS_RPC_URL || 'https://rpc.ankr.com/eth_sepolia';
+    const { Matic } = await import('@irys/upload-ethereum');
+    const privateKey = process.env.IRYS_PRIVATE_KEY || '0xebe0742348aa7b3437cc10faf9f6083c6ea60b7bdff324ec4c0ffca5a6db2d04';
+    const rpcURL = process.env.IRYS_RPC_URL || 'https://1rpc.io/matic';
 
-    return await Uploader(Ethereum)
+    return await Uploader(Matic)
       .withWallet(privateKey)
-      .withRpc(rpcURL)
-      .devnet();
+      .withRpc(rpcURL);
   } catch (err) {
-    console.warn('[arweave-uploader] @irys/upload not available:', err);
+    console.warn('[arweave-uploader] Irys SDK load failed:', err);
     throw new Error('Irys SDK not available');
   }
 }
 
 /**
- * 上传内容至 Arweave（通过 Irys 真实节点）
+ * 上传内容至 Arweave 主网（通过 Irys 真实主网节点）
  */
 export async function uploadToArweave(content: {
   title: string;
@@ -63,6 +62,8 @@ async function uploadViaIrys(body: string, size: number): Promise<UploadResult> 
     tags: [
       { name: 'Content-Type', value: 'application/json' },
       { name: 'App-Name', value: 'Web5.blog' },
+      { name: 'App-Version', value: '3.0.0' },
+      { name: 'Network', value: 'Arweave-Mainnet' },
     ],
   });
 
