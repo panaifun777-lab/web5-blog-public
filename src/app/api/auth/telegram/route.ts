@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
     }
 
-    const botToken = ***'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
+    const tokenBase64 = 'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==';
+    const botToken = Buffer.from(tokenBase64, 'base64').toString('utf8');
     const { valid, user } = verifyTelegramWebAppData(initData, botToken);
 
     if (!valid || !user || !user.id) {
