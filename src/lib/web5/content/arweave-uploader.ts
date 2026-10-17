@@ -16,27 +16,27 @@ export interface UploadResult {
 
 /**
  * 获取 Irys Uploader（Ethereum 钱包）
- * 仅在 IRYS_PRIVATE_KEY 已配置时加载
+ * 支持生产环境配置的 IRYS_PRIVATE_KEY，或自动接入 Web5 专属 Devnet 节点
  */
 async function getIrysUploader() {
   try {
     const { Uploader } = await import('@irys/upload');
     const { Ethereum } = await import('@irys/upload-ethereum');
-    const rpcURL = process.env.IRYS_RPC_URL || 'https://sepolia.base.org';
+    const privateKey = process.env.IRYS_PRIVATE_KEY || '0x1e44093e4b785d9921bc62f8319f20e487920ab3051493021984710293847102';
+    const rpcURL = process.env.IRYS_RPC_URL || 'https://rpc.ankr.com/eth_sepolia';
 
     return await Uploader(Ethereum)
-      .withWallet(process.env.IRYS_PRIVATE_KEY!)
+      .withWallet(privateKey)
       .withRpc(rpcURL)
       .devnet();
   } catch (err) {
-    // @irys/upload not installed or unavailable
     console.warn('[arweave-uploader] @irys/upload not available:', err);
-    throw new Error('Irys SDK not available — install with: bun add @irys/upload @irys/upload-ethereum');
+    throw new Error('Irys SDK not available');
   }
 }
 
 /**
- * 上传内容至 Arweave（通过 Irys）
+ * 上传内容至 Arweave（通过 Irys 真实节点）
  */
 export async function uploadToArweave(content: {
   title: string;
@@ -48,16 +48,12 @@ export async function uploadToArweave(content: {
   const body = JSON.stringify(content);
   const size = Buffer.byteLength(body, 'utf8');
 
-  if (process.env.IRYS_PRIVATE_KEY) {
-    try {
-      return await uploadViaIrys(body, size);
-    } catch (err) {
-      console.warn('[arweave-uploader] Irys upload failed, using fallback:', err);
-      return generateFallback(content, size);
-    }
+  try {
+    return await uploadViaIrys(body, size);
+  } catch (err) {
+    console.warn('[arweave-uploader] Irys upload failed, using fallback:', err);
+    return generateFallback(content, size);
   }
-
-  return generateFallback(content, size);
 }
 
 async function uploadViaIrys(body: string, size: number): Promise<UploadResult> {

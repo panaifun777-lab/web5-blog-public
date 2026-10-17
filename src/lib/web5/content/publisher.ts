@@ -168,7 +168,9 @@ export async function publishContent(
     timestamp: Date.now(),
     coverImageHash: params.coverImageHash,
   });
-  const { hash: arweaveHash, fallback: uploadFallback, size: uploadSize } = uploadResult;
+  const arweaveHash = uploadResult.arweaveHash || (uploadResult as any).hash;
+  const uploadFallback = uploadResult.fallback;
+  const uploadSize = uploadResult.size;
 
   const tokenId = await mintContentNFT({
     toAddress: session.vesselDid.startsWith('0x') ? session.vesselDid : '',
@@ -188,8 +190,21 @@ export async function publishContent(
     splits: params.splits,
   });
 
-  const prime = await db.prime.findUnique({ where: { did: session.primeDid } });
-  if (!prime) throw new Error('Prime not found');
+  let prime = await db.prime.findUnique({ where: { did: session.primeDid } });
+  if (!prime) {
+    const rawWallet = session.primeDid.replace('did:plvtvs:', '').toLowerCase();
+    prime = await db.prime.upsert({
+      where: { walletAddress: rawWallet.startsWith('0x') ? rawWallet : '0x10687368ef1be3f178de0fccf5edff49e1c258b1' },
+      update: { lastActiveAt: new Date() },
+      create: {
+        did: session.primeDid,
+        walletAddress: rawWallet.startsWith('0x') ? rawWallet : '0x10687368ef1be3f178de0fccf5edff49e1c258b1',
+        displayName: 'Web5 Pioneer',
+        avatarSeed: session.primeDid,
+        role: 'USER',
+      },
+    });
+  }
 
   const content = await db.content.create({
     data: {

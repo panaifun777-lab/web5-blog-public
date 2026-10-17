@@ -456,12 +456,13 @@ export function BlogFeed({
                   <Coins className="w-4 h-4" /> {fromTokenUnits(BigInt(detail.stats.tipsAmount))} USDC
                 </div>
                 <a
-                  href={`https://arweave.net/${detail.arweaveHash}`}
+                  href={`https://gateway.irys.xyz/${detail.arweaveHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto cyber-mono text-xs text-[#0066FF] hover:underline flex items-center gap-1"
+                  className="ml-auto cyber-mono text-xs text-[#00FFCC] hover:underline flex items-center gap-1 font-bold"
+                  title="在全球分布式存储网关公开查验原始 JSON 与签名"
                 >
-                  VIEW ON ARWEAVE <ExternalLink className="w-3 h-3" />
+                  VIEW ON ARWEAVE / IRYS <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
 
