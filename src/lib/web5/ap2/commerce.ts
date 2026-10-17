@@ -63,10 +63,43 @@ export function assignAgentToOrder(orderId: string, agentDid: string): CommerceT
 }
 
 /**
- * 分身提交成果哈希并自动执行链上结算
- * 触发 50% 网关手续费回购销毁飞轮机制
+ * Web5 智能体商业收益分配规则：
+ * 1. 50% USDC 直达创始人/团队运营出纳 (覆盖节点、海外服务器与大模型算力成本)
+ * 2. 50% USDC 自动在 Uniswap v4 回购 $WBOG 并注入流动性池 / 永久销毁
  */
-export function submitAndSettleOrder(orderId: string, deliverableHash: string): CommerceTaskOrder & { burnAmountWbog?: string } {
+export const REVENUE_ROUTING = {
+  OPERATIONAL_TREASURY_ADDRESS: '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+  OPERATIONAL_RATIO: 0.50, // 50% 运营出纳
+  LP_BUYBACK_LOCK_RATIO: 0.50, // 50% 回购销毁 / LP 注入锁定
+  UNISWAP_V4_POOL: '0xa4fed17b161f3c6ad0dbecbf837d1fa9079c69f78e564e676183656e8500abf1',
+  BURN_ADDRESS: '0x000000000000000000000000000000000000dEaD',
+} as const;
+
+export function calculateRevenueSplit(totalAmountUsdc: number) {
+  const operationalUsdc = totalAmountUsdc * REVENUE_ROUTING.OPERATIONAL_RATIO;
+  const lpLockUsdc = totalAmountUsdc * REVENUE_ROUTING.LP_BUYBACK_LOCK_RATIO;
+  const wbogAmount = (lpLockUsdc / 0.00008434).toFixed(2);
+  return {
+    totalUsdc: totalAmountUsdc,
+    operationalTreasury: {
+      recipient: REVENUE_ROUTING.OPERATIONAL_TREASURY_ADDRESS,
+      amountUsdc: operationalUsdc.toFixed(4),
+      purpose: 'Team Operations & High-Perf LLM Compute Infrastructure',
+    },
+    lpBuybackLock: {
+      pool: REVENUE_ROUTING.UNISWAP_V4_POOL,
+      amountUsdc: lpLockUsdc.toFixed(4),
+      estimatedWbogBurnedOrLocked: wbogAmount,
+      purpose: 'Uniswap v4 LP Depth Amplification & Deflationary Burn',
+    },
+  };
+}
+
+/**
+ * 分身提交成果哈希并自动执行链上结算
+ * 触发 50% 运营金库 + 50% 网关手续费回购销毁 / LP 注入锁定飞轮机制
+ */
+export function submitAndSettleOrder(orderId: string, deliverableHash: string): CommerceTaskOrder & { burnAmountWbog?: string; split?: any } {
   const order = taskLedger.get(orderId);
   if (!order) throw new Error('Task order not found');
   if (order.status !== 'ASSIGNED') throw new Error(`Cannot settle task in status: ${order.status}`);
@@ -76,15 +109,15 @@ export function submitAndSettleOrder(orderId: string, deliverableHash: string): 
   order.settledAt = Date.now();
   taskLedger.set(orderId, order);
 
-  // 1.5% 平台抽成中 50% 折算 WBOG 模拟回购销毁进 0x0...dead
+  // 1.5% 平台抽成，严格执行 50/50 智能分配
   const feeUsdc = parseFloat(order.bountyUsdc) * 0.015;
-  const burnUsdc = feeUsdc * 0.5;
-  const burnAmountWbog = (burnUsdc / 0.00008).toFixed(0);
-  console.log(`🔥 [Burn Flywheel] AP2 Task Settled (${orderId}): Burned ${burnAmountWbog} $WBOG into black hole.`);
+  const split = calculateRevenueSplit(feeUsdc);
+  console.log(`🔥 [Revenue Split] AP2 Task Settled (${orderId}): 50% (${split.operationalTreasury.amountUsdc} USDC) to Ops Treasury, 50% (${split.lpBuybackLock.amountUsdc} USDC) -> ${split.lpBuybackLock.estimatedWbogBurnedOrLocked} $WBOG into LP Lock / Burn.`);
 
   return {
     ...order,
-    burnAmountWbog,
+    burnAmountWbog: split.lpBuybackLock.estimatedWbogBurnedOrLocked,
+    split,
   };
 }
 

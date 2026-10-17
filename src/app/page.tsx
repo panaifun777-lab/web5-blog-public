@@ -247,12 +247,16 @@ export default function Home() {
 
             {session ? (
               <div className="flex items-center gap-2">
-                <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/20 text-[10px] h-6">
+                <Badge
+                  onClick={() => setTab('vessels')}
+                  className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/20 text-[10px] h-6 cursor-pointer hover:bg-[#B080E8]/25 hover:border-[#B080E8]/50 transition-all flex items-center gap-1 select-none"
+                  title={isEn ? "Click to open My Avatar Matrix & Vault" : "点击一键直达我的分身矩阵与资产看板"}
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#B080E8] mr-1.5 animate-pulse" />
                   VESSEL
                 </Badge>
                 <Button size="sm" variant="ghost" onClick={handleLogout}
-                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0" title="退出会话"><LogOut className="w-3.5 h-3.5" /></Button>
+                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0" title={isEn ? "Logout Session" : "退出会话"}><LogOut className="w-3.5 h-3.5" /></Button>
               </div>
             ) : null}
           </div>
