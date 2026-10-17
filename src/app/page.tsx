@@ -29,6 +29,7 @@ import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
 import { createPasskeySoul, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
+import { useTma } from '@/components/web5/telegram/tma-provider';
 import { Fingerprint } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/index';
 
@@ -73,6 +74,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
   const { t } = useI18n();
+  const { isTma, user: tmaUser } = useTma();
 
   // 客户端挂载安全恢复 Session，根治 Hydration Mismatch
   useEffect(() => {
@@ -155,8 +157,8 @@ export default function Home() {
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,255,204,0.02),transparent_60%)] pointer-events-none" />
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,102,255,0.015),transparent_60%)] pointer-events-none" />
 
-      {/* ━━ Header ━━ */}
-      <header className="relative z-50 border-b border-white/[0.06] bg-[#050508]/80 backdrop-blur-2xl sticky top-0">
+      {/* ━━ Header (TMA 模式下自动收敛为极简全屏沉浸栏) ━━ */}
+      <header className={`relative z-50 border-b border-white/[0.06] bg-[#050508]/80 backdrop-blur-2xl sticky top-0 ${isTma ? 'py-1' : ''}`}>
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
@@ -167,6 +169,11 @@ export default function Home() {
                 <span>B</span><span className="text-[#FFCC00]">•</span>
                 <span>O</span><span className="text-[#B080E8]">•</span>
                 <span>G</span>
+                {isTma && (
+                  <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[8px] h-3.5 px-1 py-0 ml-1 border-none font-mono">
+                    TMA
+                  </Badge>
+                )}
               </span>
               <span className="text-[9px] text-[#666] font-mono leading-none tracking-tight hidden sm:block">Web5 Blog Ontology Gateway</span>
             </div>
