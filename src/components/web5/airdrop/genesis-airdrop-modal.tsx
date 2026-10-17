@@ -31,6 +31,7 @@ export function GenesisAirdropModal({
 }: AirdropModalProps) {
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [claimTxHash, setClaimTxHash] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // 任务状态检查
@@ -44,6 +45,8 @@ export function GenesisAirdropModal({
     try {
       const c = localStorage.getItem('web5_airdrop_claimed') === 'true';
       setClaimed(c);
+      const savedTx = localStorage.getItem('web5_airdrop_txhash');
+      if (savedTx) setClaimTxHash(savedTx);
       const t3 = localStorage.getItem('web5_task_write') === 'true';
       setIsTask3Done(t3);
       const t4 = localStorage.getItem('web5_task_pay') === 'true';
@@ -71,11 +74,31 @@ export function GenesisAirdropModal({
       return;
     }
     setClaiming(true);
-    setTimeout(() => {
-      setClaimed(true);
+    try {
+      const res = await fetch('/api/airdrop/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: session?.primeDid?.replace('did:plvtvs:', ''),
+          primeDid: session?.primeDid,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setClaimed(true);
+        if (data.txHash) {
+          setClaimTxHash(data.txHash);
+          try { localStorage.setItem('web5_airdrop_txhash', data.txHash); } catch {}
+        }
+        try { localStorage.setItem('web5_airdrop_claimed', 'true'); } catch {}
+      } else {
+        alert(data.error || '认领失败，请重试');
+      }
+    } catch (err: any) {
+      alert('网络请求异常: ' + err.message);
+    } finally {
       setClaiming(false);
-      try { localStorage.setItem('web5_airdrop_claimed', 'true'); } catch {}
-    }, 1500);
+    }
   };
 
   return (
@@ -188,12 +211,63 @@ export function GenesisAirdropModal({
         {/* 领取动作 */}
         <div className="mt-4 pt-4 border-t border-white/[0.06]">
           {claimed ? (
-            <div className="p-3 rounded-xl bg-[#00FFCC]/10 border border-[#00FFCC]/30 text-center">
-              <div className="text-sm font-bold text-[#00FFCC] flex items-center justify-center gap-1.5 mb-1">
-                <ShieldCheck className="w-4 h-4" /> 1,000 $WBOG 创世额度已分配！
+            <div className="p-4 rounded-xl bg-[#00FFCC]/10 border border-[#00FFCC]/30 text-center space-y-2">
+              <div className="text-sm font-bold text-[#00FFCC] flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-5 h-5" /> 🎉 1,000 $WBOG 链上空投已到账！
               </div>
-              <div className="text-[11px] text-[#888]">
-                同时已为你铸造 Web5 Genesis Pioneer 链上身份凭证。
+              <div className="text-[11px] text-[#aaa]">
+                代币已直接从创世金库划拨至你的 Web3 钱包 ({session?.primeDid?.slice(0, 20)}...)
+              </div>
+              {claimTxHash && (
+                <div className="pt-1.5 border-t border-white/[0.06] flex items-center justify-center gap-1 text-[11px] font-mono">
+                  <span className="text-[#888]">链上交易: </span>
+                  <a
+                    href={`https://explorer.arc.io/tx/${claimTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#00FFCC] underline font-bold flex items-center gap-0.5"
+                  >
+                    <span>{claimTxHash.slice(0, 10)}...{claimTxHash.slice(-8)} (ArcScan 查验 ↗)</span>
+                  </a>
+                </div>
+              )}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (typeof window !== 'undefined' && (window as any).ethereum) {
+                      try {
+                        await (window as any).ethereum.request({
+                          method: 'wallet_watchAsset',
+                          params: {
+                            type: 'ERC20',
+                            options: {
+                              address: ARC_MAINNET.addresses.WBOG,
+                              symbol: 'WBOG',
+                              decimals: 18,
+                              image: 'https://web5.blog/tokens/wbog.png',
+                            },
+                          },
+                        });
+                      } catch (err: any) {
+                        alert('添加代币取消或失败: ' + err?.message);
+                      }
+                    } else {
+                      alert('请先连接 MetaMask 钱包插件以查看代币余额。');
+                    }
+                  }}
+                  className="w-full sm:w-auto text-xs bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40 hover:bg-[#00FFCC]/30 h-8 px-3"
+                >
+                  🦊 一键添加到 MetaMask 钱包
+                </Button>
+                <a
+                  href={`https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=${ARC_MAINNET.addresses.WBOG}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto text-xs bg-white/[0.04] text-white border border-white/[0.1] hover:bg-white/[0.08] h-8 px-3 rounded-lg flex items-center justify-center gap-1"
+                >
+                  🦄 前往 Uniswap 查看市值 ↗
+                </a>
               </div>
             </div>
           ) : (
@@ -202,7 +276,7 @@ export function GenesisAirdropModal({
               disabled={claiming || completedCount < 5}
               className="w-full bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-90 text-black font-bold h-10 shadow-lg shadow-[#00FFCC]/20"
             >
-              {claiming ? '正在链上分配与确权...' : completedCount === 5 ? '🎉 立即认领 1,000 $WBOG + 创世勋章' : `还需完成 ${5 - completedCount} 项任务解锁`}
+              {claiming ? '正在 Circle ARC 链上划拨 1,000 $WBOG...' : completedCount === 5 ? '🎉 立即认领 1,000 $WBOG (链上直达钱包)' : `还需完成 ${5 - completedCount} 项任务解锁`}
             </Button>
           )}
 
