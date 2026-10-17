@@ -9,6 +9,7 @@
 import { useState, useEffect } from 'react';
 import { ScanRitual } from '@/components/web5/ritual/scan-ritual';
 import { MatrixRain } from '@/components/web5/effects/matrix-rain';
+import { SplashAwakening } from '@/components/web5/effects/splash-awakening';
 import { getCurrentVesselSession, revokeVesselSession } from '@/lib/web5/vessel-auth';
 import type { VesselSession } from '@/lib/web5/types';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ const TRENDING = [
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState<VesselSession | null>(null);
   const [view, setView] = useState<View>('ritual');
   const [tab, setTab] = useState<Tab>('feed');
@@ -115,44 +117,36 @@ export default function Home() {
 
   // ━━ 统一服务端与首屏渲染，防止客户端插件注入引发报错 ━━
   if (!mounted) {
-    return (
-      <main className="min-h-screen bg-[#050508] text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00FFCC] to-[#0066FF] flex items-center justify-center text-sm font-black text-black animate-pulse">W5</div>
-          <div className="text-xs text-[#555] font-mono tracking-widest uppercase">Initializing Digital Ontology...</div>
-        </div>
-      </main>
-    );
+    return <SplashAwakening onFinished={() => {}} />;
   }
 
-  // ━━ UNATHED — RitualLanding ━━
-  if (view === 'ritual') return (
-    <>
-      <RitualLanding
-        t={t}
-        moduleLabels={moduleLabels}
-        loginMethod={loginMethod}
-        setLoginMethod={setLoginMethod}
-        handleRitualSuccess={handleRitualSuccess}
-        setSession={setSession}
-        setView={setView}
-        setTab={setTab}
-        setActiveModule={setActiveModule}
-        onOpenAirdrop={() => setAirdropOpen(true)}
-      />
-      <GenesisAirdropModal
-        open={airdropOpen}
-        onOpenChange={setAirdropOpen}
-        session={session}
-        onAwaken={() => setLoginMethod('vessel')}
-        onGoWrite={() => { setView('app'); setTab('write'); }}
-      />
-    </>
-  );
-
-  // ━━ AUTHED — Main App ━━
   return (
-    <main className="min-h-screen bg-[#050508] text-white flex flex-col" suppressHydrationWarning>
+    <>
+      {showSplash && <SplashAwakening onFinished={() => setShowSplash(false)} />}
+      {view === 'ritual' ? (
+        <>
+          <RitualLanding
+            t={t}
+            moduleLabels={moduleLabels}
+            loginMethod={loginMethod}
+            setLoginMethod={setLoginMethod}
+            handleRitualSuccess={handleRitualSuccess}
+            setSession={setSession}
+            setView={setView}
+            setTab={setTab}
+            setActiveModule={setActiveModule}
+            onOpenAirdrop={() => setAirdropOpen(true)}
+          />
+          <GenesisAirdropModal
+            open={airdropOpen}
+            onOpenChange={setAirdropOpen}
+            session={session}
+            onAwaken={() => setLoginMethod('vessel')}
+            onGoWrite={() => { setView('app'); setTab('write'); }}
+          />
+        </>
+      ) : (
+        <main className="min-h-screen bg-[#050508] text-white flex flex-col" suppressHydrationWarning>
       {/* Matrix Rain background */}
       <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
         <MatrixRain columns={32} className="w-full h-full" />
@@ -477,6 +471,8 @@ export default function Home() {
       {/* ━━ Footer ━━ */}
       <Footer />
     </main>
+    )}
+    </>
   );
 }
 
