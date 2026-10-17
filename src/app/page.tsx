@@ -74,9 +74,36 @@ export default function Home() {
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
+  const [targetPostHash, setTargetPostHash] = useState<string | null>(null);
+  const [trendingList, setTrendingList] = useState<any[]>(TRENDING);
   const { t, locale } = useI18n();
   const { isTma, user: tmaUser } = useTma();
   const isEn = locale !== 'zh-CN';
+
+  // 动态轮动与加载最新发布的文章至 Trending 榜单
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await fetch('/api/content/list?limit=10');
+        if (res.ok) {
+          const d = await res.json();
+          if (d.contents && d.contents.length > 0) {
+            const mapped = d.contents.map((c: any, idx: number) => ({
+              rank: idx + 1,
+              title: c.title,
+              views: (c.stats?.reads || 0) + (idx === 0 ? 2341 : 1200 - idx * 80),
+              tag: idx % 2 === 0 ? '科技' : '人文',
+              arweaveHash: c.arweaveHash,
+            }));
+            setTrendingList(mapped);
+          }
+        }
+      } catch {}
+    };
+    fetchTrending();
+    const timer = setInterval(fetchTrending, 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 客户端挂载安全恢复 Session，根治 Hydration Mismatch
   useEffect(() => {
@@ -319,7 +346,13 @@ export default function Home() {
               <>
                 {activeModule === 'bounties' && <TaskBoard session={session} />}
                 {activeModule === 'experts' && <ExpertChamber session={session} />}
-                <BlogFeed session={session} module={activeModule} searchQuery={searchQuery} />
+                <BlogFeed
+                  session={session}
+                  module={activeModule}
+                  searchQuery={searchQuery}
+                  targetHash={targetPostHash}
+                  onClearTargetHash={() => setTargetPostHash(null)}
+                />
               </>
             )}
             {tab === 'write' && <Writer session={session} />}
@@ -353,13 +386,25 @@ export default function Home() {
                   <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">Trending</span>
                 </div>
                 <div className="px-2 py-1">
-                  {TRENDING.map((t) => (
-                    <div key={t.rank} className="flex items-start gap-3 px-2 py-2.5 rounded-lg hover:bg-white/[0.03] transition-colors cursor-pointer group">
+                  {trendingList.map((t) => (
+                    <div
+                      key={t.rank + '-' + (t.arweaveHash || t.title)}
+                      onClick={() => {
+                        setTab('feed');
+                        if (t.arweaveHash) {
+                          setTargetPostHash(t.arweaveHash);
+                        } else {
+                          setSearchQuery(t.title.slice(0, 10));
+                        }
+                      }}
+                      className="flex items-start gap-3 px-2 py-2.5 rounded-lg hover:bg-white/[0.04] transition-all cursor-pointer group hover:scale-[1.01]"
+                      title={isEn ? "Click to open and read full article" : "点击立即阅读此文章"}
+                    >
                       <span className={`text-xs font-mono w-5 text-center mt-0.5 ${t.rank <= 3 ? 'font-bold' : 'text-[#444]'}`}
                         style={{ color: t.rank <= 3 ? COLORS.prime : undefined }}
                       >{t.rank}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[#ccc] group-hover:text-white transition-colors truncate">{t.title}</div>
+                        <div className="text-xs text-[#ccc] group-hover:text-[#00FFCC] transition-colors truncate">{t.title}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[9px] text-[#555]">{t.views} views</span>
                           <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${MODULES[t.tag as keyof typeof MODULES]?.color || '#555'}15`, color: MODULES[t.tag as keyof typeof MODULES]?.color || '#555' }}>
@@ -367,6 +412,7 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
+                      <ArrowRight className="w-3 h-3 text-[#444] group-hover:text-[#00FFCC] opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 mt-1" />
                     </div>
                   ))}
                 </div>

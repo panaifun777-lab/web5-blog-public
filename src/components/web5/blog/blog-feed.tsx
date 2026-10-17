@@ -70,10 +70,14 @@ export function BlogFeed({
   session,
   module: mod,
   searchQuery = '',
+  targetHash,
+  onClearTargetHash,
 }: {
   session: VesselSession | null;
   module?: string;
   searchQuery?: string;
+  targetHash?: string | null;
+  onClearTargetHash?: () => void;
 }) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +164,50 @@ export function BlogFeed({
     }
     return true;
   });
+
+  const openPostByHash = useCallback(async (hash: string) => {
+    try {
+      const res = await fetch(`/api/content/detail?hash=${hash}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.content) {
+          const detail = {
+            id: data.content.id,
+            arweaveHash: data.content.arweaveHash,
+            tokenId: data.content.tokenId,
+            title: data.content.title,
+            excerpt: data.content.excerpt,
+            bodyMd: data.content.bodyMd,
+            authorDid: data.content.authorDid,
+            authorName: data.content.authorName,
+            authorAvatarSeed: data.content.authorAvatarSeed,
+            authorBio: data.content.authorBio,
+            license: data.content.license,
+            royaltyRate: data.content.royaltyRate,
+            arpVcId: data.content.arpVcId,
+            publishedAt: data.content.publishedAt,
+            stats: { reads: 0, comments: 0, tips: 0, tipsAmount: '0' },
+          };
+          setSelected({
+            detail,
+            interactions: data.interactions || [],
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load post by hash:', err);
+    }
+  }, []);
+
+  // 支持 URL 参数 ?post=... 或 prop targetHash 自动打开文章
+  useEffect(() => {
+    if (targetHash) {
+      openPostByHash(targetHash);
+    } else if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('post');
+      if (p) openPostByHash(p);
+    }
+  }, [targetHash, openPostByHash]);
 
   const openPost = async (post: BlogPost) => {
     try {
@@ -284,7 +332,15 @@ export function BlogFeed({
       <div className="space-y-4">
         <Button
           variant="ghost"
-          onClick={() => setSelected(null)}
+          onClick={() => {
+            setSelected(null);
+            onClearTargetHash?.();
+            if (typeof window !== 'undefined') {
+              const u = new URL(window.location.href);
+              u.searchParams.delete('post');
+              window.history.replaceState({}, '', u.toString());
+            }
+          }}
           className="cyber-mono text-[#00FFCC] hover:text-[#00FFCC]"
         >
           <ArrowLeft className="w-4 h-4 mr-1" /> BACK TO FEED

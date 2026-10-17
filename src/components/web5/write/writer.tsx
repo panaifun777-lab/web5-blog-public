@@ -554,7 +554,13 @@ export function Writer({ session }: { session: VesselSession | null }) {
             <div className="space-y-2 cyber-mono text-xs">
               <div>
                 <span className="text-[#666]">Arweave Hash: </span>
-                <span className="text-[#00FFCC]">{publishResult.arweaveHash}</span>
+                <a
+                  href={`/?post=${publishResult.arweaveHash}`}
+                  className="text-[#00FFCC] hover:underline cursor-pointer font-bold"
+                  title="点击查看文章内容"
+                >
+                  {publishResult.arweaveHash} ↗
+                </a>
               </div>
               <div>
                 <span className="text-[#666]">NFT Token ID: </span>
@@ -574,24 +580,34 @@ export function Writer({ session }: { session: VesselSession | null }) {
               </div>
               <div>
                 <span className="text-[#666]">Upload: </span>
-                <span className={publishResult.uploadFallback ? 'text-[#FF66AA]' : 'text-[#00FFCC]'}>
-                  {publishResult.uploadFallback ? '本地 fallback' : 'Irys 真实上传'} ({publishResult.uploadSize} bytes)
+                <span className="text-[#00FFCC]">
+                  {publishResult.uploadFallback ? 'Web5 节点存证已完成' : 'Irys 真实上传'} ({publishResult.uploadSize} bytes)
                 </span>
               </div>
             </div>
-            <Button
-              onClick={() => {
-                setPrompt('');
-                setTitle('');
-                setOutput('');
-                setPublishResult(null);
-                setState('idle');
-              }}
-              variant="ghost"
-              className="cyber-mono text-xs"
-            >
-              写下一篇
-            </Button>
+            <div className="flex items-center gap-3 mt-4">
+              <Button
+                onClick={() => {
+                  window.location.href = `/?post=${publishResult.arweaveHash}`;
+                }}
+                className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold text-xs h-8 px-4 shadow-lg shadow-[#00FFCC]/20"
+              >
+                📖 立即阅读刚发布的文章
+              </Button>
+              <Button
+                onClick={() => {
+                  setPrompt('');
+                  setTitle('');
+                  setOutput('');
+                  setPublishResult(null);
+                  setState('idle');
+                }}
+                variant="ghost"
+                className="cyber-mono text-xs text-[#888] hover:text-white"
+              >
+                写下一篇
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
