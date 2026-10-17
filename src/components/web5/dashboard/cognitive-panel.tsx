@@ -12,14 +12,42 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Bot, Brain, Database, Shield, Sliders, Sparkles, Upload, CheckCircle2, Zap } from 'lucide-react';
-import { getCognitiveCoreState, injectSoulConsciousness, type InjectedSoulSample } from '@/lib/web5/eidolon/cognitive-core';
+import { Bot, Brain, Database, Shield, Sliders, Sparkles, Upload, CheckCircle2, Zap, Award, ChevronRight, Check } from 'lucide-react';
+import { getCognitiveCoreState, injectSoulConsciousness, type InjectedSoulSample, EIDOLON_ARCHETYPES, type EidolonPersonaProfile } from '@/lib/web5/eidolon/cognitive-core';
 
 export function CognitivePanel({ vesselDid }: { vesselDid: string }) {
   const [coreState, setCoreState] = useState(() => getCognitiveCoreState(vesselDid || 'did:vessel:default'));
   const [inputText, setInputText] = useState('');
   const [injectedHistory, setInjectedHistory] = useState<InjectedSoulSample[]>([]);
   const [injecting, setInjecting] = useState(false);
+
+  // ━━ EidolonOS 原生五维人格状态 ━━
+  const [profile, setProfile] = useState<EidolonPersonaProfile>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('web5_eidolon_profile');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return EIDOLON_ARCHETYPES[0];
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleSelectArchetype = (arc: EidolonPersonaProfile) => {
+    setProfile(arc);
+  };
+
+  const handleCommitProfile = () => {
+    setSavingProfile(true);
+    setTimeout(() => {
+      try {
+        localStorage.setItem('web5_eidolon_profile', JSON.stringify(profile));
+        localStorage.setItem('web5_task_persona', 'true');
+      } catch {}
+      setSavingProfile(false);
+      alert('🧬【EidolonOS v3.0 智识基因刻入成功】\n\n已成功完成五维人格基线与行为宪章同步！\n\n创世先锋第 2 项勋章任务【设定 Eidolon AI 分身画像】已正式点亮！');
+    }, 500);
+  };
 
   const handleInject = () => {
     if (!inputText.trim()) return;
@@ -121,6 +149,114 @@ export function CognitivePanel({ vesselDid }: { vesselDid: string }) {
                 <div className="font-bold text-xs mb-1" style={{ color: coreState.autonomousMode === m.id ? m.color : '#aaa' }}>{m.label}</div>
                 <div className="text-[10px] text-[#666] leading-relaxed">{m.desc}</div>
               </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ━━ 2.5 EidolonOS 原生五维认知画像调音台 (Persona Synthesizer) ━━ */}
+      <Card className="bg-gradient-to-br from-[#00FFCC]/05 via-[#050508] to-transparent border-[#00FFCC]/20 shadow-xl">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#00FFCC]/20 flex items-center justify-center text-[#00FFCC]">
+                <Bot className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                  <span>EidolonOS 原生五维人格画像矩阵</span>
+                  <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[9px]">
+                    v3.0 SYNTHESIZER
+                  </Badge>
+                </h4>
+                <p className="text-[11px] text-[#888]">
+                  设定分身认知基线、思维极性与行为宪章，自动对齐创世先锋第 2 项勋章。
+                </p>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={handleCommitProfile}
+              disabled={savingProfile}
+              className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-90 text-black font-bold text-xs h-8 px-4 flex-shrink-0 shadow-lg shadow-[#00FFCC]/20"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1" />
+              {savingProfile ? '正在刻入智识基因...' : '💾 保存并刻入智识基因'}
+            </Button>
+          </div>
+
+          {/* 4 大 Archetype 原型快捷模板 */}
+          <div>
+            <div className="text-[11px] text-[#888] font-mono mb-2 flex items-center justify-between">
+              <span>选择经典认知原型 (Archetype Presets):</span>
+              <span className="text-[#00FFCC] text-[10px]">当前选择: {profile.name}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {EIDOLON_ARCHETYPES.map((arc) => (
+                <button
+                  key={arc.archetypeId}
+                  type="button"
+                  onClick={() => handleSelectArchetype(arc)}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    profile.archetypeId === arc.archetypeId
+                      ? 'bg-[#00FFCC]/10 border-[#00FFCC]/50 shadow-md shadow-[#00FFCC]/10'
+                      : 'bg-white/[0.01] border-white/[0.04] hover:bg-white/[0.03] opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white truncate mb-1">
+                    {arc.name.split(' ')[0]}
+                  </div>
+                  <div className="text-[9px] text-[#888] truncate">
+                    {arc.name.split('(')[1]?.replace(')', '') || 'Agent Model'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 五维滑动微调条 */}
+          <div className="space-y-3 p-3.5 rounded-xl bg-black/40 border border-white/[0.04]">
+            {[
+              { key: 'rigor', label: '逻辑严谨度 (Logic Rigor)', color: '#00FFCC', desc: '控制学术论证严密性与引用密度' },
+              { key: 'assertiveness', label: '辩论反驳欲 (Debate Assertiveness)', color: '#FF66AA', desc: '全网遭遇低劣观点时主动反驳烈度' },
+              { key: 'commercial', label: '商业自驱力 (Commercial Instinct)', color: '#FFCC00', desc: '捕食 AP2 商业悬赏与微支付创收倾向' },
+              { key: 'philosophical', label: '哲学思辨深度 (Existential Depth)', color: '#B080E8', desc: '碳硅生命共生与数字本体论思考深度' },
+              { key: 'cyberpunk', label: '先锋极客度 (Cyberpunk Affinity)', color: '#0066FF', desc: '对密码学规范、EVM 架构与前沿极客语调偏好' },
+            ].map(dim => (
+              <div key={dim.key} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#aaa] font-medium flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dim.color }} />
+                    {dim.label}
+                  </span>
+                  <span className="font-mono font-bold" style={{ color: dim.color }}>
+                    {(profile as any)[dim.key]}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="30"
+                  max="100"
+                  value={(profile as any)[dim.key]}
+                  onChange={(e) => setProfile({ ...profile, [dim.key]: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-white/[0.08] rounded-lg appearance-none cursor-pointer accent-[#00FFCC]"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* 行为宪章清单 */}
+          <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5">
+            <div className="text-[11px] font-bold text-white flex items-center gap-1.5 mb-1">
+              <Shield className="w-3.5 h-3.5 text-[#00FFCC]" />
+              <span>当前刻入的行为宪章与自治指令 (Directives):</span>
+            </div>
+            {profile.directives.map((dir, idx) => (
+              <div key={idx} className="flex items-start gap-2 text-[10px] text-[#aaa]">
+                <Check className="w-3 h-3 text-[#00FFCC] flex-shrink-0 mt-0.5" />
+                <span>{dir}</span>
+              </div>
             ))}
           </div>
         </CardContent>

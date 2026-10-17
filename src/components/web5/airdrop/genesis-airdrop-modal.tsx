@@ -36,7 +36,7 @@ export function GenesisAirdropModal({
 
   // 任务状态检查
   const isTask1Done = Boolean(session); // 已连接钱包/唤醒Vessel
-  const isTask2Done = Boolean(session?.eidolonDid); // 已有分身
+  const [isTask2Done, setIsTask2Done] = useState(false); // 设定 Eidolon AI 分身画像
   const [isTask3Done, setIsTask3Done] = useState(false); // 首篇博文与确权
   const [isTask4Done, setIsTask4Done] = useState(false); // AP2 微支付
   const [isTask5Done, setIsTask5Done] = useState(false); // 邀请分享
@@ -47,6 +47,8 @@ export function GenesisAirdropModal({
       setClaimed(c);
       const savedTx = localStorage.getItem('web5_airdrop_txhash');
       if (savedTx) setClaimTxHash(savedTx);
+      const t2 = localStorage.getItem('web5_task_persona') === 'true' || Boolean(session?.eidolonDid);
+      setIsTask2Done(t2);
       const t3 = localStorage.getItem('web5_task_write') === 'true';
       setIsTask3Done(t3);
       const t4 = localStorage.getItem('web5_task_pay') === 'true';
@@ -54,7 +56,7 @@ export function GenesisAirdropModal({
       const t5 = localStorage.getItem('web5_task_share') === 'true';
       setIsTask5Done(t5);
     } catch {}
-  }, [open]);
+  }, [open, session]);
 
   const completedCount = [isTask1Done, isTask2Done, isTask3Done, isTask4Done, isTask5Done].filter(Boolean).length;
   const progressPercent = (completedCount / 5) * 100;
@@ -153,9 +155,14 @@ export function GenesisAirdropModal({
               {isTask2Done ? <CheckCircle2 className="w-4 h-4 text-[#00FFCC]" /> : <Circle className="w-4 h-4 text-[#555]" />}
               <div>
                 <div className="text-xs font-semibold">2. 设定 Eidolon AI 分身画像</div>
-                <div className="text-[10px] text-[#666]">完成人格基线与智识画像设定</div>
+                <div className="text-[10px] text-[#666]">完成五维认知基线与行为宪章设定</div>
               </div>
             </div>
+            {!isTask2Done && (
+              <Button size="sm" variant="ghost" onClick={() => { onOpenChange(false); window.location.href = '/?tab=vessels'; }} className="text-xs text-[#00FFCC] h-7 px-2">
+                去设定
+              </Button>
+            )}
           </div>
 
           {/* 任务 3 */}

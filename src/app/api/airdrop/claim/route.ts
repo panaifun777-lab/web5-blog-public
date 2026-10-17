@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         success: true,
         alreadyClaimed: true,
         message: '该钱包已领取过创世先锋 1,000 $WBOG 空投！',
-        txHash: existing.comment.replace('[GENESIS_AIRDROP_CLAIMED]:', '').trim(),
+        txHash: (existing.comment || '').replace('[GENESIS_AIRDROP_CLAIMED]:', '').trim(),
       });
     }
 
