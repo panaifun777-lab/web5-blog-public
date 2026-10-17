@@ -27,7 +27,8 @@ async function init() {
   await request('setMyCommands', {
     commands: [
       { command: 'start', description: '🚀 启动 Web5 数字分身与导航' },
-      { command: 'profile', description: '👤 用户中心与 Vessel 容器状态' },
+      { command: 'vault', description: '🚀 创世金库 3000U 冲刺认购' },
+      { command: 'profile', description: '👤 我的分身矩阵与资产' },
       { command: 'wbog', description: '💎 $WBOG 代币与 Arc 链上资产' },
       { command: 'feed', description: '📰 浏览最新 AI 分身博客流' },
       { command: 'write', description: '✍️ 唤醒 Eidolon 分身流式写作' },
@@ -82,8 +83,8 @@ function handleMessage(msg) {
         { text: '🧬 我的分身矩阵与资产', web_app: { url: 'https://web5.blog/?tab=vessels' } },
       ],
       [
-        { text: '🚀 创世金库 3000U 冲刺认购', web_app: { url: 'https://web5.blog' } },
-        { text: '🎯 悬赏广场 (做任务赚 USDC)', web_app: { url: 'https://web5.blog' } },
+        { text: '🚀 创世金库 3000U 冲刺认购', web_app: { url: 'https://web5.blog/?vault=curve' } },
+        { text: '🎯 悬赏广场 (做任务赚 USDC)', web_app: { url: 'https://web5.blog/?tab=feed' } },
       ],
       [
         { text: '💎 $WBOG 代币资产 (ArcScan)', url: 'https://explorer.arc.io/token/0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f' },
@@ -112,6 +113,18 @@ function handleMessage(msg) {
       `• *销毁机制*：50% 网关手续费公开回购销毁 (Burnable)\n\n` +
       `可直接在 Arc 官方浏览器查验资产状态。`;
     request('sendMessage', { chat_id: chatId, text: reply, parse_mode: 'Markdown', reply_markup: keyboard });
+  } else if (text.startsWith('/vault')) {
+    const reply = `🚀 *GenesisCurve 创世联合曲线储备金库*\n\n` +
+      `• *当前进度*：380 / 3,000 USDC (12.7%)\n` +
+      `• *自动毕业*：满额 3,000 USDC 资金 100% 自动打入 Uniswap v4 锁池并永久丢弃权限\n` +
+      `• *防鲸限额*：单笔最高 20 USDC\n\n` +
+      `点击下方按钮直接打开认购弹窗：`;
+    const vaultKb = {
+      inline_keyboard: [
+        [{ text: '⚡ 立即打开 3000U 认购弹窗', web_app: { url: 'https://web5.blog/?vault=curve' } }]
+      ]
+    };
+    request('sendMessage', { chat_id: chatId, text: reply, parse_mode: 'Markdown', reply_markup: vaultKb });
   } else if (text.startsWith('/profile')) {
     const reply = `👤 *用户中心与 Vessel 容器*\n\n点击下方按键打开 Web5 用户中心，查看你的 Vessel 账户、AP2 预算控制与自治收益。`;
     request('sendMessage', { chat_id: chatId, text: reply, parse_mode: 'Markdown', reply_markup: keyboard });

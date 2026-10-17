@@ -21,7 +21,14 @@ interface GenesisCurveModalProps {
 }
 
 export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: GenesisCurveModalProps) {
-  const [vault, setVault] = useState<any>(null);
+  const [vault, setVault] = useState<any>({
+    currentReserveUsdc: 380,
+    graduationCapUsdc: 3000,
+    progressPercent: 12.7,
+    currentPriceUsdc: 0.00008152,
+    maxPerTxUsdc: 20,
+    isGraduated: false,
+  });
   const [selectedAmount, setSelectedAmount] = useState('20');
   const [submitting, setSubmitting] = useState(false);
   const { locale } = useI18n();
@@ -32,13 +39,13 @@ export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: Ge
       const res = await fetch('/api/curve/vault');
       if (res.ok) {
         const d = await res.json();
-        setVault(d.vault);
+        if (d.vault) setVault(d.vault);
       }
     } catch {}
   };
 
   useEffect(() => {
-    if (open) fetchVault();
+    fetchVault();
   }, [open]);
 
   const amountNum = parseFloat(selectedAmount) || 20;

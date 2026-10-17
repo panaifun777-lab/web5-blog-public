@@ -136,8 +136,19 @@ export default function Home() {
       return;
     }
 
-    // 检查 Twitter 回调
+    // 检查直达弹窗参数 (?vault=curve 或 ?modal=airdrop)
     const params = new URLSearchParams(window.location.search);
+    if (params.get('vault') === 'curve' || params.get('modal') === 'curve') {
+      setCurveModalOpen(true);
+    }
+    if (params.get('modal') === 'airdrop' || params.get('airdrop') === 'true') {
+      setAirdropOpen(true);
+    }
+    if (params.get('modal') === 'sponsor' || params.get('sponsor') === 'true') {
+      setSponsorModalOpen(true);
+    }
+
+    // 检查 Twitter 回调
     const twitterSession = params.get('twitter_session');
     const twitterLogin = params.get('twitter_login');
     if (twitterSession && twitterLogin === 'success') {
@@ -175,28 +186,20 @@ export default function Home() {
     <>
       {showSplash && <SplashAwakening onFinished={() => setShowSplash(false)} />}
       {view === 'ritual' ? (
-        <>
-          <RitualLanding
-            t={t}
-            moduleLabels={moduleLabels}
-            loginMethod={loginMethod}
-            setLoginMethod={setLoginMethod}
-            handleRitualSuccess={handleRitualSuccess}
-            setSession={setSession}
-            setView={setView}
-            setTab={setTab}
-            setActiveModule={setActiveModule}
-            onOpenAirdrop={() => setAirdropOpen(true)}
-            isEn={isEn}
-          />
-          <GenesisAirdropModal
-            open={airdropOpen}
-            onOpenChange={setAirdropOpen}
-            session={session}
-            onAwaken={() => setLoginMethod('vessel')}
-            onGoWrite={() => { setView('app'); setTab('write'); }}
-          />
-        </>
+        <RitualLanding
+          t={t}
+          moduleLabels={moduleLabels}
+          loginMethod={loginMethod}
+          setLoginMethod={setLoginMethod}
+          handleRitualSuccess={handleRitualSuccess}
+          setSession={setSession}
+          setView={setView}
+          setTab={setTab}
+          setActiveModule={setActiveModule}
+          onOpenAirdrop={() => setAirdropOpen(true)}
+          onOpenCurve={() => setCurveModalOpen(true)}
+          isEn={isEn}
+        />
       ) : (
         <main className="min-h-screen bg-[#050508] text-white flex flex-col" suppressHydrationWarning>
       {/* Matrix Rain background */}
@@ -662,33 +665,31 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ━━ 创世空投弹窗 ━━ */}
+      {/* ━━ Footer ━━ */}
+      <Footer />
+    </main>
+    )}
+
+      {/* ━━ 全局常驻弹窗 (无论是否登录、PC还是移动端/TMA均可随时唤出) ━━ */}
       <GenesisAirdropModal
         open={airdropOpen}
         onOpenChange={setAirdropOpen}
         session={session}
         onAwaken={() => setLoginMethod('vessel')}
-        onGoWrite={() => { setTab('write'); }}
+        onGoWrite={() => { setView('app'); setTab('write'); }}
       />
 
-      {/* ━━ Trending 商业赞助投放弹窗 ━━ */}
-      <SponsorModal
-        open={sponsorModalOpen}
-        onOpenChange={setSponsorModalOpen}
-        onSuccess={fetchSponsor}
-      />
-
-      {/* ━━ 创世金库 3000U 冲刺认购弹窗 ━━ */}
       <GenesisCurveModal
         open={curveModalOpen}
         onOpenChange={setCurveModalOpen}
         session={session}
       />
 
-      {/* ━━ Footer ━━ */}
-      <Footer />
-    </main>
-    )}
+      <SponsorModal
+        open={sponsorModalOpen}
+        onOpenChange={setSponsorModalOpen}
+        onSuccess={fetchSponsor}
+      />
     </>
   );
 }
@@ -696,7 +697,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
       {/* Matrix Rain background */}
@@ -757,7 +758,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               {/* 创世空投横幅 */}
               <div
                 onClick={onOpenAirdrop}
-                className="mb-6 p-3.5 rounded-xl border border-[#FFCC00]/40 bg-gradient-to-r from-[#FFCC00]/10 via-[#00FFCC]/05 to-transparent flex items-center justify-between cursor-pointer hover:border-[#FFCC00]/70 transition-all group"
+                className="mb-3.5 p-3.5 rounded-xl border border-[#FFCC00]/40 bg-gradient-to-r from-[#FFCC00]/10 via-[#00FFCC]/05 to-transparent flex items-center justify-between cursor-pointer hover:border-[#FFCC00]/70 transition-all group"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-[#FFCC00]/15 flex items-center justify-center text-[#FFCC00]">
@@ -776,6 +777,30 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-[#FFCC00] group-hover:translate-x-1 transition-transform" />
+              </div>
+
+              {/* 创世金库 3000U 冲刺横幅 */}
+              <div
+                onClick={onOpenCurve}
+                className="mb-6 p-3.5 rounded-xl border border-[#00FFCC]/40 bg-gradient-to-r from-[#00FFCC]/15 via-[#FFCC00]/05 to-transparent flex items-center justify-between cursor-pointer hover:border-[#00FFCC]/70 transition-all group shadow-lg shadow-[#00FFCC]/05"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#00FFCC]/15 flex items-center justify-center text-[#00FFCC]">
+                    <Rocket className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>{isEn ? 'Genesis Curve Angel Vault (3,000U Cap)' : 'GenesisCurve 创世金库 3,000U 冲刺认购'}</span>
+                      <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 h-4 font-mono">
+                        380 / 3,000U (12.7%)
+                      </Badge>
+                    </div>
+                    <div className="text-[10px] text-[#888] mt-0.5">
+                      {isEn ? '100% of funds locked into Uniswap v4 on cap · Renounce ownership on graduation' : '单笔限额 20U 防鲸 · 满额 3000U 永久锁池并丢弃权限 · 点击认购 →'}
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#00FFCC] group-hover:translate-x-1 transition-transform" />
               </div>
 
               {/* Login Cards */}
