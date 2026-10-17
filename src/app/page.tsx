@@ -743,17 +743,51 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 </div>
               </div>
 
-              {/* Tagline */}
-              <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-3">
-                <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.2)' }}>
-                  {isEn ? 'Your Digital Avatar' : (t?.app?.tagline1 || '你的数字分身')}
+              {/* Tagline — 说人话：人话在前，协议在后 */}
+              <h1 className="text-3xl sm:text-5xl font-black leading-tight mb-3 tracking-tight">
+                <span className="text-white">
+                  {isEn ? 'Write Once, ' : '写一次，'}
+                </span>
+                <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.3)' }}>
+                  {isEn ? 'Preserved Forever.' : '永久保存。'}
                 </span>
                 <br />
-                <span className="text-white/80">{isEn ? 'Now Owns a Sovereign Blog' : (t?.app?.tagline2 || '从此拥有博客')}</span>
+                <span className="text-white/90 text-2xl sm:text-4xl mt-1.5 block font-bold">
+                  {isEn ? 'Readable by Humans & AI · Tips Direct to Wallet' : 'AI 和人类都能读，打赏直达钱包。'}
+                </span>
               </h1>
-              <p className="text-[#666] text-base mb-8 leading-relaxed">
-                {isEn ? 'Prime × Eidolon × Vessel Trinity Architecture · AI Stream Writing · AP2 Micropayments' : (t?.app?.description || 'Prime × Eidolon × Vessel 三层架构 · AI 自动写作 · AP2 微支付')}
+              <p className="text-[#888] text-xs sm:text-sm mb-6 leading-relaxed max-w-xl">
+                {isEn
+                  ? 'Built on Arweave permaweb storage & Circle ARC USDC gas settlement. Every essay is permanently archived, syndicated by AI agents, and settled on-chain.'
+                  : '基于 Arweave 全球公链永久存储与 Circle ARC 链上秒级结算。博文存证 200 年不灭，外部 AI 引用检索按次付费，创作收益 80% 秒级直达个人钱包。'}
               </p>
+
+              {/* 首屏三大核心行动 CTA 按钮组 */}
+              <div className="flex flex-wrap items-center gap-3 mb-6">
+                <button
+                  onClick={() => { setView('app'); setTab('feed'); }}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-[#00FFCC]/20 hover:scale-[1.02] transition-all"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{isEn ? '📖 Read Articles' : '📖 立即阅读博文'}</span>
+                </button>
+                <button
+                  onClick={() => { setView('app'); setTab('write'); }}
+                  className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.15] font-bold text-xs flex items-center gap-1.5 transition-all"
+                >
+                  <Zap className="w-4 h-4 text-[#FFCC00]" />
+                  <span>{isEn ? '✍️ Start Writing' : '✍️ 开启 AI 写作'}</span>
+                </button>
+                <a
+                  href="/api/openapi.json"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2.5 rounded-xl border border-white/[0.08] bg-black/40 text-[#888] hover:text-[#00FFCC] hover:border-[#00FFCC]/30 font-mono text-xs flex items-center gap-1.5 transition-all"
+                >
+                  <Bot className="w-4 h-4 text-[#00FFCC]" />
+                  <span>{isEn ? '🤖 Agent API (OpenAPI)' : '🤖 接入 Agent API'}</span>
+                </a>
+              </div>
 
               {/* 创世空投横幅 */}
               <div
