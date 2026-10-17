@@ -6,7 +6,7 @@
 // 融合 Circle ARC 稳定币公链 · $WBOG 原生代币 · 创世先锋空投
 // ════════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ScanRitual } from '@/components/web5/ritual/scan-ritual';
 import { MatrixRain } from '@/components/web5/effects/matrix-rain';
 import { SplashAwakening } from '@/components/web5/effects/splash-awakening';
@@ -28,6 +28,7 @@ import { SettingsPanel } from '@/components/web5/settings/settings-panel';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
+import { SponsorModal } from '@/components/web5/trending/sponsor-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
@@ -75,11 +76,27 @@ export default function Home() {
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
+  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [sponsoredAd, setSponsoredAd] = useState<any>(null);
   const [targetPostHash, setTargetPostHash] = useState<string | null>(null);
   const [trendingList, setTrendingList] = useState<any[]>(TRENDING);
   const { t, locale } = useI18n();
   const { isTma, user: tmaUser } = useTma();
   const isEn = locale !== 'zh-CN';
+
+  const fetchSponsor = useCallback(async () => {
+    try {
+      const res = await fetch('/api/commerce/sponsor');
+      if (res.ok) {
+        const d = await res.json();
+        if (d.sponsored) setSponsoredAd(d.sponsored);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchSponsor();
+  }, [fetchSponsor]);
 
   // 动态轮动与加载最新发布的文章至 Trending 榜单
   useEffect(() => {
@@ -382,11 +399,52 @@ export default function Home() {
 
               {/* 2. Trending */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.04]">
-                  <TrendingUp className="w-3.5 h-3.5" style={{ color: COLORS.prime }} />
-                  <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">Trending</span>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-3.5 h-3.5" style={{ color: COLORS.prime }} />
+                    <span className="text-xs font-semibold tracking-widest uppercase text-[#888]">Trending</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSponsorModalOpen(true)}
+                    className="h-6 px-2 text-[10px] text-[#FFCC00] hover:bg-[#FFCC00]/15 flex items-center gap-1 border border-[#FFCC00]/30"
+                  >
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>{isEn ? '+ Sponsor' : '+ 赞助榜首'}</span>
+                  </Button>
                 </div>
                 <div className="px-2 py-1">
+                  {/* 置顶商业赞助卡片 */}
+                  {sponsoredAd && (
+                    <div
+                      onClick={() => {
+                        if (sponsoredAd.targetUrl?.startsWith('http')) {
+                          window.open(sponsoredAd.targetUrl, '_blank');
+                        } else {
+                          window.location.href = sponsoredAd.targetUrl;
+                        }
+                      }}
+                      className="my-1.5 p-2.5 rounded-lg border border-[#FFCC00]/40 bg-gradient-to-r from-[#FFCC00]/15 via-[#00FFCC]/05 to-transparent cursor-pointer hover:border-[#FFCC00]/70 transition-all group"
+                      title={isEn ? "Sponsored Hot Topic - Click to view" : "商业热搜置顶 - 点击直达"}
+                    >
+                      <div className="flex items-center justify-between text-[9px] mb-1">
+                        <span className="text-[#FFCC00] font-bold font-mono flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-[#FFCC00] animate-pulse" /> SPONSORED · 官方推荐
+                        </span>
+                        <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[8px] py-0 h-3.5 border-none">
+                          TOP #1
+                        </Badge>
+                      </div>
+                      <div className="text-xs font-bold text-white group-hover:text-[#FFCC00] transition-colors truncate">
+                        {sponsoredAd.title}
+                      </div>
+                      <div className="text-[10px] text-[#aaa] truncate mt-0.5">
+                        {sponsoredAd.description}
+                      </div>
+                    </div>
+                  )}
+
                   {trendingList.map((t) => (
                     <div
                       key={t.rank + '-' + (t.arweaveHash || t.title)}
@@ -583,6 +641,13 @@ export default function Home() {
         session={session}
         onAwaken={() => setLoginMethod('vessel')}
         onGoWrite={() => { setTab('write'); }}
+      />
+
+      {/* ━━ Trending 商业赞助投放弹窗 ━━ */}
+      <SponsorModal
+        open={sponsorModalOpen}
+        onOpenChange={setSponsorModalOpen}
+        onSuccess={fetchSponsor}
       />
 
       {/* ━━ Footer ━━ */}

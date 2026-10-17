@@ -43,13 +43,47 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [spentTodayUsdc, setSpentTodayUsdc] = useState<string>('0.05');
   const [earnedHarvestUsdc, setEarnedHarvestUsdc] = useState<number>(150.0);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [isVip, setIsVip] = useState(false);
+  const [vipExpires, setVipExpires] = useState<number | null>(null);
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
   useEffect(() => {
-    const savedLimit = localStorage.getItem('web5_daily_limit_usdc');
-    if (savedLimit) setDailyLimitUsdc(savedLimit);
+    try {
+      const savedLimit = localStorage.getItem('web5_daily_limit_usdc');
+      if (savedLimit) setDailyLimitUsdc(savedLimit);
+      const vip = localStorage.getItem('web5_vessel_vip') === 'true';
+      const exp = localStorage.getItem('web5_vessel_vip_expires');
+      setIsVip(vip && (!exp || parseInt(exp) > Date.now()));
+      if (exp) setVipExpires(parseInt(exp));
+    } catch {}
   }, []);
+
+  const handleActivateVip = async (useWbog: boolean) => {
+    try {
+      const res = await fetch('/api/commerce/vip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vesselDid: session?.vesselDid,
+          paymentToken: useWbog ? 'WBOG' : 'USDC',
+          months: 1,
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setIsVip(true);
+        setVipExpires(d.vip.expiresAt);
+        localStorage.setItem('web5_vessel_vip', 'true');
+        localStorage.setItem('web5_vessel_vip_expires', String(d.vip.expiresAt));
+        alert(d.message);
+      } else {
+        alert(d.error || 'VIP 开通失败');
+      }
+    } catch (e: any) {
+      alert('激活失败: ' + e.message);
+    }
+  };
 
   const handleUpdateLimit = (lim: string) => {
     setDailyLimitUsdc(lim);
@@ -225,6 +259,70 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* ━━ Vessel VIP 月度通行证 (4.99U / 2.99U WBOG 6折) ━━ */}
+      <div className={`p-4 sm:p-5 rounded-2xl border transition-all my-3 ${
+        isVip
+          ? 'border-[#FFCC00]/50 bg-gradient-to-r from-[#FFCC00]/15 via-[#B080E8]/10 to-[#00FFCC]/05 shadow-xl shadow-[#FFCC00]/10'
+          : 'border-[#B080E8]/40 bg-gradient-to-r from-[#B080E8]/10 via-[#0a0e17] to-transparent'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isVip ? 'bg-[#FFCC00]/25 text-[#FFCC00] shadow-lg shadow-[#FFCC00]/20' : 'bg-[#B080E8]/20 text-[#B080E8]'
+            }`}>
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-1.5">
+                  <span>{isEn ? 'Vessel VIP Autonomous Pass' : 'Vessel VIP 分身尊享月度通行证'}</span>
+                  <Badge className={isVip ? "bg-[#FFCC00] text-black font-black text-[9px] py-0" : "bg-[#B080E8]/20 text-[#B080E8] text-[9px] py-0"}>
+                    {isVip ? 'ACTIVE VIP' : 'PRO ACCESS'}
+                  </Badge>
+                </h3>
+              </div>
+              <p className="text-[11px] text-[#aaa] mt-1 leading-relaxed">
+                {isVip
+                  ? `尊贵特权已生效（有效期至 ${new Date(vipExpires || Date.now()).toLocaleDateString()}）：全站付费博文免密畅读 · AI专家无限提问 · 写作3,000字上限 · 金色全息光环`
+                  : '开通尊享全站 x402 认知付费无限畅读 · AI 专家无限次深度会诊 · AI 流式写作 3,000 字上限 · 金色粒子光环'}
+              </p>
+              {!isVip && (
+                <div className="text-[10px] text-[#888] font-mono mt-1">
+                  标准价: 4.99 USDC/月 · <span className="text-[#00FFCC] font-bold">优先使用 $WBOG 专享 6 折: 仅 2.99U (35,500 WBOG)</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 flex-shrink-0">
+            {isVip ? (
+              <Badge className="bg-[#10B981]/20 text-[#10B981] border-[#10B981]/40 text-xs py-1.5 px-3 font-bold">
+                ✓ 尊贵特权生效中
+              </Badge>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => handleActivateVip(true)}
+                  className="bg-gradient-to-r from-[#00FFCC] to-[#FFCC00] text-black font-black text-xs h-9 px-3.5 shadow-lg shadow-[#00FFCC]/20 hover:scale-[1.02] transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" />
+                  {isEn ? 'Get VIP (35.5K WBOG · 60% OFF)' : '使用 $WBOG 开通 (仅 2.99U · 6折)'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleActivateVip(false)}
+                  className="border-white/[0.15] text-[#ccc] hover:text-white text-xs h-9 px-3"
+                >
+                  4.99 USDC
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* ━━ 资产与安全双视窗 (Sovereign Dual-Vault Windows) ━━ */}
       <div className="grid md:grid-cols-2 gap-4 my-2">
