@@ -426,6 +426,39 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+
+                {/* EIP-747 一键将 $WBOG 与高清图标添加到多链钱包 */}
+                <div className="pt-3 mt-3 border-t border-white/[0.04]">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (typeof window !== 'undefined' && (window as any).ethereum) {
+                        try {
+                          await (window as any).ethereum.request({
+                            method: 'wallet_watchAsset',
+                            params: {
+                              type: 'ERC20',
+                              options: {
+                                address: '0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f',
+                                symbol: 'WBOG',
+                                decimals: 18,
+                                image: 'https://web5.blog/tokens/wbog.png',
+                              },
+                            },
+                          });
+                        } catch (err: any) {
+                          alert('添加代币取消或失败: ' + err?.message);
+                        }
+                      } else {
+                        alert('请先安装 MetaMask / OKX Web3 钱包插件。');
+                      }
+                    }}
+                    className="w-full text-[10px] border-[#00FFCC]/30 text-[#00FFCC] hover:bg-[#00FFCC]/10 h-7"
+                  >
+                    🦊 一键添加 $WBOG 至 Web3 钱包
+                  </Button>
+                </div>
               </div>
             </div>
           </aside>

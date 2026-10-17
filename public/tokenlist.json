@@ -1,46 +1,49 @@
 {
-  "$schema": "https://uniswap.org/tokenlist.schema.json",
-  "name": "Web5.bog Official Token List",
-  "timestamp": "2026-10-15T18:50:00.000Z",
+  "name": "Web5.blog Official Token List",
+  "timestamp": "2026-10-17T00:00:00.000Z",
   "version": {
     "major": 1,
     "minor": 0,
     "patch": 0
   },
+  "logoURI": "https://web5.blog/tokens/wbog.png",
   "keywords": [
     "web5",
     "wbog",
     "arc",
     "avatar",
     "ai-agent",
-    "vessel"
+    "vessel",
+    "ontology"
   ],
-  "logoURI": "https://web5.bog/tokens/wbog.svg",
   "tokens": [
     {
       "chainId": 5042,
       "address": "0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
-      "name": "Web5 Bog Token",
+      "name": "Web5 Blog Ontology Gateway",
       "symbol": "WBOG",
       "decimals": 18,
-      "logoURI": "https://web5.bog/tokens/wbog.svg",
+      "logoURI": "https://web5.blog/tokens/wbog.png",
       "extensions": {
-        "website": "https://web5.bog",
-        "description": "Official native ecosystem token of Web5.bog platform on Arc Network Mainnet",
+        "website": "https://web5.blog",
+        "whitepaper": "https://web5.blog/founder",
+        "telegram": "https://t.me/Web5blog_bot",
+        "totalSupplyApi": "https://web5.blog/api/token/total-supply",
+        "circulatingSupplyApi": "https://web5.blog/api/token/circulating-supply",
         "ogDeployer": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1"
       }
     },
     {
       "chainId": 5042002,
       "address": "0xb3f174ae34b4273ae6dfd4488327c1d1784d35eb",
-      "name": "Web5 Bog Token",
+      "name": "Web5 Blog Ontology Gateway",
       "symbol": "WBOG",
       "decimals": 18,
-      "logoURI": "https://web5.bog/tokens/wbog.svg",
+      "logoURI": "https://web5.blog/tokens/wbog.png",
       "extensions": {
-        "website": "https://web5.bog",
-        "description": "Official native token of Web5.bog platform on Arc Network Testnet",
-        "ogDeployer": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1"
+        "website": "https://web5.blog",
+        "whitepaper": "https://web5.blog/founder",
+        "telegram": "https://t.me/Web5blog_bot"
       }
     }
   ]
