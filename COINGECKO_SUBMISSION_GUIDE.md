@@ -61,7 +61,7 @@
 - **Trading Pair (交易对)**: `WBOG / USDC`
 - **Liquidity Pool / Position Link (官方 LP 仓位链接)**:
   ```text
-  https://app.uniswap.org/positions/v4/arc/247118
+  https://app.uniswap.org/positions/v4/arc/304322
   ```
 - **Uniswap Swap Trading Link (官方交易链接)**:
   ```text

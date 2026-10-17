@@ -558,7 +558,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 3.8. Uniswap v4 价格信标池与实时流动性 (Position #247118) */}
+              {/* 3.8. Uniswap v4 价格信标池与实时流动性 (Position #304322) */}
               <div className="rounded-xl border border-[#00FFCC]/30 bg-gradient-to-br from-[#00FFCC]/10 via-[#0a0e17] to-transparent p-4 space-y-2.5">
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                   <div className="flex items-center gap-1.5">
@@ -566,7 +566,7 @@ export default function Home() {
                     <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格信标</span>
                   </div>
                   <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] py-0 h-4 font-mono">
-                    #247118
+                    #304322
                   </Badge>
                 </div>
                 <div className="flex items-baseline justify-between font-mono">
@@ -575,11 +575,11 @@ export default function Home() {
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[#666] font-mono">
                   <span>1 USDC = 12,500 WBOG</span>
-                  <span className="text-[#10B981]">● 交易活跃 (2 笔已确认)</span>
+                  <span className="text-[#10B981]">● 交易活跃 (已连接真实池)</span>
                 </div>
                 <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2">
                   <a
-                    href="https://app.uniswap.org/positions/v4/arc/247118"
+                    href="https://app.uniswap.org/positions/v4/arc/304322"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-1 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-[#aaa] font-mono transition-all"

@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════════
 // src/lib/web5/dex/uniswap-v4.ts
 // Circle ARC Mainnet (5042) Uniswap v4 价格信标池与实时流动性监控
-// 真实仓位 Position ID: #247118
+// 真实仓位 Position ID: #304322
 // ════════════════════════════════════════════════════════════════
 
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
@@ -26,8 +26,8 @@ export const UNISWAP_V4_ARC_POOL: DexPoolInfo = {
   dexName: 'Uniswap v4',
   network: 'Circle ARC Mainnet',
   chainId: 5042,
-  positionId: '247118',
-  positionUrl: 'https://app.uniswap.org/positions/v4/arc/247118',
+  positionId: '304322',
+  positionUrl: 'https://app.uniswap.org/positions/v4/arc/304322',
   swapUrl: 'https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f',
   pair: '$WBOG / USDC',
   baseToken: ARC_MAINNET.addresses.WBOG,
