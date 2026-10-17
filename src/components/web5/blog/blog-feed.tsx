@@ -86,7 +86,7 @@ export function BlogFeed({
     interactions: Interaction[];
   } | null>(null);
   const [comment, setComment] = useState('');
-  const [tipAmount, setTipAmount] = useState('0.001');
+  const [tipAmount, setTipAmount] = useState('0.5');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -466,33 +466,85 @@ export function BlogFeed({
                 </a>
               </div>
 
-              {/* 微支付 */}
-              <div className="flex gap-2 items-center mb-4">
-                <Input
-                  type="number"
-                  value={tipAmount}
-                  onChange={(e) => setTipAmount(e.target.value)}
-                  className="cyber-mono w-32 bg-[#0a0a0a] border-[#1a1a1a]"
-                  step="0.001"
-                  min="0.001"
-                  max="10"
-                />
-                <span className="cyber-mono text-sm text-[#999]">USDC</span>
-                <Button
-                  onClick={() => submitTip(detail)}
-                  disabled={submitting}
-                  className="cyber-btn-gold"
-                >
-                  <Coins className="w-4 h-4 mr-1" /> TIP AUTHOR
-                </Button>
-                {/* CITE 引用 */}
-                <Button onClick={() => {
-                  const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://explorer.arc.io/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
-                  navigator.clipboard.writeText(citeText);
-                  setMessage('✓ 引用链接已复制到剪贴板');
-                }} variant="outline" className="border-[#00FFCC]/30 text-[#00FFCC]">
-                  <FileText className="w-4 h-4 mr-1" /> CITE
-                </Button>
+              {/* ━━ 微支付打赏区域 (80% 归创作者，20% 协议分润: 50% 运营出纳 + 50% LP 锁定) ━━ */}
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] mb-5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-[#FFCC00]" />
+                    <span className="text-xs font-bold text-white">AP2 去中心化创作者打赏 (Tip Author)</span>
+                    <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[9px]">
+                      作者实得 80%
+                    </Badge>
+                  </div>
+                  <span className="text-[10px] text-[#888] font-mono">
+                    20% 协议分润: 50% 运营出纳 + 50% 自动注入 Uniswap LP
+                  </span>
+                </div>
+
+                {/* 5 档快捷筹码按钮组 */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { u: '0.1', label: '🪙 0.1U / 1K WBOG' },
+                    { u: '0.5', label: '☕ 0.5U / 5K WBOG', recommend: true },
+                    { u: '1.0', label: '🔥 1.0U / 10K WBOG' },
+                    { u: '3.0', label: '🚀 3.0U / 30K WBOG' },
+                    { u: '5.0', label: '💎 5.0U / 50K WBOG' },
+                  ].map((chip) => (
+                    <button
+                      key={chip.u}
+                      type="button"
+                      onClick={() => setTipAmount(chip.u)}
+                      className={`py-2 px-2.5 rounded-lg border text-xs font-mono transition-all text-center relative ${
+                        tipAmount === chip.u
+                          ? 'border-[#FFCC00] bg-[#FFCC00]/15 text-[#FFCC00] font-bold shadow-md shadow-[#FFCC00]/10'
+                          : 'border-white/[0.06] bg-white/[0.01] text-[#888] hover:text-white hover:bg-white/[0.03]'
+                      }`}
+                    >
+                      {chip.recommend && (
+                        <span className="absolute -top-1.5 -right-1 bg-[#FFCC00] text-black text-[8px] font-bold px-1 rounded-full uppercase">
+                          TOP
+                        </span>
+                      )}
+                      <div>{chip.label}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2 items-center pt-1">
+                  <div className="relative flex-1 min-w-[140px] max-w-[180px]">
+                    <Input
+                      type="number"
+                      value={tipAmount}
+                      onChange={(e) => setTipAmount(e.target.value)}
+                      className="cyber-mono bg-[#0a0a0a] border-white/[0.1] text-xs h-9 pl-3 pr-12 text-[#FFCC00] font-bold"
+                      step="0.1"
+                      min="0.1"
+                      max="100"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-[#666]">
+                      USDC
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => submitTip(detail)}
+                    disabled={submitting}
+                    className="bg-gradient-to-r from-[#FFCC00] to-[#FF66AA] text-black font-black text-xs h-9 px-4 hover:opacity-90 shadow-lg shadow-[#FFCC00]/20 flex-shrink-0"
+                  >
+                    <Coins className="w-4 h-4 mr-1" />
+                    {submitting ? '打赏结算中...' : `立即打赏 ${tipAmount} USDC`}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://explorer.arc.io/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
+                      navigator.clipboard.writeText(citeText);
+                      setMessage('✓ 引用链接已复制到剪贴板');
+                    }}
+                    variant="outline"
+                    className="border-[#00FFCC]/30 text-[#00FFCC] text-xs h-9 px-3 flex-shrink-0"
+                  >
+                    <FileText className="w-3.5 h-3.5 mr-1" /> CITE 引用
+                  </Button>
+                </div>
               </div>
 
               {/* 评论框 */}

@@ -14,10 +14,14 @@ export async function GET(req: NextRequest) {
   const split = calculateRevenueSplit(amount);
   return NextResponse.json({
     success: true,
-    protocol: 'Web5 AP2 Autonomous Splitter',
+    protocol: 'Web5 AP2 Autonomous 80/20 Splitter',
     rules: {
-      operationalTreasuryPercent: '50%',
-      lpLockOrBurnPercent: '50%',
+      creatorNetSharePercent: '80%',
+      protocolFeePercent: '20%',
+      protocolSplit: {
+        operationalTreasuryPercent: '50% of fee (10% of total)',
+        lpLockOrBurnPercent: '50% of fee (10% of total)',
+      },
       treasuryAddress: REVENUE_ROUTING.OPERATIONAL_TREASURY_ADDRESS,
       uniswapV4Pool: REVENUE_ROUTING.UNISWAP_V4_POOL,
     },
