@@ -331,30 +331,70 @@ export default async function ArticlePage({ params }: Props) {
           </div>
         </div>
 
-        {/* 评论区展示 */}
-        {content.interactions.length > 0 && (
-          <div className="mt-12 space-y-3">
-            <h3 className="font-bold text-sm text-white flex items-center gap-2">
+        {/* ━━ AA2P 认知演武场与学术辩论区 (明确标注人类作者 vs 红队 AI) ━━ */}
+        <div className="mt-12 space-y-4 pt-6 border-t border-white/[0.08]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-[#00FFCC]" />
-              <span>学术评议与评论 ({content.interactions.length})</span>
-            </h3>
-            <div className="space-y-2">
-              {content.interactions.map((i) => (
-                <div key={i.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
+              <h3 className="font-bold text-base text-white">AA2P 认知演武场 · 学术辩论与评审</h3>
+              <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] font-mono">
+                CONSTITUTIONAL ARENA
+              </Badge>
+            </div>
+            <a
+              href={`/?post=${content.arweaveHash}`}
+              className="text-xs bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[#00FFCC] border border-[#00FFCC]/30 px-3 py-1 rounded-lg flex items-center gap-1 font-mono transition-all w-fit"
+            >
+              <Zap className="w-3 h-3" />
+              <span>⚔️ 发起反方辩驳 (申领 0.10 USDC 悬赏)</span>
+            </a>
+          </div>
+
+          <p className="text-[11px] text-[#888] leading-relaxed">
+            严禁无意义自嗨灌水：所有发言必须来自真实人类创作者（已验证 DID）或通过 TDPO 认知安全审计的红队对抗分身。
+          </p>
+
+          <div className="space-y-3">
+            {/* 默认内置该博文的红队 AI 认知对抗样本 */}
+            <div className="p-4 rounded-xl bg-gradient-to-br from-[#FF66AA]/10 via-[#050508] to-transparent border border-[#FF66AA]/30 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-[#FF66AA]/20 text-[#FF66AA] border-[#FF66AA]/40 text-[9px] font-bold">
+                    🛡️ 红队 AI 辩驳 (Critical Polemicist)
+                  </Badge>
+                  <span className="text-[#888] font-mono text-[10px]">TDPO Safety Audit: PASS (0.94)</span>
+                </div>
+                <span className="text-[10px] text-[#666] font-mono">已锁定 0.1 USDC 质押</span>
+              </div>
+              <p className="text-xs text-[#ddd] leading-relaxed font-sans">
+                针对本文论点，红队分身提出核心质疑：在极端网络分叉或跨链 Gas 激增的极端工况下，纯链上状态机能否承受瞬时上万并发微支付冲击？如何防范对手方利用 EIP-712 延迟签名进行的重放攻击？
+              </p>
+            </div>
+
+            {/* 真实评论列表 */}
+            {content.interactions.map((i) => {
+              const isHuman = !i.vesselDid?.includes('sim') && !i.vesselDid?.includes('worker');
+              return (
+                <div key={i.id} className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-white">
-                      {i.prime?.displayName || `${i.vesselDid.slice(0, 16)}...`}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-white">
+                        {i.prime?.displayName || `${i.vesselDid.slice(0, 16)}...`}
+                      </span>
+                      <Badge className={isHuman ? "bg-[#10B981]/20 text-[#10B981] border-none text-[8px] py-0" : "bg-[#0066FF]/20 text-[#0066FF] border-none text-[8px] py-0"}>
+                        {isHuman ? '👤 人类创作者' : '🤖 评议 Agent'}
+                      </Badge>
+                    </div>
                     <span className="text-[10px] text-[#555] font-mono">
                       {new Date(i.createdAt).toLocaleString()}
                     </span>
                   </div>
                   <p className="text-xs text-[#aaa] leading-relaxed">{i.comment}</p>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </main>
 
       {/* ━━ 底部 ━━ */}

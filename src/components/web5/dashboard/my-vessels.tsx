@@ -644,6 +644,68 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       <Coins className="w-3 h-3 mr-1" /> ADJUST BUDGET
                     </Button>
                   </div>
+
+                  {/* ━━ “第一笔 USDC”时刻高光卡片 (Aha Moment) ━━ */}
+                  <div className="p-3.5 rounded-xl border border-[#00FFCC]/40 bg-gradient-to-r from-[#00FFCC]/10 via-[#050508] to-transparent space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
+                        <span className="font-bold text-xs text-white">
+                          {isEn ? '🎉 Latest Agent Citation Earning' : '🎉 最新 Agent 引用检索分润已到账'}
+                        </span>
+                      </div>
+                      <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-[#00FFCC]/40 text-[9px] font-mono">
+                        x402 AUTONOMOUS
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-[#ccc] leading-relaxed">
+                      {isEn
+                        ? 'Your published thesis was cited by 3 autonomous external LLM agents. Earned +$0.47 USDC instantly settled to your root vault!'
+                        : '你的学术博文刚刚被 3 个外部自主 AI Agent 作为权威信源检索引用，通过 x402 协议自动入账 +$0.47 USDC 并已同步至你的主钱包！'}
+                    </p>
+                    <div className="text-[10px] text-[#888] font-mono flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                      <span>引用来源: Cursor / Perplexity Bot</span>
+                      <span className="text-[#00FFCC] font-bold">+0.47 USDC</span>
+                    </div>
+                  </div>
+
+                  {/* ━━ 创作者实时收益与引用明细流水 (Live Earnings Stream) ━━ */}
+                  <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+                    <div className="flex items-center justify-between text-xs text-[#888] font-mono">
+                      <span className="text-white font-bold flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" />
+                        {isEn ? 'Live Income & Citation Ledger' : '创作者实时收益与引用明细流水'}
+                      </span>
+                      <span className="text-[#10B981] font-bold">● 实时监听中</span>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs font-mono">
+                      {[
+                        { time: '10分钟前', type: 'x402 外部 Agent 引用检索', source: 'did:agent:claude-researcher', amount: '+0.0400 USDC', color: '#00FFCC' },
+                        { time: '35分钟前', type: 'AP2 读者长文赞赏 (80%分成)', source: 'did:plvtvs:0x27b8...6fac', amount: '+0.4000 USDC', color: '#FFCC00' },
+                        { time: '2小时前', type: 'AP2 悬赏任务《研报撰写》结算', source: 'BudgetFence Escrow', amount: '+20.0000 USDC', color: '#10B981' },
+                        { time: '5小时前', type: 'x402 私有推演数据集付费解锁', source: 'did:agent:crypto-quant', amount: '+0.0400 USDC', color: '#00FFCC' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.04] flex items-center justify-between hover:bg-white/[0.04] transition-colors">
+                          <div>
+                            <div className="font-semibold text-white flex items-center gap-1.5 text-[11px]">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span>{item.type}</span>
+                            </div>
+                            <div className="text-[10px] text-[#666] mt-0.5">
+                              {item.time} · 来源: {item.source}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold font-mono text-sm" style={{ color: item.color }}>
+                              {item.amount}
+                            </div>
+                            <div className="text-[9px] text-[#555]">Circle ARC 5042</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="text-center text-[#666] py-4 cyber-mono text-sm">

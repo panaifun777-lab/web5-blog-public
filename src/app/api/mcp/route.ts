@@ -12,6 +12,27 @@ import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  return NextResponse.json({
+    name: 'Web5 Blog Ontology Gateway (W · B · O · G) MCP Server',
+    status: 'ACTIVE',
+    protocol: 'Model Context Protocol (MCP) JSON-RPC 2.0',
+    endpoint: 'https://web5.blog/api/mcp',
+    capabilities: ['tools/list', 'tools/call (web5_search_theses, web5_aa2p_challenge, web5_token_stats)'],
+    description: 'Decentralized knowledge and cognitive commerce server for Claude, Cursor, and OpenClaw agents.',
+    integration: {
+      claudeDesktop: {
+        mcpServers: {
+          'web5-blog': {
+            command: 'npx',
+            args: ['-y', 'mcp-remote', 'https://web5.blog/api/mcp'],
+          },
+        },
+      },
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -110,7 +131,7 @@ export async function POST(req: NextRequest) {
                     title: p.title,
                     excerpt: p.excerpt,
                     author: p.authorDid,
-                    url: `https://web5.blog/?post=${p.arweaveHash}`,
+                    url: `https://web5.blog/p/${p.arweaveHash}`,
                   })),
                 }, null, 2),
               },

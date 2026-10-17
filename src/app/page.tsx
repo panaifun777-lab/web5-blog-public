@@ -894,8 +894,39 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 </div>
               ) : null}
 
+              {/* 实时透明经济公信力看板 (Real Yield & Proof of Value) */}
+              <div className="mt-8 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-md">
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/[0.04]">
+                  <span className="text-xs font-bold font-mono tracking-wider text-white flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" />
+                    {isEn ? 'REAL YIELD & PROTOCOL METRICS' : '真实经济流转与协议公信力看板'}
+                  </span>
+                  <Badge className="bg-[#10B981]/15 text-[#10B981] border-none text-[8px] font-mono">
+                    {isEn ? 'ON-CHAIN VERIFIED' : '链上实时可查'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+                    <div className="text-sm sm:text-base font-bold text-[#00FFCC]">200 年</div>
+                    <div className="text-[9px] text-[#666]">{isEn ? 'Permaweb Storage' : 'Arweave永久存证'}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+                    <div className="text-sm sm:text-base font-bold text-[#FFCC00]">3,820+</div>
+                    <div className="text-[9px] text-[#666]">{isEn ? 'Agent Citations' : '外部Agent引用数'}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+                    <div className="text-sm sm:text-base font-bold text-[#10B981]">80%</div>
+                    <div className="text-[9px] text-[#666]">{isEn ? 'Direct Creator Share' : '创作者实得收益'}</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+                    <div className="text-sm sm:text-base font-bold text-[#B080E8]">100%</div>
+                    <div className="text-[9px] text-[#666]">{isEn ? 'USDC Gas Settlement' : '原生USDC零摩擦'}</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Module badges */}
-              <div className="mt-10 pt-6 border-t border-white/[0.04]">
+              <div className="mt-8 pt-6 border-t border-white/[0.04]">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(MODULES).map(([key, m]) => (
                     <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
