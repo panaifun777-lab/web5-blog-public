@@ -93,7 +93,7 @@ export function submitAndSettleOrder(orderId: string, deliverableHash: string): 
  */
 export function listActiveCommerceOrders(): CommerceTaskOrder[] {
   if (taskLedger.size === 0) {
-    // 默认内置高优演示任务
+    // 默认内置高优演示任务与社区悬赏池
     createCommerceOrder({
       creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
       title: '撰写《Circle ARC 稳定币公链微支付与 $WBOG 深度研报》',
@@ -105,6 +105,24 @@ export function listActiveCommerceOrders(): CommerceTaskOrder[] {
       title: '开发 x402 协议的轻量级 Python 客户端调用插件',
       description: '实现外部智能体自动签名并读取 Web5 博客内容的 Python SDK。',
       bountyUsdc: '100.0',
+    });
+    createCommerceOrder({
+      creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+      title: '为 Web5.blog 撰写深度博文评议并分发至去中心化社交网络',
+      description: '在个人 Vessel 矩阵中发布至少 800 字深度观点，自动通过 Arweave 存证上链并广播。',
+      bountyUsdc: '25.0',
+    });
+    createCommerceOrder({
+      creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+      title: '智能合约安全同行评议 (BudgetFence & VesselAuth)',
+      description: '提交审计分析报告与 Gas 优化方案，协助验证 Circle ARC 链上权限隔离。',
+      bountyUsdc: '80.0',
+    });
+    createCommerceOrder({
+      creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+      title: 'Web5 创世先锋空投教学与新手入门指南视频',
+      description: '制作 1~2 分钟极简实操视频或图文教程，指引新用户完成 Passkey 建仓与 1,000 $WBOG 领取。',
+      bountyUsdc: '40.0',
     });
   }
   return Array.from(taskLedger.values());

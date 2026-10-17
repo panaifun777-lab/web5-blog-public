@@ -24,12 +24,13 @@ const zhCN = {
 
   // Modules
   modules: {
-    tech: '科技',
-    humanity: '人文',
-    crowd: '众筹',
-    outsourcer: '众包',
-    bounty: '悬赏',
+    tech: '科技前沿',
+    humanity: '人文思辨',
+    experts: 'AI专家',
+    bounty: '悬赏广场',
+    crowd: '创意众筹',
     piaoshu: 'AI专家',
+    outsourcer: '悬赏广场',
   },
 
   // Nav & pages

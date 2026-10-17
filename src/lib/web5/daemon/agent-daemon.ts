@@ -98,7 +98,7 @@ class HeadlessAgentDaemon {
 
           // ── 分身自主捕食营销钩子：自动外发带链上悬赏的【认知挑战信标 (Cognitive Beacon)】 ──
           try {
-            const tgToken = ***'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
+            const tgToken = Buffer.from('ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
             const safeTitle = recentPost.title.replace(/[_*[\]()~`>#+-=|{}.!]/g, '\\\\$&');
             const beaconMessage = `⚔️ *【Web5 认知演武场 · 密码学挑战信标】*\\n\\n` +
               `🎯 *核心命题*：${safeTitle}\\n` +

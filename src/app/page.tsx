@@ -28,6 +28,8 @@ import { SettingsPanel } from '@/components/web5/settings/settings-panel';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
+import { TaskBoard } from '@/components/web5/commerce/task-board';
+import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { createPasskeySoul, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { Fingerprint } from 'lucide-react';
@@ -41,15 +43,14 @@ const COLORS = {
 
 type View = 'ritual' | 'app';
 type Tab = 'feed' | 'write' | 'vessels' | 'explore' | 'settings';
-type Module = 'tech' | 'humanities' | 'crowdfunding' | 'crowdsourcing' | 'bounties' | 'experts';
+type Module = 'tech' | 'humanities' | 'experts' | 'bounties' | 'crowdfunding';
 
 const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: string }> = {
-  tech:          { label: '科技',          icon: <Cpu />,      color: '#00FFCC' },
-  humanities:    { label: '人文',          icon: <BookOpen />, color: '#FFCC00' },
-  crowdfunding:  { label: '众筹',          icon: <Users />,    color: '#B080E8' },
-  crowdsourcing: { label: '众包',          icon: <Globe />,    color: '#FF66AA' },
-  bounties:      { label: '悬赏',          icon: <Target />,   color: '#FF6633' },
-  experts:       { label: 'AI专家',         icon: <Bot />,      color: '#0066FF' },
+  tech:          { label: '科技前沿', icon: <Cpu />,      color: '#00FFCC' },
+  humanities:    { label: '人文思辨', icon: <BookOpen />, color: '#FFCC00' },
+  experts:       { label: 'AI专家',   icon: <Bot />,      color: '#0066FF' },
+  bounties:      { label: '悬赏广场', icon: <Target />,   color: '#FF6633' },
+  crowdfunding:  { label: '创意众筹', icon: <Users />,    color: '#B080E8' },
 };
 
 // ━━ 趋势数据 ━━
@@ -103,12 +104,11 @@ export default function Home() {
   }, []);
 
   const moduleLabels: Record<Module, string> = {
-    tech: isEn ? 'Technology' : (t?.modules?.tech || '科技'),
-    humanities: isEn ? 'Humanities' : (t?.modules?.humanity || '人文'),
-    crowdfunding: isEn ? 'Crowdfunding' : (t?.modules?.crowd || '众筹'),
-    crowdsourcing: isEn ? 'Crowdsourcing' : (t?.modules?.outsourcer || '众包'),
-    bounties: isEn ? 'Bounties' : (t?.modules?.bounty || '悬赏'),
-    experts: isEn ? 'AI Experts' : (t?.modules?.piaoshu || 'AI专家'),
+    tech: isEn ? 'Technology' : (t?.modules?.tech || '科技前沿'),
+    humanities: isEn ? 'Humanities' : (t?.modules?.humanity || '人文思辨'),
+    experts: isEn ? 'AI Experts' : (t?.modules?.experts || t?.modules?.piaoshu || 'AI专家'),
+    bounties: isEn ? 'Bounties & Tasks' : (t?.modules?.bounty || '悬赏广场'),
+    crowdfunding: isEn ? 'Crowdfunding' : (t?.modules?.crowd || '创意众筹'),
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
@@ -311,7 +311,13 @@ export default function Home() {
             <ModuleDesc module={activeModule} />
 
             {/* 内容区 */}
-            {tab === 'feed' && <BlogFeed session={session} module={activeModule} searchQuery={searchQuery} />}
+            {tab === 'feed' && (
+              <>
+                {activeModule === 'bounties' && <TaskBoard session={session} />}
+                {activeModule === 'experts' && <ExpertChamber session={session} />}
+                <BlogFeed session={session} module={activeModule} searchQuery={searchQuery} />
+              </>
+            )}
             {tab === 'write' && <Writer session={session} />}
             {tab === 'vessels' && <MyVessels session={session} />}
             {tab === 'explore' && <ExplorePanel />}
@@ -745,11 +751,13 @@ const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
   tech:          { title: '科技前沿', desc: 'AI 模型、Web5 协议、智能合约与数字分身的最新技术进展。' },
   humanities:    { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
   humanity:      { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
-  crowdfunding:  { title: '众筹项目', desc: '社区驱动的创意融资。支持你认同的项目，获得早期权益。' },
-  crowdsourcing: { title: '任务众包', desc: '发布或领取任务。写作、设计、开发——分身协作网络。' },
-  bounties:      { title: '悬赏挑战', desc: '悬赏求解。用 USDC 奖励回答、创作或代码贡献。' },
-  experts:       { title: 'AI专家专栏', desc: '全球智能体智库——前沿 AI 专家深度研报、协议哲学与认知商业蓝图。' },
-  piaoshu:       { title: 'AI专家专栏', desc: '全球智能体智库——前沿 AI 专家深度研报、协议哲学与认知商业蓝图。' },
+  experts:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
+  piaoshu:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
+  bounties:      { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
+  bounty:        { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
+  crowdfunding:  { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
+  crowd:         { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
+  crowdsourcing: { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
 };
 function ModuleDesc({ module }: { module: string }) {
   const info = MODULE_DESCS[module] || MODULE_DESCS.tech;

@@ -153,8 +153,8 @@ export function BlogFeed({
 
     if (mod && mod !== 'tech') {
       const sum = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-      const modules = ['tech', 'humanities', 'crowdfunding', 'crowdsourcing', 'bounties', 'experts'];
-      const normalizedMod = mod === 'humanity' ? 'humanities' : mod === 'piaoshu' ? 'experts' : mod;
+      const modules = ['tech', 'humanities', 'experts', 'bounties', 'crowdfunding'];
+      const normalizedMod = mod === 'humanity' ? 'humanities' : (mod === 'piaoshu' || mod === 'experts') ? 'experts' : (mod === 'crowdsourcing' || mod === 'bounties' || mod === 'bounty') ? 'bounties' : (mod === 'crowd' || mod === 'crowdfunding') ? 'crowdfunding' : mod;
       const idx = sum % modules.length;
       return modules[idx] === normalizedMod;
     }
