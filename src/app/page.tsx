@@ -410,6 +410,47 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* 3.8. Uniswap v4 价格信标池与实时流动性 (Position #247118) */}
+              <div className="rounded-xl border border-[#00FFCC]/30 bg-gradient-to-br from-[#00FFCC]/10 via-[#0a0e17] to-transparent p-4 space-y-2.5">
+                <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
+                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格信标</span>
+                  </div>
+                  <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] py-0 h-4 font-mono">
+                    #247118
+                  </Badge>
+                </div>
+                <div className="flex items-baseline justify-between font-mono">
+                  <span className="text-[11px] text-[#888]">$WBOG 单价:</span>
+                  <span className="text-base font-bold text-[#00FFCC]">$0.000080 USDC</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-[#666] font-mono">
+                  <span>1 USDC = 12,500 WBOG</span>
+                  <span className="text-[#10B981]">● 交易活跃 (2 笔已确认)</span>
+                </div>
+                <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2">
+                  <a
+                    href="https://app.uniswap.org/positions/v4/arc/247118"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-[#aaa] font-mono transition-all"
+                  >
+                    <span>查看 LP 仓位</span>
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </a>
+                  <a
+                    href="https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 py-1 rounded bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[10px] text-[#00FFCC] font-bold font-mono transition-all"
+                  >
+                    <span>去 Uniswap 交易</span>
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              </div>
+
               {/* 4. Contracts (Circle Arc Mainnet) */}
               <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4">
                 <div className="flex items-center justify-between mb-3">

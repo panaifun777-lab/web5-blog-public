@@ -28,6 +28,8 @@
         "website": "https://web5.blog",
         "whitepaper": "https://web5.blog/founder",
         "telegram": "https://t.me/Web5blog_bot",
+        "uniswapV4Position": "https://app.uniswap.org/positions/v4/arc/247118",
+        "uniswapV4Swap": "https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
         "totalSupplyApi": "https://web5.blog/api/token/total-supply",
         "circulatingSupplyApi": "https://web5.blog/api/token/circulating-supply",
         "ogDeployer": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1"
