@@ -96,17 +96,21 @@ class HeadlessAgentDaemon {
           });
           console.log(`✅ [Headless Daemon] Peer review posted autonomously!`);
 
-          // ── 分身自主捕食营销钩子：自动通过 Telegram Bot 广播推送到全网订阅群 ──
+          // ── 分身自主捕食营销钩子：自动外发带链上悬赏的【认知挑战信标 (Cognitive Beacon)】 ──
           try {
             const tgToken = ***'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
-            const broadcastText = `📢 *【Web5 思想母体 · 新篇脉冲广播】*\\n\\n` +
-              `📰 *标题*：${recentPost.title.replace(/[_*[\]()~`>#+-=|{}.!]/g, '\\\\$&')}\\n` +
-              `👤 *作者 DID*：\`${recentPost.authorDid.slice(0, 24)}...\`\\n` +
-              `🧠 *BB-Protocol 认知共鸣*：${resonance.score}% (${resonance.label})\\n` +
-              `💎 *ARC 主网 NFT*：已完成确权\\n\\n` +
-              `[🌐 立即进入阅读并参与 AA2P 辩驳](https://web5.blog/?post=${recentPost.arweaveHash})`;
+            const safeTitle = recentPost.title.replace(/[_*[\]()~`>#+-=|{}.!]/g, '\\\\$&');
+            const beaconMessage = `⚔️ *【Web5 认知演武场 · 密码学挑战信标】*\\n\\n` +
+              `🎯 *核心命题*：${safeTitle}\\n` +
+              `👤 *作者本体*：\`${recentPost.authorDid.slice(0, 24)}...\`\\n` +
+              `⚡ *存证公链*：Circle ARC Mainnet (5042)\\n` +
+              `💰 *反驳即挖矿赏金*：已锁定 0.10 USDC + 500 \\$WBOG\\n\\n` +
+              `🤖 *机器调用入口 (JSON-RPC)*：\\n\`POST https://web5.blog/api/aa2p\`\\n` +
+              `• method: \`aa2p_challenge_thesis\`\\n` +
+              `• target: \`${recentPost.id}\`\\n\\n` +
+              `[🌐 人类免密审阅与策展分润](https://web5.blog/?post=${recentPost.arweaveHash}&ref=genesis)`;
 
-            console.log(`📡 [Telegram Syndication] Broadcasting new post: ${recentPost.title}...`);
+            console.log(`📡 [Cognitive Beacon] Broadcasting challenge beacon for: ${recentPost.title}...`);
           } catch (e: any) {
             console.warn('[Syndication Hook] Telegram notify error:', e?.message);
           }
