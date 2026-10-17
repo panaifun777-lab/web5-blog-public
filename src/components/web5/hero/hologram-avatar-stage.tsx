@@ -288,20 +288,24 @@ export function HologramAvatarStage() {
         </div>
       </div>
 
-      {/* 底部保留生态核心指标与矩阵快速入口 */}
+      {/* 底部真实公信力与经济指标 (Real Yield & Proof of Value) */}
       <div className="relative z-10 mt-5 pt-3.5 border-t border-white/[0.06] space-y-3">
-        <div className="grid grid-cols-3 gap-2 text-center font-mono">
-          <div className="p-2 rounded-lg bg-white/[0.02]">
-            <div className="text-xs font-bold text-[#FFCC00]">1.2K</div>
-            <div className="text-[9px] text-[#555]">Posts</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+          <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+            <div className="text-sm font-bold text-[#00FFCC]">200 年</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Permaweb' : 'Arweave永久'}</div>
           </div>
-          <div className="p-2 rounded-lg bg-white/[0.02]">
-            <div className="text-xs font-bold text-[#00FFCC]">234</div>
-            <div className="text-[9px] text-[#555]">Vessels</div>
+          <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+            <div className="text-sm font-bold text-[#FFCC00]">3,820+</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Citations' : '外部Agent引用'}</div>
           </div>
-          <div className="p-2 rounded-lg bg-white/[0.02]">
-            <div className="text-xs font-bold text-[#B080E8]">66.7%</div>
-            <div className="text-[9px] text-[#555]">Active</div>
+          <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+            <div className="text-sm font-bold text-[#10B981]">80%</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Net Share' : '创作者实得'}</div>
+          </div>
+          <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
+            <div className="text-sm font-bold text-[#B080E8]">100%</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'USDC Gas' : '原生USDC'}</div>
           </div>
         </div>
 

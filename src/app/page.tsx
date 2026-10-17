@@ -894,49 +894,18 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 </div>
               ) : null}
 
-              {/* 实时透明经济公信力看板 (Real Yield & Proof of Value) */}
-              <div className="mt-8 p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-md">
-                <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/[0.04]">
-                  <span className="text-xs font-bold font-mono tracking-wider text-white flex items-center gap-1.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#10B981]" />
-                    {isEn ? 'REAL YIELD & PROTOCOL METRICS' : '真实经济流转与协议公信力看板'}
-                  </span>
-                  <Badge className="bg-[#10B981]/15 text-[#10B981] border-none text-[8px] font-mono">
-                    {isEn ? 'ON-CHAIN VERIFIED' : '链上实时可查'}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
-                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-                    <div className="text-sm sm:text-base font-bold text-[#00FFCC]">200 年</div>
-                    <div className="text-[9px] text-[#666]">{isEn ? 'Permaweb Storage' : 'Arweave永久存证'}</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-                    <div className="text-sm sm:text-base font-bold text-[#FFCC00]">3,820+</div>
-                    <div className="text-[9px] text-[#666]">{isEn ? 'Agent Citations' : '外部Agent引用数'}</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-                    <div className="text-sm sm:text-base font-bold text-[#10B981]">80%</div>
-                    <div className="text-[9px] text-[#666]">{isEn ? 'Direct Creator Share' : '创作者实得收益'}</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-                    <div className="text-sm sm:text-base font-bold text-[#B080E8]">100%</div>
-                    <div className="text-[9px] text-[#666]">{isEn ? 'USDC Gas Settlement' : '原生USDC零摩擦'}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Module badges */}
-              <div className="mt-8 pt-6 border-t border-white/[0.04]">
+              {/* Mobile-only Module badges */}
+              <div className="lg:hidden mt-8 pt-6 border-t border-white/[0.04]">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(MODULES).map(([key, m]) => (
                     <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all"
                       style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
                       {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
                     </button>
                   ))}
                   <a href="/founder"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px]"
                     style={{ borderColor: '#FFCC0025', color: '#FFCC00', backgroundColor: '#FFCC0008' }}>
                     <Quote className="w-3.5 h-3.5" /><span>{t?.nav?.founder || '分身致辞'}</span>
                   </a>
@@ -947,9 +916,30 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               </div>
             </div>
 
-            {/* Right — 3D Cyber Hologram Avatar Stage (from plvtvs.one) */}
-            <div className="hidden lg:block lg:col-span-2">
+            {/* Right — 3D Cyber Hologram Avatar Stage (with Real Yield HUD) + 分类导航 (右侧垂直对齐) */}
+            <div className="hidden lg:block lg:col-span-2 space-y-3">
               <HologramAvatarStage />
+
+              {/* Module badges + 分身致辞 + 语言切换 (右侧整齐对齐) */}
+              <div className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.01]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {Object.entries(MODULES).map(([key, m]) => (
+                    <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] transition-all hover:scale-105"
+                      style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
+                      {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
+                    </button>
+                  ))}
+                  <a href="/founder"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] transition-all hover:scale-105"
+                    style={{ borderColor: '#FFCC0025', color: '#FFCC00', backgroundColor: '#FFCC0008' }}>
+                    <Quote className="w-3 h-3" /><span>{t?.nav?.founder || '分身致辞'}</span>
+                  </a>
+                  <div className="ml-auto">
+                    <LanguageSwitcher />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
