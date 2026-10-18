@@ -5,6 +5,9 @@
 
 export const SUPERADMIN = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1' as const;
 
+// 平台独立收银金库（与部署者钱包隔离，确保打赏为真实跨地址入账）
+export const TREASURY = '0xCA36335845E382129167fC44243F07A76827bA22' as const;
+
 // ━━ Circle ARC Mainnet (正式主网 Chain ID: 5042) ━━
 export const ARC_MAINNET = {
   id: 5042,

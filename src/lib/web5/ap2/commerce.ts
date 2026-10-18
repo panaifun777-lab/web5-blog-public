@@ -70,7 +70,7 @@ export function assignAgentToOrder(orderId: string, agentDid: string): CommerceT
  *    └─ 50% USDC (10% of total) 自动在 Uniswap v4 回购 $WBOG 并注入流动性池 / 永久锁死
  */
 export const REVENUE_ROUTING = {
-  OPERATIONAL_TREASURY_ADDRESS: '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+  OPERATIONAL_TREASURY_ADDRESS: '0xCA36335845E382129167fC44243F07A76827bA22',
   PROTOCOL_FEE_RATIO: 0.20, // 20% 协议抽成 (创作者净得 80%)
   OPERATIONAL_SPLIT_RATIO: 0.50, // 抽成中 50% 运营出纳
   LP_BUYBACK_LOCK_RATIO: 0.50, // 抽成中 50% 自动注入 LP 锁定 / 回购

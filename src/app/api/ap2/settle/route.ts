@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http, parseUnits } from 'viem';
 import { db } from '@/lib/db';
-import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 
 const publicClient = createPublicClient({
@@ -20,8 +20,8 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-// 平台金库地址（收款方）
-const TREASURY = ARC_MAINNET.addresses.Deployer.toLowerCase();
+// 平台金库地址（收款方，独立于部署者钱包）
+const TREASURY_ADDR = TREASURY.toLowerCase();
 // 协议抽成 20%
 const PROTOCOL_FEE_RATIO = 0.20;
 
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
     const tx = await publicClient.getTransaction({ hash: txHash as `0x${string}` });
 
     // 校验收款方为平台金库
-    if (!tx.to || tx.to.toLowerCase() !== TREASURY) {
-      return NextResponse.json({ error: `收款方不匹配，应为平台金库 ${TREASURY.slice(0, 10)}...` }, { status: 400 });
+    if (!tx.to || tx.to.toLowerCase() !== TREASURY_ADDR) {
+      return NextResponse.json({ error: `收款方不匹配，应为平台金库 ${TREASURY_ADDR.slice(0, 10)}...` }, { status: 400 });
     }
 
     // 校验收款方（宽松：优先 session，其次 body.fromAddress）

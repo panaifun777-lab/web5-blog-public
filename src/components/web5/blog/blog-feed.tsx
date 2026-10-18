@@ -281,8 +281,15 @@ export function BlogFeed({
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       const from = accounts[0];
 
+      // ━━ 2.5 先进行 personal_sign 签名确认（额外安全层，证明打赏意图） ━━
+      const treasury = '0xCA36335845E382129167fC44243F07A76827bA22';
+      const signMsg = `Web5.blog Sovereign Tip\n\nTip Amount: ${tipAmount} USDC\nTo Author: ${post.authorDid}\nTo Treasury: ${treasury}\nTimestamp: ${Date.now()}`;
+      const signature = await ethereum.request({
+        method: 'personal_sign',
+        params: [signMsg, from],
+      });
+
       // ━━ 3. 真实原生 USDC 转账至平台金库 ━━
-      const treasury = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1';
       const amountWei = BigInt(Math.round(parseFloat(tipAmount) * 1e18));
       const txHash = await ethereum.request({
         method: 'eth_sendTransaction',
