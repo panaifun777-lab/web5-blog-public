@@ -436,6 +436,20 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
               </Badge>
             </div>
 
+            {/* 分身专属链上钱包地址（真实可见） */}
+            <div className="p-3 rounded-xl bg-black/40 border border-[#B080E8]/20 space-y-1">
+              <div className="text-[10px] text-[#888] font-mono flex items-center gap-1.5">
+                <Bot className="w-3 h-3 text-[#B080E8]" />
+                {isEn ? 'Avatar Dedicated On-chain Wallet:' : '分身专属链上钱包地址:'}
+              </div>
+              <div className="text-xs text-[#B080E8] font-mono break-all select-all font-semibold">
+                {vesselStatus?.smartAccountAddress || session?.vesselDid || '0x0000…0000'}
+              </div>
+              <div className="text-[9px] text-[#666] font-mono">
+                {isEn ? 'Autonomous earnings settle to this address · withdraw to your root wallet anytime' : '分身自主收益汇入此地址 · 可随时一键提现回主钱包'}
+              </div>
+            </div>
+
             <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-[#888]">

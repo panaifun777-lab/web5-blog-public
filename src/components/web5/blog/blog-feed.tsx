@@ -283,7 +283,11 @@ export function BlogFeed({
 
       // ━━ 2.5 先进行 personal_sign 签名确认（额外安全层，证明打赏意图） ━━
       const treasury = '0xCA36335845E382129167fC44243F07A76827bA22';
-      const signMsg = `Web5.blog Sovereign Tip\n\nTip Amount: ${tipAmount} USDC\nTo Author: ${post.authorDid}\nTo Treasury: ${treasury}\nTimestamp: ${Date.now()}`;
+      // 规范化作者标识：优先作者名，其次完整 DID（避免展示残缺脏数据）
+      const authorLabel = (post.authorDid && post.authorDid.length > 10 && post.authorDid !== 'did')
+        ? post.authorDid
+        : (post.authorName || 'Sovereign Creator');
+      const signMsg = `Web5.blog Sovereign Tip\n\nTip Amount: ${tipAmount} USDC\nTo Author: ${authorLabel}\nTo Treasury: ${treasury}\nTimestamp: ${Date.now()}`;
       const signature = await ethereum.request({
         method: 'personal_sign',
         params: [signMsg, from],
