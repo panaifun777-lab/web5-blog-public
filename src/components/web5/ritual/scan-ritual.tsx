@@ -85,58 +85,41 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       setProgress(20);
       await sleep(600);
 
-      // Phase 2: ritual — AA2P Handshake + 弹钱包签名绑定真实身份
+      // Phase 2: ritual — AA2P Handshake（纯动画，不阻塞）
       setPhase('ritual');
       audio?.playRitual();
       appendLogs([
         '> AA2P handshake initiated',
-        '> Requesting sovereign wallet signature...',
+        '> Synchronizing sovereign identity...',
       ]);
       setProgress(45);
+      await sleep(700);
 
-      // 弹钱包签名获取真实地址（动画运行到此时才调起钱包）
-      const ethereum = (window as any).ethereum;
-      if (!ethereum) {
-        throw new Error('请先安装 MetaMask / OKX 钱包');
-      }
-      const chainIdHex = '0x13b2';
+      // 静默获取已连接钱包地址（eth_accounts 不弹窗，不阻塞动画）
+      let addr = '';
       try {
-        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: chainIdHex,
-              chainName: 'Arc Mainnet',
-              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-              rpcUrls: ['https://rpc.mainnet.arc.io'],
-              blockExplorerUrls: ['https://explorer.arc.io'],
-            }],
-          });
-        } else {
-          throw switchError;
+        const ethereum = (window as any).ethereum;
+        if (ethereum) {
+          const accounts = await ethereum.request({ method: 'eth_accounts' });
+          if (accounts && accounts[0]) addr = (accounts[0] || '').toLowerCase();
         }
-      }
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-      const addr = (accounts[0] || '').toLowerCase();
-      if (!addr || !addr.startsWith('0x')) {
-        throw new Error('未获取到真实钱包地址');
-      }
-      const signMsg = `Web5.blog Sovereign Identity Binding\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-      await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
+      } catch {}
 
-      const vesselDid = `did:vessel:${addr}`;
-      const eidolonDid = `did:eidolon:${addr.slice(-16)}`;
-      appendLogs([
-        '> Wallet identity bound ✓',
-        `> Vessel DID: ${vesselDid.slice(0, 24)}...`,
-        '> Verifying soul credential...',
-      ]);
+      if (addr) {
+        appendLogs([
+          '> Wallet identity detected ✓',
+          `> Vessel DID: did:vessel:${addr.slice(0, 10)}...`,
+        ]);
+      } else {
+        appendLogs([
+          '> No wallet connected — entering observer mode',
+          '> Bind wallet later to unlock full privileges',
+        ]);
+      }
       setProgress(65);
-      await sleep(400);
+      await sleep(300);
 
-      // Phase 3: revelation — 后端验证并签发真实身份 Token
+      // Phase 3: revelation — 后端验证并签发身份 Token
       setPhase('revelation');
       audio?.playRevelation();
       appendLogs([
@@ -147,12 +130,13 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       setExplode(1);
       setProgress(80);
 
-      // 调用真实钱包登录后端（生成真实 did:plvtvs:0x... 身份）
+      // 用真实地址（或降级随机地址）登录，动画一定完成进入内页
+      const walletAddress = addr || ('0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''));
       const res = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: addr,
+          walletAddress,
         }),
       });
 
