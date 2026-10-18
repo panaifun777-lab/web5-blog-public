@@ -500,6 +500,10 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                     }
                     const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                     const from = accounts[0];
+                    // ━━ 二次签名主权确认（personal_sign，证明充值意图） ━━
+                    const signMsg = `Web5.blog Sovereign Recharge\n\nAmount: 0.1 USDC\nTo Vessel Wallet: ${vesselWalletAddr}\nTimestamp: ${Date.now()}`;
+                    await ethereum.request({ method: 'personal_sign', params: [signMsg, from] });
+                    // ━━ 链上转账 ━━
                     const amountWei = BigInt(Math.round(0.1 * 1e18));
                     await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
                     const b = await getVesselWalletBalance(vesselWalletAddr);

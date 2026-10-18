@@ -72,7 +72,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
   const [session, setSession] = useState<VesselSession | null>(null);
   const [view, setView] = useState<View>('ritual');
-  const [tab, setTab] = useState<Tab>('feed');
+  const [tab, setTab] = useState<Tab>('vessels');
   const [activeModule, setActiveModule] = useState<Module>('tech');
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [vesselWalletAddr, setVesselWalletAddr] = useState<string>('');
@@ -171,7 +171,7 @@ export default function Home() {
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
-    setSession(s); setView('app'); setTab('feed'); setLoginMethod(null);
+    setSession(s); setView('app'); setTab('vessels'); setLoginMethod(null);
   };
 
   // 容器登录：先连接真实钱包绑定身份，再进入四步握手仪式
@@ -368,9 +368,9 @@ export default function Home() {
             {/* 子功能导航 Tab (常驻顶端) */}
             <div className="flex items-center gap-2 p-1.5 mb-6 rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-x-auto">
               {[
+                { id: 'vessels', label: isEn ? '🧬 Avatar Matrix' : '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
                 { id: 'feed', label: isEn ? 'Blog Stream' : '博客流', icon: <FileText className="w-3.5 h-3.5" /> },
                 { id: 'write', label: isEn ? '✍️ AI Stream Write' : '✍️ AI 流式写作', icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
-                { id: 'vessels', label: isEn ? '🧬 Avatar Matrix' : '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
                 { id: 'explore', label: isEn ? '🔍 Explorer & DEX' : '🔍 探索面板与市场', icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
                 { id: 'settings', label: isEn ? '⚙️ Settings' : '⚙️ 系统设置', icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
               ].map(tItem => (
