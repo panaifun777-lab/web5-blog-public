@@ -59,10 +59,6 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
     try {
       const savedLimit = localStorage.getItem('web5_daily_limit_usdc');
       if (savedLimit) setDailyLimitUsdc(savedLimit);
-      const vip = localStorage.getItem('web5_vessel_vip') === 'true';
-      const exp = localStorage.getItem('web5_vessel_vip_expires');
-      setIsVip(vip && (!exp || parseInt(exp) > Date.now()));
-      if (exp) setVipExpires(parseInt(exp));
       const guard = localStorage.getItem('web5_passkey_guard');
       if (guard !== null) setPasskeyGuardEnabled(guard === 'true');
       // 初始化网站专用钱包（预付卡）
@@ -87,8 +83,6 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       if (d.success) {
         setIsVip(true);
         setVipExpires(d.vip.expiresAt);
-        localStorage.setItem('web5_vessel_vip', 'true');
-        localStorage.setItem('web5_vessel_vip_expires', String(d.vip.expiresAt));
         alert(d.message);
       } else {
         alert(d.error || 'VIP 开通失败');

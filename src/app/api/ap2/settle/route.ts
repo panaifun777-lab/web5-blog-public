@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `收款方不匹配，应为平台金库 ${TREASURY_ADDR.slice(0, 10)}...` }, { status: 400 });
     }
 
-    // 校验收款方（宽松：优先 session，其次 body.fromAddress）
-    const expectedFrom = (session?.primeDid ? session.primeDid.replace('did:plvtvs:', '').toLowerCase() : (fromAddress || '').toLowerCase());
+    // 校验付款方（优先用前端传的专用钱包地址 fromAddress，其次会话主钱包）
+    const expectedFrom = (fromAddress || session?.primeDid?.replace('did:plvtvs:', '') || '').toLowerCase();
     if (expectedFrom && tx.from.toLowerCase() !== expectedFrom) {
       return NextResponse.json({ error: '付款方与当前会话身份不一致' }, { status: 400 });
     }
