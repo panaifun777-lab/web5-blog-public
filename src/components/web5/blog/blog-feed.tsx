@@ -249,31 +249,79 @@ export function BlogFeed({
       setMessage('Observer Mode 无法微支付。请唤醒容器以解锁。');
       return;
     }
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) {
+      setMessage('请先安装 MetaMask / OKX 钱包以完成真实链上打赏');
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/ap2/pay', {
+      // ━━ 1. 切换到 Circle ARC 主网 (Chain ID 5042 = 0x13b2) ━━
+      const chainIdHex = '0x13b2';
+      try {
+        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName: 'Arc Mainnet',
+              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+              rpcUrls: ['https://rpc.mainnet.arc.io'],
+              blockExplorerUrls: ['https://explorer.arc.io'],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+
+      // ━━ 2. 获取打赏者地址 ━━
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      const from = accounts[0];
+
+      // ━━ 3. 真实原生 USDC 转账至平台金库 ━━
+      const treasury = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1';
+      const amountWei = BigInt(Math.round(parseFloat(tipAmount) * 1e18));
+      const txHash = await ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from,
+          to: treasury,
+          value: '0x' + amountWei.toString(16),
+        }],
+      });
+
+      // ━━ 4. 后端验证链上交易并 80/20 分润记账 ━━
+      const res = await fetch('/api/ap2/settle', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {}),
         },
         body: JSON.stringify({
-          to: post.authorDid,
-          amount: tipAmount,
-          category: 'tip',
-          ref: post.arweaveHash,
+          txHash,
+          toDid: post.authorDid,
+          amountUsdc: tipAmount,
         }),
       });
       const data = await res.json();
-      if (data.accepted) {
-        setMessage(`✓ 微支付 ${tipAmount} USDC 已发送`);
-        setTimeout(() => setMessage(null), 3000);
+      if (data.success) {
+        setMessage(`✅ 真实链上打赏 ${tipAmount} USDC 已确认入账！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC`);
+        setTimeout(() => setMessage(null), 6000);
       } else {
-        setMessage(`✗ BudgetFence 拦截：${data.reason}`);
+        setMessage(`✗ ${data.error || '结算验证失败'}`);
         setTimeout(() => setMessage(null), 5000);
       }
-    } catch (err) {
-      setMessage('微支付失败');
+    } catch (err: any) {
+      console.error('[Tip] Wallet transfer failed:', err);
+      if (err?.code === 4001) {
+        setMessage('已取消打赏');
+      } else {
+        setMessage('链上打赏失败：' + (err?.message || '请检查 ARC 链钱包余额'));
+      }
+      setTimeout(() => setMessage(null), 5000);
     } finally {
       setSubmitting(false);
     }
