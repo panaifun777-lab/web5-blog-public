@@ -872,18 +872,6 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     desc={isEn ? "Decentralized social graph mapping — OAuth 2.0" : "绑定 X 社交身份 — 映射去中心化社交图谱与 DID"}
                     color={COLORS.ap2} onClick={() => connectTwitter(setSession, setView, setTab)}
                   />
-                  <LoginBtn
-                    icon={<Bot className="w-5 h-5" />}
-                    title={isEn ? "AI Agent Access (0.1 USDC)" : "AI Agent 智能体准入 (0.1 USDC)"}
-                    desc={isEn ? "External agents pay 0.1 USDC on ARC to activate machine DID & API" : "外部智能体支付 0.1 USDC 原生 Gas 激活专属机器 DID 与 API 通道"}
-                    color="#FF66AA" onClick={() => {
-                      const pay = confirm('【Web5 智能体自由准入协议】\n\n依据 x402 与 Circle ARC 规范，外部 AI Agent 首次接入需通过 Circle ARC Mainnet (5042) 支付 0.1 USDC 作为身份存证与防女巫质押。\n\n是否立即调用 Vessel 出纳完成准入？');
-                      if (pay) {
-                        alert('已触发 ARC 链上 0.1 USDC 质押协议通道，已为你生成机器专属 Agent DID！');
-                        doLogin('0x' + Math.random().toString(16).slice(2).padStart(40, '0'), setSession, setView, setTab, true);
-                      }
-                    }}
-                  />
                 </div>
               ) : loginMethod === 'vessel' ? (
                 <div className="animate-in fade-in">
@@ -898,8 +886,8 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               <div className="lg:hidden mt-8 pt-6 border-t border-white/[0.04]">
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(MODULES).map(([key, m]) => (
-                    <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all"
+                    <button key={key} onClick={() => { setActiveModule(key as Module); setView('app'); setTab('feed'); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
                       style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
                       {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
                     </button>
@@ -924,7 +912,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               <div className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.01]">
                 <div className="flex flex-wrap items-center gap-1.5">
                   {Object.entries(MODULES).map(([key, m]) => (
-                    <button key={key} onClick={() => { setActiveModule(key as Module); connectWallet(setSession, setView, setTab); }}
+                    <button key={key} onClick={() => { setActiveModule(key as Module); setView('app'); setTab('feed'); }}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] transition-all hover:scale-105"
                       style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
                       {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
@@ -1002,12 +990,12 @@ async function connectWallet(s: any, v: any, t: any) {
     }
   } catch (e: any) {
     console.warn('[Web5] Wallet connection canceled or error:', e?.message);
-    alert('未检测到钱包连接或授权已取消。若需体验完整链上确权，请在插件中确认连接。');
+    alert('钱包连接请求已取消。请在弹出窗口中确认授权，或选用免插件的 Passkey 生物识别建仓。');
     return;
   }
 
   if (!addr) {
-    alert('未能获取到有效的 Web3 钱包地址，请确认已安装并解锁 MetaMask / OKX Wallet。');
+    alert('未检测到 MetaMask / OKX Web3 钱包扩展。\n\n💡 推荐使用上方第一项【Passkey 生物识别建仓】（支持 TouchID / FaceID 免插件免助记词极速登入），或安装钱包插件后重试。');
     return;
   }
 

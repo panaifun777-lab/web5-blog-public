@@ -86,3 +86,33 @@ export async function createPasskeySoul(username: string = 'web5-creator'): Prom
     primeDid,
   };
 }
+
+/**
+ * 触发生物识别二次安全认证 (TouchID / FaceID / Windows Hello)
+ * 用于高危提现、预算围栏修改与 Session 注销的二次签名确认
+ */
+export async function verifyPasskeyBiometric(promptText: string = '二次权限安全验证'): Promise<boolean> {
+  if (!isPasskeySupported()) {
+    // 硬件不支持环境降级为密码学 confirm
+    return confirm(`🔐【硬件生物密钥二次校验】\n\n${promptText}\n\n是否确认以本地硬件本体权限放行此操作？`);
+  }
+
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+
+    const credential = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        rpId: window.location.hostname === 'localhost' ? 'localhost' : 'web5.blog',
+        userVerification: 'required',
+        timeout: 60000,
+      },
+    });
+
+    return Boolean(credential);
+  } catch (err: any) {
+    console.warn('[Passkey Auth Canceled or Failed]:', err?.message);
+    return false;
+  }
+}

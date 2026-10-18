@@ -69,23 +69,44 @@ export async function requestVesselSignature(
   return res.json();
 }
 
-/** 模拟 Vessel 签名（开发模式） */
+/** 获取或创建当前设备的稳定容器身份种子（确保分身 DID 恒定不变，杜绝随机轮换） */
+function getOrCreateDeviceVesselSeed(): string {
+  if (typeof window !== 'undefined') {
+    try {
+      let seed = localStorage.getItem('web5_device_vessel_seed');
+      if (!seed) {
+        seed = Array.from(crypto.getRandomValues(new Uint8Array(20)))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        localStorage.setItem('web5_device_vessel_seed', seed);
+      }
+      return seed;
+    } catch {}
+  }
+  return 'web5-fixed-vessel-device-seed-constant';
+}
+
+/** 模拟 Vessel 签名（开发与测试环境） — 基于设备种子产生唯一恒定 DID */
 async function simulateVesselSignature(
   challenge: VesselChallenge
 ): Promise<{ aa2pClaim: AA2PClaim; vesselDid: string; eidolonDid: string }> {
-  await new Promise((r) => setTimeout(r, 800)); // 模拟网络延迟
+  await new Promise((r) => setTimeout(r, 600)); // 模拟硬件安全握手延迟
 
-  const seed = `${challenge.nonce}-${challenge.timestamp}`;
-  const vesselId = seed.slice(0, 16);
-  const eidolonId = seed.slice(16, 32);
+  const deviceSeed = getOrCreateDeviceVesselSeed();
+  const vesselId = deviceSeed.slice(0, 16);
+  const eidolonId = deviceSeed.slice(16, 32);
+
+  const vesselDid = `did:vessel:node-${vesselId}`;
+  const eidolonDid = `did:eidolon:node-${eidolonId}`;
+  const signature = `0x${deviceSeed.padEnd(130, '0').slice(0, 130)}`;
 
   return {
-    vesselDid: `did:vessel:sim-${vesselId}`,
-    eidolonDid: `did:eidolon:sim-${eidolonId}`,
+    vesselDid,
+    eidolonDid,
     aa2pClaim: {
-      vesselDid: `did:vessel:sim-${vesselId}`,
-      eidolonDid: `did:eidolon:sim-${eidolonId}`,
-      signature: `0x${seed.padEnd(130, '0').slice(0, 130)}`,
+      vesselDid,
+      eidolonDid,
+      signature,
       challenge,
       expiresAt: Date.now() + RFC_CONSTANTS.CHALLENGE_TTL_MS,
     },

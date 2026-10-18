@@ -16,12 +16,13 @@ import { fromTokenUnits, type VesselSession } from '@/lib/web5/types';
 import {
   Activity, Coins, Cpu, Terminal, RefreshCw, Zap, Shield,
   TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink, Sparkles, CheckCircle2, Lock,
-  Bot, Check, ArrowRight,
+  Bot, Check, ArrowRight, Fingerprint, Key,
 } from 'lucide-react';
 import { getAvatarSkillTree, type AvatarSkillNode } from '@/lib/web5/resonance/bb-engine';
 import { CognitivePanel } from './cognitive-panel';
 import { Brain } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { verifyPasskeyBiometric, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
 
 function toBigInt(v: any): bigint {
   if (typeof v === 'bigint') return v;
@@ -45,6 +46,9 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [isVip, setIsVip] = useState(false);
   const [vipExpires, setVipExpires] = useState<number | null>(null);
+  const [passkeyGuardEnabled, setPasskeyGuardEnabled] = useState(true);
+  const [agentStakeFee, setAgentStakeFee] = useState('0.10');
+  const [copiedApiKey, setCopiedApiKey] = useState(false);
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
@@ -56,36 +60,37 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       const exp = localStorage.getItem('web5_vessel_vip_expires');
       setIsVip(vip && (!exp || parseInt(exp) > Date.now()));
       if (exp) setVipExpires(parseInt(exp));
+      const guard = localStorage.getItem('web5_passkey_guard');
+      if (guard !== null) setPasskeyGuardEnabled(guard === 'true');
     } catch {}
   }, []);
 
-  const handleActivateVip = async (useWbog: boolean) => {
-    try {
-      const res = await fetch('/api/commerce/vip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vesselDid: session?.vesselDid,
-          paymentToken: useWbog ? 'WBOG' : 'USDC',
-          months: 1,
-        }),
-      });
-      const d = await res.json();
-      if (d.success) {
-        setIsVip(true);
-        setVipExpires(d.vip.expiresAt);
-        localStorage.setItem('web5_vessel_vip', 'true');
-        localStorage.setItem('web5_vessel_vip_expires', String(d.vip.expiresAt));
-        alert(d.message);
-      } else {
-        alert(d.error || 'VIP 开通失败');
+  const togglePasskeyGuard = async () => {
+    if (!passkeyGuardEnabled) {
+      const ok = await verifyPasskeyBiometric('开启 Passkey 生物密钥二次锁');
+      if (ok) {
+        setPasskeyGuardEnabled(true);
+        localStorage.setItem('web5_passkey_guard', 'true');
+        alert(isEn ? '✅ Passkey Biometric Sovereign Guard enabled!' : '✅ Passkey 生物识别二次安全锁已成功启用！高危操作将受到硬件级保护。');
       }
-    } catch (e: any) {
-      alert('激活失败: ' + e.message);
+    } else {
+      const ok = await verifyPasskeyBiometric('关闭 Passkey 生物密钥二次锁');
+      if (ok) {
+        setPasskeyGuardEnabled(false);
+        localStorage.setItem('web5_passkey_guard', 'false');
+        alert(isEn ? 'Passkey Sovereign Guard disabled.' : 'Passkey 生物识别二次安全锁已关闭。');
+      }
     }
   };
 
-  const handleUpdateLimit = (lim: string) => {
+  const handleUpdateLimit = async (lim: string) => {
+    if (passkeyGuardEnabled) {
+      const ok = await verifyPasskeyBiometric(`修改单日预算限额为 ${lim} USDC`);
+      if (!ok) {
+        alert(isEn ? 'Biometric verification cancelled.' : '生物识别校验已取消或未通过，限额保持不变。');
+        return;
+      }
+    }
     setDailyLimitUsdc(lim);
     localStorage.setItem('web5_daily_limit_usdc', lim);
     alert(isEn 
@@ -98,6 +103,13 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       alert(isEn ? 'No harvest available to withdraw.' : '当前暂无可用提现余额。');
       return;
     }
+    if (passkeyGuardEnabled) {
+      const ok = await verifyPasskeyBiometric(`确认全额提现 ${earnedHarvestUsdc.toFixed(2)} USDC 至主钱包`);
+      if (!ok) {
+        alert(isEn ? 'Biometric verification failed. Withdrawal aborted.' : '生物识别校验未通过，提现流程已安全终止。');
+        return;
+      }
+    }
     setWithdrawing(true);
     setTimeout(() => {
       alert(isEn
@@ -109,6 +121,13 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   };
 
   const handlePanicRevoke = async () => {
+    if (passkeyGuardEnabled) {
+      const ok = await verifyPasskeyBiometric('确认执行紧急熔断注销 Session Key');
+      if (!ok) {
+        alert(isEn ? 'Biometric verification aborted.' : '生物特征确认未通过，熔断操作已中止。');
+        return;
+      }
+    }
     const confirmed = confirm(isEn
       ? '🚨 [PANIC REVOKE CONFIRMATION]\n\nAre you sure you want to revoke your Avatar Session Key? This will immediately terminate all autonomous agent spending permissions on-chain.\n\nYour main wallet assets remain 100% untouched.'
       : '🚨【紧急熔断安全确认】\n\n确定要立即销毁当前 AI 分身的 Session Key 吗？\n\n这将立刻阻断分身的一切链上自动微支付与出纳权限，你的主钱包核心资产不受任何影响！');
@@ -487,6 +506,66 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <span>兑换 $WBOG</span>
             <ExternalLink className="w-3 h-3" />
           </a>
+        </div>
+      </div>
+
+      {/* ━━ 🤖 智能体对外接入与 API 准入网关 (从首页移入内页供用户自主配置) ━━ */}
+      <div className="p-4 rounded-xl border border-[#0066FF]/30 bg-gradient-to-r from-[#0066FF]/10 via-[#0a0e17] to-transparent space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#0066FF]/20 flex items-center justify-center text-[#0066FF]">
+              <Bot className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-white flex items-center gap-2">
+                <span>{isEn ? 'Autonomous Agent API Gateway & Sybil Stake' : '🤖 智能体对外接入与 API 准入网关'}</span>
+                <Badge className="bg-[#0066FF]/20 text-[#0066FF] border-[#0066FF]/30 text-[9px]">
+                  x402 / MCP READY
+                </Badge>
+              </div>
+              <p className="text-[11px] text-[#aaa] mt-0.5">
+                允许第三方 AI 爬虫与外部智能体调用你的分身智识库，外部接入需支付 0.10 USDC 防女巫质押并按次分润。
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(`https://web5.blog/api/mcp?did=${session?.vesselDid}`);
+                setCopiedApiKey(true);
+                setTimeout(() => setCopiedApiKey(false), 2000);
+              }}
+              className="bg-[#0066FF]/20 text-[#0066FF] border border-[#0066FF]/40 hover:bg-[#0066FF]/30 text-xs h-8 px-3"
+            >
+              {copiedApiKey ? '✓ 专属 MCP 链接已复制' : '📋 复制分身 MCP 端点'}
+            </Button>
+            <a
+              href="/api/openapi.json"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-lg border border-white/[0.1] text-[11px] text-[#888] hover:text-white text-xs h-8 flex items-center gap-1"
+            >
+              <span>OpenAPI</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-white/[0.04] text-[11px] font-mono">
+          <div className="p-2 rounded bg-black/40 border border-white/[0.04]">
+            <span className="text-[#666]">专属 Agent DID: </span>
+            <span className="text-[#00FFCC] truncate block mt-0.5">did:agent:{session?.vesselDid?.slice(-20)}</span>
+          </div>
+          <div className="p-2 rounded bg-black/40 border border-white/[0.04]">
+            <span className="text-[#666]">机器准入质押费: </span>
+            <span className="text-[#FFCC00] font-bold block mt-0.5">0.10 USDC (50%销毁)</span>
+          </div>
+          <div className="p-2 rounded bg-black/40 border border-white/[0.04]">
+            <span className="text-[#666]">支持标准: </span>
+            <span className="text-white block mt-0.5">Claude MCP / AA2P RPC / x402</span>
+          </div>
         </div>
       </div>
 
