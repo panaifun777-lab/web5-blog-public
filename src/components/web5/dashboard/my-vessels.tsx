@@ -41,8 +41,8 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [fcProfile, setFcProfile] = useState<any>(null);
 
   const [dailyLimitUsdc, setDailyLimitUsdc] = useState<string>('2.0');
-  const [spentTodayUsdc, setSpentTodayUsdc] = useState<string>('0.05');
-  const [earnedHarvestUsdc, setEarnedHarvestUsdc] = useState<number>(150.0);
+  const [spentTodayUsdc, setSpentTodayUsdc] = useState<string>('0.00');
+  const [earnedHarvestUsdc, setEarnedHarvestUsdc] = useState<number>(0);
   const [withdrawing, setWithdrawing] = useState(false);
   const [isVip, setIsVip] = useState(false);
   const [vipExpires, setVipExpires] = useState<number | null>(null);
@@ -162,7 +162,20 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       const res = await fetch('/api/dashboard', {
         headers: { 'x-vessel-did': session.vesselDid },
       });
-      if (res.ok) setData(await res.json());
+      if (res.ok) {
+        const d = await res.json();
+        setData(d);
+        // 同步真实链上收益与已花金额到显示（消除硬编码假数据）
+        if (d.totalYield !== undefined) {
+          setEarnedHarvestUsdc(Number(toBigInt(d.totalYield)) / 1e6);
+        }
+        if (d.treasury?.spentToday !== undefined) {
+          setSpentTodayUsdc((Number(toBigInt(d.treasury.spentToday)) / 1e6).toFixed(2));
+        }
+        if (d.treasury?.dailyLimit !== undefined) {
+          setDailyLimitUsdc((Number(toBigInt(d.treasury.dailyLimit)) / 1e6).toFixed(1));
+        }
+      }
     } catch (err) {
       console.error('MyVessels load failed:', err);
     } finally {
