@@ -74,6 +74,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>('feed');
   const [activeModule, setActiveModule] = useState<Module>('tech');
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
+  const [vesselWalletAddr, setVesselWalletAddr] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
   const [curveModalOpen, setCurveModalOpen] = useState(false);
@@ -171,6 +172,52 @@ export default function Home() {
   const handleRitualSuccess = (s: VesselSession) => {
     setSession(s); setView('app'); setTab('feed'); setLoginMethod(null);
   };
+
+  // 容器登录：先连接真实钱包绑定身份，再进入四步握手仪式
+  const handleVesselLogin = async () => {
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) {
+      alert('容器唤醒需要先连接真实钱包。请安装 MetaMask / OKX 后重试。');
+      return;
+    }
+    try {
+      // 切换 ARC 主网
+      const chainIdHex = '0x13b2';
+      try {
+        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName: 'Arc Mainnet',
+              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+              rpcUrls: ['https://rpc.mainnet.arc.io'],
+              blockExplorerUrls: ['https://explorer.arc.io'],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      const addr = accounts[0];
+      // personal_sign 绑定身份
+      const signMsg = `Web5.blog Sovereign Identity Binding\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+      await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
+      setVesselWalletAddr(addr);
+      setLoginMethod('vessel');
+    } catch (err: any) {
+      console.warn('[Web5] Vessel wallet bind error:', err);
+      if (err?.code === 4001) {
+        alert('已取消签名');
+      } else {
+        alert('钱包绑定失败：' + (err?.message || '请确认钱包已连接'));
+      }
+    }
+  };
+
   const handleLogout = async () => {
     await revokeVesselSession(); setSession(null); setView('ritual');
   };
@@ -842,7 +889,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
                     desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
-                    color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
+                    color={COLORS.eidolon} onClick={() => handleVesselLogin()}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
@@ -856,7 +903,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
                     ← {isEn ? 'Back to Login Options' : '返回选择登录方式'}
                   </button>
-                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
+                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" walletAddress={vesselWalletAddr} />
                 </div>
               ) : null}
 

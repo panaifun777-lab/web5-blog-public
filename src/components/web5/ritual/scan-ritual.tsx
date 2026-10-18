@@ -42,9 +42,10 @@ interface ScanRitualProps {
   onSuccess?: (session: VesselSession) => void;
   onError?: (err: Error) => void;
   seed?: string;
+  walletAddress?: string; // 真实钱包地址（身份统一：容器登录也绑定真实钱包）
 }
 
-export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default' }: ScanRitualProps) {
+export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', walletAddress }: ScanRitualProps) {
   const [phase, setPhase] = useState<RitualPhase>('idle');
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -84,48 +85,48 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default' }: S
       setProgress(20);
       await sleep(600);
 
-      // Phase 2: ritual — AA2P Handshake + 请求 Vessel 签名（真实 Step 2）
+      // Phase 2: ritual — AA2P Handshake + 真实钱包身份绑定
       setPhase('ritual');
       audio?.playRitual();
       appendLogs([
         '> AA2P handshake initiated',
-        '> Requesting Eidolon signature via vessel environment...',
+        '> Binding sovereign wallet identity...',
       ]);
       setProgress(45);
-      // 并行执行：视觉动画 + 签名请求
-      const signPromise = requestVesselSignature(challenge);
       await sleep(400);
 
-      // 等待签名完成
-      const { aa2pClaim, vesselDid, eidolonDid } = await signPromise;
+      // 身份统一：基于真实钱包地址派生唯一 DID（不再模拟签名）
+      const addr = (walletAddress || '').toLowerCase();
+      if (!addr || !addr.startsWith('0x')) {
+        throw new Error('未检测到真实钱包地址，请先连接钱包');
+      }
+      const vesselDid = `did:vessel:${addr}`;
+      const eidolonDid = `did:eidolon:${addr.slice(-16)}`;
       appendLogs([
-        '> Vessel signature acquired ✓',
+        '> Wallet identity bound ✓',
         `> Vessel DID: ${vesselDid.slice(0, 24)}...`,
         '> Verifying soul credential...',
       ]);
       setProgress(65);
       await sleep(400);
 
-      // Phase 3: revelation — 后端验证 Prime 授权 + 签发 Token（真实 Steps 3+4）
+      // Phase 3: revelation — 后端验证并签发真实身份 Token
       setPhase('revelation');
       audio?.playRevelation();
       appendLogs([
-        '> Querying Prime delegation from eidolonos.xyz...',
+        '> Querying Prime delegation...',
         '> Session Key authorized',
         '> Issuing Vessel Session Token...',
       ]);
       setExplode(1);
       setProgress(80);
 
-      // 调用后端 API 完成登录
-      const res = await fetch('/api/auth/vessel-login', {
+      // 调用真实钱包登录后端（生成真实 did:plvtvs:0x... 身份）
+      const res = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          challenge,
-          aa2pClaim,
-          vesselDid,
-          eidolonDid,
+          walletAddress: addr,
         }),
       });
 
