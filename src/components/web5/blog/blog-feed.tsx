@@ -29,6 +29,7 @@ import { CognitiveThread } from '@/components/web5/blog/cognitive-thread';
 import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
 import { getCognitiveCoreState } from '@/lib/web5/eidolon/cognitive-core';
 import { Zap, Activity, Users, Bot } from 'lucide-react';
+import { vesselWalletTransfer, getOrCreateVesselWallet, getVesselWalletBalance } from '@/lib/web5/vessel-wallet';
 
 interface BlogPost {
   id: string;
@@ -249,62 +250,25 @@ export function BlogFeed({
       setMessage('Observer Mode 无法微支付。请唤醒容器以解锁。');
       return;
     }
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) {
-      setMessage('请先安装 MetaMask / OKX 钱包以完成真实链上打赏');
-      return;
-    }
     setSubmitting(true);
     try {
-      // ━━ 1. 切换到 Circle ARC 主网 (Chain ID 5042 = 0x13b2) ━━
-      const chainIdHex = '0x13b2';
-      try {
-        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: chainIdHex,
-              chainName: 'Arc Mainnet',
-              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-              rpcUrls: ['https://rpc.mainnet.arc.io'],
-              blockExplorerUrls: ['https://explorer.arc.io'],
-            }],
-          });
-        } else {
-          throw switchError;
-        }
+      // ━━ 用网站专用钱包（Vessel 零钱包）签名转账，免主钱包弹窗 ━━
+      const treasury = '0xCA36335845E382129167fC44243F07A76827bA22';
+      const vessel = getOrCreateVesselWallet();
+
+      // 检查专用钱包余额是否足够（含 gas）
+      const balance = await getVesselWalletBalance(vessel.address);
+      const need = parseFloat(tipAmount) + 0.001;
+      if (balance < need) {
+        setMessage(`⚠️ 专用钱包余额不足（${balance.toFixed(3)} USDC），请先充值后再打赏`);
+        setTimeout(() => setMessage(null), 5000);
+        setSubmitting(false);
+        return;
       }
 
-      // ━━ 2. 获取打赏者地址 ━━
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-      const from = accounts[0];
+      const txHash = await vesselWalletTransfer(treasury, tipAmount);
 
-      // ━━ 2.5 先进行 personal_sign 签名确认（额外安全层，证明打赏意图） ━━
-      const treasury = '0xCA36335845E382129167fC44243F07A76827bA22';
-      // 规范化作者标识：优先作者名，其次完整 DID（避免展示残缺脏数据）
-      const authorLabel = (post.authorDid && post.authorDid.length > 10 && post.authorDid !== 'did')
-        ? post.authorDid
-        : (post.authorName || 'Sovereign Creator');
-      const signMsg = `Web5.blog Sovereign Tip\n\nTip Amount: ${tipAmount} USDC\nTo Author: ${authorLabel}\nTo Treasury: ${treasury}\nTimestamp: ${Date.now()}`;
-      const signature = await ethereum.request({
-        method: 'personal_sign',
-        params: [signMsg, from],
-      });
-
-      // ━━ 3. 真实原生 USDC 转账至平台金库 ━━
-      const amountWei = BigInt(Math.round(parseFloat(tipAmount) * 1e18));
-      const txHash = await ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from,
-          to: treasury,
-          value: '0x' + amountWei.toString(16),
-        }],
-      });
-
-      // ━━ 4. 后端验证链上交易并 80/20 分润记账 ━━
+      // ━━ 后端验证链上交易并 80/20 分润记账 ━━
       const res = await fetch('/api/ap2/settle', {
         method: 'POST',
         headers: {
@@ -315,23 +279,20 @@ export function BlogFeed({
           txHash,
           toDid: post.authorDid,
           amountUsdc: tipAmount,
+          fromAddress: vessel.address,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setMessage(`✅ 真实链上打赏 ${tipAmount} USDC 已确认入账！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC`);
+        setMessage(`✅ 专用钱包已打赏 ${tipAmount} USDC！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC`);
         setTimeout(() => setMessage(null), 6000);
       } else {
         setMessage(`✗ ${data.error || '结算验证失败'}`);
         setTimeout(() => setMessage(null), 5000);
       }
     } catch (err: any) {
-      console.error('[Tip] Wallet transfer failed:', err);
-      if (err?.code === 4001) {
-        setMessage('已取消打赏');
-      } else {
-        setMessage('链上打赏失败：' + (err?.message || '请检查 ARC 链钱包余额'));
-      }
+      console.error('[Tip] Vessel wallet transfer failed:', err);
+      setMessage('打赏失败：' + (err?.message?.slice(0, 80) || '请先给专用钱包充值 USDC'));
       setTimeout(() => setMessage(null), 5000);
     } finally {
       setSubmitting(false);

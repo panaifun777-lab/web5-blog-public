@@ -23,6 +23,7 @@ import { CognitivePanel } from './cognitive-panel';
 import { Brain } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { verifyPasskeyBiometric, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
+import { getOrCreateVesselWallet, getVesselWalletBalance } from '@/lib/web5/vessel-wallet';
 
 function toBigInt(v: any): bigint {
   if (typeof v === 'bigint') return v;
@@ -49,6 +50,8 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [passkeyGuardEnabled, setPasskeyGuardEnabled] = useState(true);
   const [agentStakeFee, setAgentStakeFee] = useState('0.10');
   const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const [vesselWalletAddr, setVesselWalletAddr] = useState('');
+  const [vesselWalletBal, setVesselWalletBal] = useState(0);
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
@@ -62,8 +65,38 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       if (exp) setVipExpires(parseInt(exp));
       const guard = localStorage.getItem('web5_passkey_guard');
       if (guard !== null) setPasskeyGuardEnabled(guard === 'true');
+      // 初始化网站专用钱包（预付卡）
+      const vw = getOrCreateVesselWallet();
+      setVesselWalletAddr(vw.address);
+      getVesselWalletBalance(vw.address).then(b => setVesselWalletBal(b));
     } catch {}
   }, []);
+
+  const handleActivateVip = async (useWbog: boolean) => {
+    try {
+      const res = await fetch('/api/commerce/vip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vesselDid: session?.vesselDid,
+          paymentToken: useWbog ? 'WBOG' : 'USDC',
+          months: 1,
+        }),
+      });
+      const d = await res.json();
+      if (d.success) {
+        setIsVip(true);
+        setVipExpires(d.vip.expiresAt);
+        localStorage.setItem('web5_vessel_vip', 'true');
+        localStorage.setItem('web5_vessel_vip_expires', String(d.vip.expiresAt));
+        alert(d.message);
+      } else {
+        alert(d.error || 'VIP 开通失败');
+      }
+    } catch (e: any) {
+      alert('激活失败: ' + e.message);
+    }
+  };
 
   const togglePasskeyGuard = async () => {
     if (!passkeyGuardEnabled) {
@@ -436,18 +469,51 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
               </Badge>
             </div>
 
-            {/* 分身专属链上钱包地址（真实可见） */}
-            <div className="p-3 rounded-xl bg-black/40 border border-[#B080E8]/20 space-y-1">
+            {/* 网站专用钱包（预付卡模式：主钱包一次性充值，日常免签消费） */}
+            <div className="p-3 rounded-xl bg-black/40 border border-[#B080E8]/20 space-y-2">
               <div className="text-[10px] text-[#888] font-mono flex items-center gap-1.5">
                 <Bot className="w-3 h-3 text-[#B080E8]" />
-                {isEn ? 'Avatar Dedicated On-chain Wallet:' : '分身专属链上钱包地址:'}
+                {isEn ? 'Vessel Prepaid Wallet (website dedicated):' : '网站专用钱包 (Vessel 预付卡):'}
               </div>
               <div className="text-xs text-[#B080E8] font-mono break-all select-all font-semibold">
-                {vesselStatus?.smartAccountAddress || session?.vesselDid || '0x0000…0000'}
+                {vesselWalletAddr || '0x0000…0000'}
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-[#888]">{isEn ? 'Balance:' : '余额:'}</span>
+                <span className="text-[#FFCC00] font-bold">{vesselWalletBal.toFixed(4)} USDC</span>
               </div>
               <div className="text-[9px] text-[#666] font-mono">
-                {isEn ? 'Autonomous earnings settle to this address · withdraw to your root wallet anytime' : '分身自主收益汇入此地址 · 可随时一键提现回主钱包'}
+                {isEn ? 'Top up once from your root wallet, then tip/task auto-settles without signature' : '主钱包一次性充值，之后打赏/发任务免签自动结算'}
               </div>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  const ethereum = (window as any).ethereum;
+                  if (!ethereum) { alert('请先连接主钱包'); return; }
+                  try {
+                    const chainIdHex = '0x13b2';
+                    try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }); }
+                    catch (e: any) {
+                      if (e.code === 4902) {
+                        await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: chainIdHex, chainName: 'Arc Mainnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.arc.io'], blockExplorerUrls: ['https://explorer.arc.io'] }] });
+                      } else throw e;
+                    }
+                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                    const from = accounts[0];
+                    const amountWei = BigInt(Math.round(10 * 1e18));
+                    await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
+                    const b = await getVesselWalletBalance(vesselWalletAddr);
+                    setVesselWalletBal(b);
+                    alert('✅ 已向专用钱包充值 10 USDC，可免签打赏了！');
+                  } catch (e: any) {
+                    if (e?.code === 4001) alert('已取消充值');
+                    else alert('充值失败：' + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
+                  }
+                }}
+                className="w-full text-xs h-8 bg-[#B080E8]/20 text-[#B080E8] border border-[#B080E8]/40 hover:bg-[#B080E8]/30"
+              >
+                ⚡ {isEn ? 'Top Up 10 USDC from Root Wallet' : '主钱包充值 10 USDC (一次性签名)'}
+              </Button>
             </div>
 
             <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
