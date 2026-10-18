@@ -16,7 +16,7 @@ import { fromTokenUnits, type VesselSession } from '@/lib/web5/types';
 import {
   Activity, Coins, Cpu, Terminal, RefreshCw, Zap, Shield,
   TrendingUp, Clock, AlertCircle, Bell, Share2, ExternalLink, Sparkles, CheckCircle2, Lock,
-  Bot, Check, ArrowRight, Fingerprint, Key,
+  Bot, Check, ArrowRight, Fingerprint, Key, Twitter,
 } from 'lucide-react';
 import { getAvatarSkillTree, type AvatarSkillNode } from '@/lib/web5/resonance/bb-engine';
 import { CognitivePanel } from './cognitive-panel';
@@ -565,6 +565,66 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
           <div className="p-2 rounded bg-black/40 border border-white/[0.04]">
             <span className="text-[#666]">支持标准: </span>
             <span className="text-white block mt-0.5">Claude MCP / AA2P RPC / x402</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ━━ 🔗 主权身份完善绑定（从首页移入内页：推特社交 + Passkey 指纹本体） ━━ */}
+      <div className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.01] space-y-3">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-[#B080E8]" />
+          <span className="text-xs font-bold text-white">
+            {isEn ? 'Sovereign Identity Completion (Bind more credentials)' : '主权身份完善绑定 (进一步绑定你的分身)'}
+          </span>
+          <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px]">
+            OPTIONAL
+          </Badge>
+        </div>
+        <p className="text-[11px] text-[#888] leading-relaxed">
+          将社交图谱与硬件生物密钥绑定到你的分身本体，进一步加固身份主权与跨平台影响力。
+        </p>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          {/* Twitter / X 绑定 */}
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.04] space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#0066FF]/15 flex items-center justify-center text-[#0066FF]">
+                <Twitter className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">绑定 Twitter / X 社交身份</div>
+                <div className="text-[10px] text-[#666]">映射去中心化社交图谱与 DID</div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { window.location.href = '/api/auth/twitter'; }}
+              className="w-full text-xs h-8 border-[#0066FF]/30 text-[#0066FF] hover:bg-[#0066FF]/10"
+            >
+              <Twitter className="w-3 h-3 mr-1" /> 绑定 X 账号
+            </Button>
+          </div>
+
+          {/* Passkey 指纹绑定 */}
+          <div className="p-3 rounded-xl bg-black/40 border border-white/[0.04] space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#FFCC00]/15 flex items-center justify-center text-[#FFCC00]">
+                <Fingerprint className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-white">绑定 Passkey 生物指纹本体</div>
+                <div className="text-[10px] text-[#666]">TouchID / FaceID 硬件级二次风控</div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => togglePasskeyGuard()}
+              className="w-full text-xs h-8 border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/10"
+            >
+              <Fingerprint className="w-3 h-3 mr-1" /> {passkeyGuardEnabled ? '指纹锁已绑定 · 点击验证' : '绑定指纹本体'}
+            </Button>
           </div>
         </div>
       </div>

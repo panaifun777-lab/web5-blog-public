@@ -34,9 +34,7 @@ import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
-import { createPasskeySoul, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
 import { useTma } from '@/components/web5/telegram/tma-provider';
-import { Fingerprint } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/index';
 
 // ━━ 协议色语义映射 ━━
@@ -837,40 +835,20 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 <ArrowRight className="w-4 h-4 text-[#00FFCC] group-hover:translate-x-1 transition-transform" />
               </div>
 
-              {/* Login Cards */}
+              {/* Login Cards — 仅保留容器与钱包两种主权登录 */}
               {!loginMethod ? (
                 <div className="space-y-3">
                   <LoginBtn
-                    icon={<Fingerprint className="w-5 h-5" />}
-                    title={isEn ? "Passkey Biometric Creation (Sovereign Soul)" : "Passkey 生物识别建仓 (Sovereign Soul)"}
-                    desc={isEn ? "TouchID / FaceID hardware setup — Zero-mnemonic root authority" : "TouchID / FaceID 免助记词极速建仓 — 人类本体终极风控权限"}
-                    color="#FFCC00" onClick={async () => {
-                      try {
-                        const soul = await createPasskeySoul();
-                        alert(`✅ Passkey 凭证生成成功！已为你创建唯一本体 DID: ${soul.primeDid}`);
-                        doLogin(soul.rawAddress, setSession, setView, setTab, true);
-                      } catch (err: any) {
-                        alert(err.message);
-                      }
-                    }}
-                  />
-                  <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
-                    desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake" : (t?.login?.vesselDesc || 'AP2/AA2P 协议 — 四步握手唤醒分身')}
+                    desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
                     color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
                     title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
-                    desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding" : "MetaMask / OKX / Web3 钱包 — 唤醒容器直接开启完整权限"}
+                    desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding & signing" : "MetaMask / OKX / Web3 钱包 — 链上签名绑定容器，直接开启完整创作权限"}
                     color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab)}
-                  />
-                  <LoginBtn
-                    icon={<Twitter className="w-5 h-5" />}
-                    title={isEn ? "Twitter / X Login" : (t?.login?.twitter || 'Twitter / X 登录')}
-                    desc={isEn ? "Decentralized social graph mapping — OAuth 2.0" : "绑定 X 社交身份 — 映射去中心化社交图谱与 DID"}
-                    color={COLORS.ap2} onClick={() => connectTwitter(setSession, setView, setTab)}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
@@ -980,26 +958,69 @@ function LoginBtn({ icon, title, desc, color, onClick }: any) {
 
 // ━━ Auth helpers ━━
 async function connectWallet(s: any, v: any, t: any) {
-  let addr: string | null = null;
+  const ethereum = (window as any).ethereum;
+  if (!ethereum) {
+    alert('未检测到 MetaMask / OKX Web3 钱包扩展，请安装钱包插件后重试。');
+    return;
+  }
+
   try {
-    if (typeof window !== 'undefined' && (window as any).ethereum) {
-      const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts && accounts[0]) {
-        addr = accounts[0];
+    // ━━ 1. 切换 Circle ARC 主网 (5042 = 0x13b2) ━━
+    const chainIdHex = '0x13b2';
+    try {
+      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+    } catch (switchError: any) {
+      if (switchError.code === 4902) {
+        await ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: chainIdHex,
+            chainName: 'Arc Mainnet',
+            nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+            rpcUrls: ['https://rpc.mainnet.arc.io'],
+            blockExplorerUrls: ['https://explorer.arc.io'],
+          }],
+        });
+      } else {
+        throw switchError;
       }
     }
-  } catch (e: any) {
-    console.warn('[Web5] Wallet connection canceled or error:', e?.message);
-    alert('钱包连接请求已取消。请在弹出窗口中确认授权，或选用免插件的 Passkey 生物识别建仓。');
-    return;
-  }
 
-  if (!addr) {
-    alert('未检测到 MetaMask / OKX Web3 钱包扩展。\n\n💡 推荐使用上方第一项【Passkey 生物识别建仓】（支持 TouchID / FaceID 免插件免助记词极速登入），或安装钱包插件后重试。');
-    return;
-  }
+    // ━━ 2. 获取钱包地址 ━━
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    const addr = accounts[0];
 
-  await doLogin(addr, s, v, t, true);
+    // ━━ 3. 个人签名（证明钱包所有权，弹窗确认） ━━
+    const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+    const signature = await ethereum.request({
+      method: 'personal_sign',
+      params: [signMsg, addr],
+    });
+
+    // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读） ━━
+    const res = await fetch('/api/auth/wallet-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ walletAddress: addr, signature }),
+    });
+    const data = await res.json();
+
+    if (data.success && data.session) {
+      sessionStorage.setItem('web5_vessel_session', JSON.stringify(data.session));
+      s(data.session);
+      v('app');
+      t('feed');
+    } else {
+      alert(data.error || '钱包登录失败');
+    }
+  } catch (err: any) {
+    console.warn('[Web5] Wallet login error:', err);
+    if (err?.code === 4001) {
+      alert('已取消签名');
+    } else {
+      alert('钱包登录失败：' + (err?.message || '请在钱包中确认签名'));
+    }
+  }
 }
 async function connectTwitter(s: any, v: any, t: any) {
   const callbackUrl = encodeURIComponent(

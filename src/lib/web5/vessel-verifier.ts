@@ -88,7 +88,7 @@ export async function queryPrimeDelegation(
 
 /** 获取 Vessel 的 BudgetFence 配置 */
 async function getBudgetForVessel(vesselId: string): Promise<BudgetFence> {
-  const budget = await db.aP2Budget.findUnique({ where: { vesselId } });
+  const budget = await db.aP2Budget.findFirst({ where: { vesselId } });
   if (budget) {
     return {
       dailyLimit: budget.dailyLimit,

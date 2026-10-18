@@ -150,8 +150,8 @@ export async function ap2Pay(
     },
   });
 
-  // 更新已花费金额
-  await db.aP2Budget.update({
+  // 更新已花费金额（vesselId 非唯一，使用 updateMany 容错）
+  await db.aP2Budget.updateMany({
     where: { vesselId: vessel.id },
     data: { spentToday: { increment: intent.amount } },
   });
