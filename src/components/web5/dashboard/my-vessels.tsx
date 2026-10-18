@@ -500,11 +500,11 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                     }
                     const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                     const from = accounts[0];
-                    const amountWei = BigInt(Math.round(10 * 1e18));
+                    const amountWei = BigInt(Math.round(0.1 * 1e18));
                     await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
                     const b = await getVesselWalletBalance(vesselWalletAddr);
                     setVesselWalletBal(b);
-                    alert('✅ 已向专用钱包充值 10 USDC，可免签打赏了！');
+                    alert('✅ 已向专用钱包充值 0.1 USDC，可免签打赏了！');
                   } catch (e: any) {
                     if (e?.code === 4001) alert('已取消充值');
                     else alert('充值失败：' + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
@@ -512,7 +512,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 }}
                 className="w-full text-xs h-8 bg-[#B080E8]/20 text-[#B080E8] border border-[#B080E8]/40 hover:bg-[#B080E8]/30"
               >
-                ⚡ {isEn ? 'Top Up 10 USDC from Root Wallet' : '主钱包充值 10 USDC (一次性签名)'}
+                ⚡ {isEn ? 'Top Up 0.1 USDC from Root Wallet' : '主钱包充值 0.1 USDC (一次性签名)'}
               </Button>
             </div>
 

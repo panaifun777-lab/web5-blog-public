@@ -35,6 +35,7 @@ import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
 import { useTma } from '@/components/web5/telegram/tma-provider';
+import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
 import { useI18n } from '@/lib/i18n/index';
 
 // ━━ 协议色语义映射 ━━
@@ -1044,11 +1045,12 @@ async function connectWallet(s: any, v: any, t: any) {
       params: [signMsg, addr],
     });
 
-    // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读） ━━
+    // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读；主钱包身份 + 专用钱包容器） ━━
+    const vessel = getOrCreateVesselWallet();
     const res = await fetch('/api/auth/wallet-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress: addr, signature }),
+      body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature }),
     });
     const data = await res.json();
 

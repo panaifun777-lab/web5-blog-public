@@ -12,15 +12,17 @@ import { serializeForJson, RFC_CONSTANTS } from '@/lib/web5/types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, signature } = await req.json();
+    const { walletAddress, vesselAddress, signature } = await req.json();
     if (!walletAddress || !walletAddress.startsWith('0x')) {
       return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
     }
 
     const addr = walletAddress.toLowerCase();
+    // 网站专用钱包地址（Vessel 容器），与主钱包地址区分开
+    const vesselAddr = (vesselAddress && vesselAddress.startsWith('0x') ? vesselAddress : addr).toLowerCase();
     const primeDid = `did:plvtvs:${addr}`;
-    const vesselDid = `did:vessel:${addr}`;
-    const eidolonDid = `did:eidolon:${addr.slice(-16)}`;
+    const vesselDid = `did:vessel:${vesselAddr}`;
+    const eidolonDid = `did:eidolon:${vesselAddr.slice(-16)}`;
 
     // ━━ 1. 创建/查找 Prime（本体身份） ━━
     const prime = await db.prime.upsert({
@@ -54,8 +56,8 @@ export async function POST(req: NextRequest) {
         did: vesselDid,
         eidolonId: eidolon.id,
         primeId: prime.id,
-        smartAccountAddress: addr,
-        sessionKeyConfig: JSON.stringify({ walletAddress: addr, signature: signature || null }),
+        smartAccountAddress: vesselAddr,
+        sessionKeyConfig: JSON.stringify({ walletAddress: addr, vesselAddress: vesselAddr, signature: signature || null }),
         status: 'ACTIVE',
       },
     });

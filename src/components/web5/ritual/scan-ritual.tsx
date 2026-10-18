@@ -13,6 +13,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { getAudioEngine } from '@/lib/web5/audio-engine';
 import { createVesselChallenge, requestVesselSignature, parseSessionResponse, revokeVesselSession } from '@/lib/web5/vessel-auth';
+import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
 import type { VesselSession } from '@/lib/web5/types';
 
 type RitualPhase = 'idle' | 'void' | 'ritual' | 'revelation' | 'complete' | 'error';
@@ -131,12 +132,14 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       setProgress(80);
 
       // 用真实地址（或降级随机地址）登录，动画一定完成进入内页
+      const vessel = getOrCreateVesselWallet();
       const walletAddress = addr || ('0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''));
       const res = await fetch('/api/auth/wallet-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           walletAddress,
+          vesselAddress: vessel.address,
         }),
       });
 
