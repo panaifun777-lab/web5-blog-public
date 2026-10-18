@@ -889,7 +889,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
                     desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
-                    color={COLORS.eidolon} onClick={() => handleVesselLogin()}
+                    color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}

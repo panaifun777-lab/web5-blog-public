@@ -85,21 +85,47 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       setProgress(20);
       await sleep(600);
 
-      // Phase 2: ritual — AA2P Handshake + 真实钱包身份绑定
+      // Phase 2: ritual — AA2P Handshake + 弹钱包签名绑定真实身份
       setPhase('ritual');
       audio?.playRitual();
       appendLogs([
         '> AA2P handshake initiated',
-        '> Binding sovereign wallet identity...',
+        '> Requesting sovereign wallet signature...',
       ]);
       setProgress(45);
-      await sleep(400);
 
-      // 身份统一：基于真实钱包地址派生唯一 DID（不再模拟签名）
-      const addr = (walletAddress || '').toLowerCase();
-      if (!addr || !addr.startsWith('0x')) {
-        throw new Error('未检测到真实钱包地址，请先连接钱包');
+      // 弹钱包签名获取真实地址（动画运行到此时才调起钱包）
+      const ethereum = (window as any).ethereum;
+      if (!ethereum) {
+        throw new Error('请先安装 MetaMask / OKX 钱包');
       }
+      const chainIdHex = '0x13b2';
+      try {
+        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+      } catch (switchError: any) {
+        if (switchError.code === 4902) {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: chainIdHex,
+              chainName: 'Arc Mainnet',
+              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+              rpcUrls: ['https://rpc.mainnet.arc.io'],
+              blockExplorerUrls: ['https://explorer.arc.io'],
+            }],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      const addr = (accounts[0] || '').toLowerCase();
+      if (!addr || !addr.startsWith('0x')) {
+        throw new Error('未获取到真实钱包地址');
+      }
+      const signMsg = `Web5.blog Sovereign Identity Binding\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+      await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
+
       const vesselDid = `did:vessel:${addr}`;
       const eidolonDid = `did:eidolon:${addr.slice(-16)}`;
       appendLogs([
@@ -168,7 +194,7 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([`> ${e.message}`]);
       onError?.(e);
     }
-  }, [phase, audio, appendLogs, onSuccess, onError, walletAddress]);
+  }, [phase, audio, appendLogs, onSuccess, onError]);
 
   return (
     <div className="relative w-full max-w-md mx-auto">
