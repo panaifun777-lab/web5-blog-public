@@ -168,7 +168,7 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([`> ${e.message}`]);
       onError?.(e);
     }
-  }, [phase, audio, appendLogs, onSuccess, onError]);
+  }, [phase, audio, appendLogs, onSuccess, onError, walletAddress]);
 
   return (
     <div className="relative w-full max-w-md mx-auto">
