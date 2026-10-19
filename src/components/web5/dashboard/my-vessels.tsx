@@ -193,14 +193,21 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
         const d = await res.json();
         setData(d);
         // 同步真实链上收益与已花金额到显示（消除硬编码假数据）
+        // 兼容 18 位精度与 6 位精度（统一折算为人类可读 USDC）
         if (d.totalYield !== undefined) {
-          setEarnedHarvestUsdc(Number(toBigInt(d.totalYield)) / 1e6);
+          const rawYield = Number(toBigInt(d.totalYield));
+          const formattedUsdc = rawYield > 1e12 ? rawYield / 1e18 : rawYield / 1e6;
+          setEarnedHarvestUsdc(formattedUsdc);
         }
         if (d.treasury?.spentToday !== undefined) {
-          setSpentTodayUsdc((Number(toBigInt(d.treasury.spentToday)) / 1e6).toFixed(2));
+          const rawSpent = Number(toBigInt(d.treasury.spentToday));
+          const formattedSpent = rawSpent > 1e12 ? rawSpent / 1e18 : rawSpent / 1e6;
+          setSpentTodayUsdc(formattedSpent.toFixed(2));
         }
         if (d.treasury?.dailyLimit !== undefined) {
-          setDailyLimitUsdc((Number(toBigInt(d.treasury.dailyLimit)) / 1e6).toFixed(1));
+          const rawLimit = Number(toBigInt(d.treasury.dailyLimit));
+          const formattedLimit = rawLimit > 1e12 ? rawLimit / 1e18 : rawLimit / 1e6;
+          setDailyLimitUsdc(formattedLimit.toFixed(1));
         }
       }
     } catch (err) {
