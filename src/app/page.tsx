@@ -31,6 +31,7 @@ import { Footer } from '@/components/web5/footer';
 import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
 import { SponsorModal } from '@/components/web5/trending/sponsor-modal';
 import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
+import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
@@ -80,6 +81,7 @@ export default function Home() {
   const [airdropOpen, setAirdropOpen] = useState(false);
   const [curveModalOpen, setCurveModalOpen] = useState(false);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [walletGuideOpen, setWalletGuideOpen] = useState(false);
   const [sponsoredAd, setSponsoredAd] = useState<any>(null);
   const [targetPostHash, setTargetPostHash] = useState<string | null>(null);
   const [trendingList, setTrendingList] = useState<any[]>([]);
@@ -270,6 +272,7 @@ export default function Home() {
           setActiveModule={setActiveModule}
           onOpenAirdrop={() => setAirdropOpen(true)}
           onOpenCurve={() => setCurveModalOpen(true)}
+          onOpenWalletGuide={() => setWalletGuideOpen(true)}
           curveReserve={curveReserve}
           isEn={isEn}
         />
@@ -758,6 +761,12 @@ export default function Home() {
         session={session}
       />
 
+      <WalletGuideModal
+        open={walletGuideOpen}
+        onOpenChange={setWalletGuideOpen}
+        onUseVessel={() => setLoginMethod('vessel')}
+      />
+
       <SponsorModal
         open={sponsorModalOpen}
         onOpenChange={setSponsorModalOpen}
@@ -770,7 +779,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, curveReserve = 0, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
       {/* Matrix Rain background */}
@@ -923,7 +932,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     icon={<Wallet className="w-5 h-5" />}
                     title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
                     desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding & signing" : "MetaMask / OKX / Web3 钱包 — 链上签名绑定容器，直接开启完整创作权限"}
-                    color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab)}
+                    color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab, onOpenWalletGuide)}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
@@ -1032,10 +1041,14 @@ function LoginBtn({ icon, title, desc, color, onClick }: any) {
 }
 
 // ━━ Auth helpers ━━
-async function connectWallet(s: any, v: any, t: any) {
+async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) {
-    alert('未检测到 MetaMask / OKX Web3 钱包扩展，请安装钱包插件后重试。');
+    if (openGuide) {
+      openGuide();
+    } else {
+      alert('未检测到 MetaMask / OKX Web3 钱包扩展，请安装钱包插件后重试。');
+    }
     return;
   }
 

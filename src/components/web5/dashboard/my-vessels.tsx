@@ -415,12 +415,109 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
               </Badge>
             </div>
 
-            <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-1">
-              <div className="text-[10px] text-[#888] font-mono">
-                {isEn ? 'Bound Root Wallet / Passkey DID:' : '绑定主钱包地址 / Passkey DID:'}
+            <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-[#888]">
+                  {isEn ? 'Bound Root Wallet / Passkey DID:' : '绑定主钱包地址 / Passkey DID:'}
+                </span>
+                {session.primeDid?.includes('0x8f8') || session.primeDid?.includes('sim-') ? (
+                  <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px] py-0 h-4">
+                    {isEn ? '⚠️ Unverified Device ID' : '⚠️ 暂存设备身份 · 未确权'}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[9px] py-0 h-4">
+                    {isEn ? '✓ Verified Root Wallet' : '✓ 真实主钱包已确权'}
+                  </Badge>
+                )}
               </div>
               <div className="text-xs text-[#00FFCC] font-mono break-all select-all font-semibold">
                 {session.primeDid}
+              </div>
+
+              {/* 确权 / 绑定 / 更换真实主钱包 */}
+              <div className="pt-2 border-t border-white/[0.04]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const ethereum = (window as any).ethereum;
+                    if (!ethereum) {
+                      alert(isEn ? 'Please install MetaMask / OKX Web3 wallet extension.' : '未检测到 MetaMask / OKX 钱包插件，请安装后进行确权绑定。');
+                      return;
+                    }
+                    try {
+                      // 1. 切换 Circle ARC 主网 (5042)
+                      const chainIdHex = '0x13b2';
+                      try {
+                        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
+                      } catch (switchError: any) {
+                        if (switchError.code === 4902) {
+                          await ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                              chainId: chainIdHex,
+                              chainName: 'Arc Mainnet',
+                              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                              rpcUrls: ['https://rpc.mainnet.arc.io'],
+                              blockExplorerUrls: ['https://explorer.arc.io'],
+                            }],
+                          });
+                        } else {
+                          throw switchError;
+                        }
+                      }
+
+                      // 2. 获取账号
+                      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                      const realAddr = accounts[0];
+
+                      // 3. 签名确权（证明主权拥有）
+                      const signMsg = `Web5.blog Sovereign Root Wallet Binding\n\nWallet: ${realAddr}\nTo Vessel Container: ${session.vesselDid}\nTimestamp: ${Date.now()}`;
+                      const sig = await ethereum.request({
+                        method: 'personal_sign',
+                        params: [signMsg, realAddr],
+                      });
+
+                      // 4. 发送到后端更新绑定
+                      const res = await fetch('/api/auth/bind-wallet', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          vesselDid: session.vesselDid,
+                          walletAddress: realAddr,
+                          signature: sig,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        session.primeDid = data.primeDid;
+                        try {
+                          localStorage.setItem('web5_vessel_session', JSON.stringify(session));
+                        } catch {}
+                        alert(isEn
+                          ? `🎉 Sovereign Root Wallet verified: ${realAddr}!\n\nAll future withdrawals will directly flow into this personal vault.`
+                          : `🎉 主钱包确权成功：${realAddr}！\n\n已成功绑定至当前分身容器。未来所有分身赚取的收益一键提现将直接打入此真实钱包！`);
+                        window.location.reload();
+                      } else {
+                        alert(data.error || '确权绑定失败');
+                      }
+                    } catch (e: any) {
+                      if (e?.code === 4001) {
+                        alert(isEn ? 'Binding cancelled' : '已取消签名绑定');
+                      } else {
+                        alert((isEn ? 'Binding failed: ' : '绑定失败：') + (e?.message?.slice(0, 80) || '未知错误'));
+                      }
+                    }
+                  }}
+                  className="w-full text-xs h-7 border-[#00FFCC]/40 text-[#00FFCC] hover:bg-[#00FFCC]/10 flex items-center justify-center gap-1.5"
+                >
+                  <Key className="w-3 h-3" />
+                  <span>
+                    {session.primeDid?.includes('0x8f8') || session.primeDid?.includes('sim-')
+                      ? (isEn ? '🔗 Sign to Bind Real Root Wallet' : '🔗 签名确权我的真实 Web3 主钱包')
+                      : (isEn ? '🔄 Switch / Rebind Root Wallet' : '🔄 更换 / 重新确权主钱包')}
+                  </span>
+                </Button>
               </div>
             </div>
 
