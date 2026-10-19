@@ -22,10 +22,10 @@ interface GenesisCurveModalProps {
 
 export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: GenesisCurveModalProps) {
   const [vault, setVault] = useState<any>({
-    currentReserveUsdc: 380,
+    currentReserveUsdc: 0,
     graduationCapUsdc: 3000,
-    progressPercent: 12.7,
-    currentPriceUsdc: 0.00008152,
+    progressPercent: 0,
+    currentPriceUsdc: 0.00008,
     maxPerTxUsdc: 20,
     isGraduated: false,
   });

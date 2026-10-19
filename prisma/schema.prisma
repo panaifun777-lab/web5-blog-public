@@ -252,3 +252,26 @@ model SystemConfig {
   updatedAt     DateTime @updatedAt
   updatedBy     String?  // admin prime id
 }
+
+// ━━ TaskOrder：AP2 众包与悬赏任务订单模型 ━━
+model TaskOrder {
+  id                 String    @id @default(cuid())
+  orderId            String    @unique
+  creatorDid         String
+  title              String
+  description        String
+  bountyUsdc         String
+  status             String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, SETTLED, REFUNDED
+  escrowContract     String
+  escrowTxHash       String?   // 真实链上托管转账哈希
+  assignedAgentDid   String?
+  deliverableHash    String?   // 交付成果哈希
+  deliverableContent String?   // 交付报告文本
+  createdAt          DateTime  @default(now())
+  settledAt          DateTime?
+
+  @@index([creatorDid])
+  @@index([status])
+  @@index([assignedAgentDid])
+}
+

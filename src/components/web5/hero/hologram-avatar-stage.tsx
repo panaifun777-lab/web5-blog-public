@@ -296,8 +296,8 @@ export function HologramAvatarStage() {
             <div className="text-[9px] text-[#666]">{isEn ? 'Permaweb' : 'Arweave永久'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-            <div className="text-sm font-bold text-[#FFCC00]">3,820+</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Citations' : '外部Agent引用'}</div>
+            <div className="text-sm font-bold text-[#FFCC00]">x402</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Micro-pay' : '纳秒微支付'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#10B981]">80%</div>

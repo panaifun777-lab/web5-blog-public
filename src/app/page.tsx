@@ -82,10 +82,36 @@ export default function Home() {
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [sponsoredAd, setSponsoredAd] = useState<any>(null);
   const [targetPostHash, setTargetPostHash] = useState<string | null>(null);
-  const [trendingList, setTrendingList] = useState<any[]>(TRENDING);
+  const [trendingList, setTrendingList] = useState<any[]>([]);
+  const [realStats, setRealStats] = useState({ posts: 0, vessels: 0, primes: 0 });
+  const [curveReserve, setCurveReserve] = useState(0);
   const { t, locale } = useI18n();
   const { isTma, user: tmaUser } = useTma();
   const isEn = locale !== 'zh-CN';
+
+  // 加载真实全局统计（Posts / Vessels / Primes）
+  useEffect(() => {
+    fetch('/api/explore?section=overview')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.stats) {
+          setRealStats({
+            posts: d.stats.contents || 0,
+            vessels: d.stats.activeVessels || 0,
+            primes: d.stats.primes || 0,
+          });
+        }
+      })
+      .catch(() => {});
+    fetch('/api/curve/vault')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.vault?.currentReserveUsdc !== undefined) {
+          setCurveReserve(d.vault.currentReserveUsdc);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchSponsor = useCallback(async () => {
     try {
@@ -112,8 +138,8 @@ export default function Home() {
             const mapped = d.contents.map((c: any, idx: number) => ({
               rank: idx + 1,
               title: c.title,
-              views: (c.stats?.reads || 0) + (idx === 0 ? 2341 : 1200 - idx * 80),
-              tag: idx % 2 === 0 ? '科技' : '人文',
+              views: c.stats?.reads || 0,
+              tag: '科技',
               arweaveHash: c.arweaveHash,
             }));
             setTrendingList(mapped);
@@ -244,6 +270,7 @@ export default function Home() {
           setActiveModule={setActiveModule}
           onOpenAirdrop={() => setAirdropOpen(true)}
           onOpenCurve={() => setCurveModalOpen(true)}
+          curveReserve={curveReserve}
           isEn={isEn}
         />
       ) : (
@@ -438,9 +465,9 @@ export default function Home() {
               {/* 1. Stats */}
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  ['1.2K', 'Posts', COLORS.eidolon],
-                  ['234', 'Vessels', COLORS.vessel],
-                  ['67%', 'Active', COLORS.prime],
+                  [String(realStats.posts), 'Posts', COLORS.eidolon],
+                  [String(realStats.vessels), 'Vessels', COLORS.vessel],
+                  [String(realStats.primes), 'Primes', COLORS.prime],
                 ].map(([v, l, c]) => (
                   <div key={l} className="text-center py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
                     <div className="text-base font-bold font-mono" style={{ color: c }}>{v}</div>
@@ -563,10 +590,10 @@ export default function Home() {
                   </Badge>
                 </div>
                 <div className="font-mono text-base font-bold text-white mb-1 flex items-center justify-between">
-                  <span>380 / 3,000 <span className="text-xs text-[#888] font-normal">USDC</span></span>
-                  <span className="text-xs text-[#FFCC00] font-bold">12.7%</span>
+                  <span>{curveReserve.toFixed(4)} / 3,000 <span className="text-xs text-[#888] font-normal">USDC</span></span>
+                  <span className="text-xs text-[#FFCC00] font-bold">{((curveReserve / 3000) * 100).toFixed(2)}%</span>
                 </div>
-                <Progress value={12.7} className="h-1.5 bg-white/[0.08] mb-2" />
+                <Progress value={Math.min(100, (curveReserve / 3000) * 100)} className="h-1.5 bg-white/[0.08] mb-2" />
                 <div className="text-[10px] text-[#aaa] leading-relaxed flex items-center justify-between">
                   <span>{isEn ? 'Max 20U/tx · 100% Locked on Cap' : '单笔限额 20U 防鲸 · 满额丢弃权限'}</span>
                   <ArrowRight className="w-3 h-3 text-[#00FFCC] group-hover:translate-x-1 transition-transform" />
@@ -743,7 +770,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, curveReserve = 0, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
       {/* Matrix Rain background */}
@@ -872,7 +899,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
                       <span>{isEn ? 'Genesis Curve Angel Vault (3,000U Cap)' : 'GenesisCurve 创世金库 3,000U 冲刺认购'}</span>
                       <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 h-4 font-mono">
-                        380 / 3,000U (12.7%)
+                        {curveReserve.toFixed(2)} / 3,000U ({((curveReserve / 3000) * 100).toFixed(1)}%)
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
