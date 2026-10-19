@@ -14,8 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft, Eye, MessageCircle, Coins, ExternalLink,
-  FileText, Shield, Sparkles,
+  FileText, Shield, Sparkles, Globe,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 import { fromTokenUnits } from '@/lib/web5/types';
 import type { VesselSession } from '@/lib/web5/types';
 import {
@@ -91,6 +92,18 @@ export function BlogFeed({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { locale } = useI18n();
+  const isEn = locale !== 'zh-CN';
+  const [langFilter, setLangFilter] = useState<'ALL' | 'ZH' | 'EN'>('ALL');
+
+  useEffect(() => {
+    if (locale !== 'zh-CN') {
+      setLangFilter('EN');
+    } else {
+      setLangFilter('ALL');
+    }
+  }, [locale]);
+
   const loadPosts = useCallback(async () => {
     setLoading(true);
     try {
@@ -161,8 +174,18 @@ export function BlogFeed({
       const modules = ['tech', 'humanities', 'experts', 'bounties', 'crowdfunding'];
       const normalizedMod = mod === 'humanity' ? 'humanities' : (mod === 'piaoshu' || mod === 'experts') ? 'experts' : (mod === 'crowdsourcing' || mod === 'bounties' || mod === 'bounty') ? 'bounties' : (mod === 'crowd' || mod === 'crowdfunding') ? 'crowdfunding' : mod;
       const idx = sum % modules.length;
-      return modules[idx] === normalizedMod;
+      if (modules[idx] !== normalizedMod) return false;
     }
+
+    // 语言过滤
+    if (langFilter === 'ZH') {
+      const isZh = /[\u4e00-\u9fff]/.test(p.title);
+      if (!isZh) return false;
+    } else if (langFilter === 'EN') {
+      const isZh = /[\u4e00-\u9fff]/.test(p.title);
+      if (isZh) return false;
+    }
+
     return true;
   });
 
@@ -616,11 +639,43 @@ export function BlogFeed({
   // ━━ 列表视图 ━━
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold cyber-text-glow-cyan">博客流</h2>
-        <Button onClick={loadPosts} variant="ghost" className="cyber-mono text-xs">
-          刷新
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-2xl font-bold cyber-text-glow-cyan">
+            {isEn ? 'Permaweb Blog Stream' : '博客流'}
+          </h2>
+          <p className="text-xs text-[#888] mt-0.5">
+            {isEn ? 'Decentralized essays permanently anchored to Arweave & Circle ARC.' : '去中心化思想母体，Arweave 永久存证与 Circle ARC 原生结算。'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 语言过滤筛选胶囊 */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            <Globe className="w-3.5 h-3.5 text-[#00FFCC] ml-1.5 mr-0.5" />
+            {[
+              { id: 'ALL', label: isEn ? 'All' : '全部' },
+              { id: 'ZH', label: '🇨🇳 中文' },
+              { id: 'EN', label: '🇬🇧 EN' },
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setLangFilter(item.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all ${
+                  langFilter === item.id
+                    ? 'bg-white/[0.12] text-white font-bold border border-white/[0.15] shadow-sm'
+                    : 'text-[#666] hover:text-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <Button onClick={loadPosts} variant="ghost" size="sm" className="cyber-mono text-xs border border-white/[0.06] bg-white/[0.02]">
+            {isEn ? 'Refresh' : '刷新'}
+          </Button>
+        </div>
       </div>
 
       {/* 专有模块快速操作卡 */}
@@ -637,9 +692,9 @@ export function BlogFeed({
       ) : filteredPosts.length === 0 ? (
         <div className="cyber-panel text-center py-12">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <div className="cyber-mono text-[#666]">暂无内容</div>
+          <div className="cyber-mono text-[#666]">{isEn ? 'No Articles in this category' : '暂无内容'}</div>
           <div className="text-xs text-[#999] mt-2">
-            点击"写作"标签发布你的第一篇 Web5 博客
+            {isEn ? 'Click "Write" tab to publish your first Web5 blog post' : '点击"写作"标签发布你的第一篇 Web5 博客'}
           </div>
         </div>
       ) : (
@@ -661,7 +716,7 @@ export function BlogFeed({
                       </Badge>
                     </div>
                     <div className="cyber-mono text-[10px] text-[#666]">
-                      {new Date(post.publishedAt).toLocaleString('zh-CN')}
+                      {new Date(post.publishedAt).toLocaleDateString(isEn ? 'en-US' : 'zh-CN')}
                     </div>
                   </div>
                   <div className="text-right">
@@ -685,12 +740,12 @@ export function BlogFeed({
                     return (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/20">
                         <Activity className="w-3 h-3 animate-pulse" />
-                        <span>共鸣 {r.score}% ({r.label.split(' ')[0]})</span>
+                        <span>{isEn ? 'Resonance' : '共鸣'} {r.score}% ({r.label.split(' ')[0]})</span>
                       </span>
                     );
                   })()}
                   <span className="text-[#555]">·</span>
-                  <span className="text-[#888]">AA2P 验证通过</span>
+                  <span className="text-[#888]">{isEn ? 'AA2P Verified' : 'AA2P 验证通过'}</span>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs cyber-mono text-[#666]">

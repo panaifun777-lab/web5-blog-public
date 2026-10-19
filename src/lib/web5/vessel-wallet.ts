@@ -8,7 +8,7 @@
 'use client';
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { createWalletClient, createPublicClient, http, parseGwei } from 'viem';
+import { createWalletClient, createPublicClient, http, parseGwei, keccak256 } from 'viem';
 
 const ARC_CHAIN = {
   id: 5042,
@@ -79,4 +79,18 @@ export function clearVesselWallet() {
   try {
     localStorage.removeItem(WALLET_PK_KEY);
   } catch {}
+}
+
+/** 
+ * 跨设备确定性派生方案：
+ * 通过主钱包 personal_sign("Web5.blog Sovereign Vessel Key Derivation") 的签名派生出唯一的专用钱包私钥
+ * 确保用户在换电脑、换手机或清理浏览器后，只要主钱包一键签名即可永久找回同一个专属零钱包与余额！
+ */
+export function deriveVesselWalletFromSignature(signature: string): VesselWallet {
+  const pk = keccak256(signature as `0x${string}`);
+  try {
+    localStorage.setItem(WALLET_PK_KEY, pk);
+  } catch {}
+  const account = privateKeyToAccount(pk as `0x${string}`);
+  return { address: account.address, privateKey: pk, isNew: false };
 }

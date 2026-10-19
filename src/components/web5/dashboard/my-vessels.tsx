@@ -23,7 +23,7 @@ import { CognitivePanel } from './cognitive-panel';
 import { Brain } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { verifyPasskeyBiometric, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
-import { getOrCreateVesselWallet, getVesselWalletBalance } from '@/lib/web5/vessel-wallet';
+import { getOrCreateVesselWallet, getVesselWalletBalance, deriveVesselWalletFromSignature } from '@/lib/web5/vessel-wallet';
 
 function toBigInt(v: any): bigint {
   if (typeof v === 'bigint') return v;
@@ -486,39 +486,70 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
               <div className="text-[9px] text-[#666] font-mono">
                 {isEn ? 'Top up once from your root wallet, then tip/task auto-settles without signature' : '主钱包一次性充值，之后打赏/发任务免签自动结算'}
               </div>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  const ethereum = (window as any).ethereum;
-                  if (!ethereum) { alert('请先连接主钱包'); return; }
-                  try {
-                    const chainIdHex = '0x13b2';
-                    try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }); }
-                    catch (e: any) {
-                      if (e.code === 4902) {
-                        await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: chainIdHex, chainName: 'Arc Mainnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.arc.io'], blockExplorerUrls: ['https://explorer.arc.io'] }] });
-                      } else throw e;
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    const ethereum = (window as any).ethereum;
+                    if (!ethereum) { alert(isEn ? 'Please connect root wallet' : '请先连接主钱包'); return; }
+                    try {
+                      const chainIdHex = '0x13b2';
+                      try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }); }
+                      catch (e: any) {
+                        if (e.code === 4902) {
+                          await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: chainIdHex, chainName: 'Arc Mainnet', nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 }, rpcUrls: ['https://rpc.mainnet.arc.io'], blockExplorerUrls: ['https://explorer.arc.io'] }] });
+                        } else throw e;
+                      }
+                      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                      const from = accounts[0];
+                      // ━━ 二次签名主权确认（personal_sign，证明充值意图） ━━
+                      const signMsg = `Web5.blog Sovereign Recharge\n\nAmount: 0.1 USDC\nTo Vessel Wallet: ${vesselWalletAddr}\nTimestamp: ${Date.now()}`;
+                      await ethereum.request({ method: 'personal_sign', params: [signMsg, from] });
+                      // ━━ 链上转账 ━━
+                      const amountWei = BigInt(Math.round(0.1 * 1e18));
+                      await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
+                      const b = await getVesselWalletBalance(vesselWalletAddr);
+                      setVesselWalletBal(b);
+                      alert(isEn ? '✅ Topped up 0.1 USDC to dedicated wallet!' : '✅ 已向专用钱包充值 0.1 USDC，可免签打赏了！');
+                    } catch (e: any) {
+                      if (e?.code === 4001) alert(isEn ? 'Cancelled' : '已取消充值');
+                      else alert((isEn ? 'Recharge failed: ' : '充值失败：') + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
                     }
-                    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-                    const from = accounts[0];
-                    // ━━ 二次签名主权确认（personal_sign，证明充值意图） ━━
-                    const signMsg = `Web5.blog Sovereign Recharge\n\nAmount: 0.1 USDC\nTo Vessel Wallet: ${vesselWalletAddr}\nTimestamp: ${Date.now()}`;
-                    await ethereum.request({ method: 'personal_sign', params: [signMsg, from] });
-                    // ━━ 链上转账 ━━
-                    const amountWei = BigInt(Math.round(0.1 * 1e18));
-                    await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
-                    const b = await getVesselWalletBalance(vesselWalletAddr);
-                    setVesselWalletBal(b);
-                    alert('✅ 已向专用钱包充值 0.1 USDC，可免签打赏了！');
-                  } catch (e: any) {
-                    if (e?.code === 4001) alert('已取消充值');
-                    else alert('充值失败：' + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
-                  }
-                }}
-                className="w-full text-xs h-8 bg-[#B080E8]/20 text-[#B080E8] border border-[#B080E8]/40 hover:bg-[#B080E8]/30"
-              >
-                ⚡ {isEn ? 'Top Up 0.1 USDC from Root Wallet' : '主钱包充值 0.1 USDC (一次性签名)'}
-              </Button>
+                  }}
+                  className="flex-1 text-xs h-8 bg-[#B080E8]/20 text-[#B080E8] border border-[#B080E8]/40 hover:bg-[#B080E8]/30"
+                >
+                  ⚡ {isEn ? 'Top Up 0.1 USDC' : '主钱包充值 0.1U'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const ethereum = (window as any).ethereum;
+                    if (!ethereum) { alert(isEn ? 'Please connect Web3 root wallet' : '请先连接 Web3 主钱包'); return; }
+                    try {
+                      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                      const from = accounts[0];
+                      const seedMsg = `Web5.blog Sovereign Vessel Key Derivation for ${from.toLowerCase()}`;
+                      const signature = await ethereum.request({ method: 'personal_sign', params: [seedMsg, from] });
+                      const derived = deriveVesselWalletFromSignature(signature);
+                      setVesselWalletAddr(derived.address);
+                      const b = await getVesselWalletBalance(derived.address);
+                      setVesselWalletBal(b);
+                      alert(isEn
+                        ? `✅ Synchronized dedicated wallet (${derived.address.slice(0, 8)}...) across devices via root signature!`
+                        : `✅ 已成功通过主钱包签名派生并同步专属子卡（${derived.address.slice(0, 8)}...）！在任何设备登录均可永久找回余额。`);
+                    } catch (e: any) {
+                      if (e?.code === 4001) alert(isEn ? 'Cancelled signature' : '已取消签名');
+                      else alert((isEn ? 'Sync failed: ' : '同步失败：') + (e?.message?.slice(0, 80) || '未知错误'));
+                    }
+                  }}
+                  className="text-xs h-8 border-white/[0.15] text-[#aaa] hover:text-white hover:bg-white/[0.05]"
+                  title={isEn ? "Recover or bind this dedicated wallet across devices via root signature" : "通过主钱包一次签名在任何设备永久同步/找回同一个专属零钱包"}
+                >
+                  🔗 {isEn ? 'Sync Sub-Card' : '跨设备同步子卡'}
+                </Button>
+              </div>
             </div>
 
             <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
