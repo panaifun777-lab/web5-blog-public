@@ -785,7 +785,21 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
   return (
-    <main className="min-h-screen bg-[#050508] text-white overflow-hidden" suppressHydrationWarning>
+    <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
+      {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
+      <div className="fixed top-5 right-5 sm:right-8 z-50 flex items-center gap-2.5">
+        <a
+          href="/founder"
+          className="text-xs text-[#888] hover:text-[#FFCC00] font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.08] bg-black/60 backdrop-blur-xl shadow-lg hover:border-[#FFCC00]/40 transition-all"
+        >
+          <Quote className="w-3.5 h-3.5 text-[#FFCC00]" />
+          <span>{t?.nav?.founder || '分身致辞'}</span>
+        </a>
+        <div className="p-1 rounded-xl border border-white/[0.08] bg-black/60 backdrop-blur-xl shadow-lg">
+          <LanguageSwitcher />
+        </div>
+      </div>
+
       {/* Matrix Rain background */}
       <div className="fixed inset-0 z-0 opacity-40">
         <MatrixRain columns={32} className="w-full h-full" />
@@ -954,53 +968,11 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
               ) : null}
-
-              {/* Mobile-only Module badges */}
-              <div className="lg:hidden mt-8 pt-6 border-t border-white/[0.04]">
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(MODULES).map(([key, m]) => (
-                    <button key={key} onClick={() => { setActiveModule(key as Module); setView('app'); setTab('feed'); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] transition-all hover:scale-105"
-                      style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
-                      {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
-                    </button>
-                  ))}
-                  <a href="/founder"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px]"
-                    style={{ borderColor: '#FFCC0025', color: '#FFCC00', backgroundColor: '#FFCC0008' }}>
-                    <Quote className="w-3.5 h-3.5" /><span>{t?.nav?.founder || '分身致辞'}</span>
-                  </a>
-                  <div className="ml-auto">
-                    <LanguageSwitcher />
-                  </div>
-                </div>
-              </div>
             </div>
 
-            {/* Right — 3D Cyber Hologram Avatar Stage (with Real Yield HUD) + 分类导航 (向下对齐左侧条目栏) */}
+            {/* Right — 3D Cyber Hologram Avatar Stage (with Real Yield HUD) */}
             <div className="hidden lg:block lg:col-span-2 space-y-4 lg:pt-36">
               <HologramAvatarStage />
-
-              {/* Module badges + 分身致辞 + 语言切换 (右侧整齐对齐) */}
-              <div className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.01]">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {Object.entries(MODULES).map(([key, m]) => (
-                    <button key={key} onClick={() => { setActiveModule(key as Module); setView('app'); setTab('feed'); }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] transition-all hover:scale-105"
-                      style={{ borderColor: `${m.color}25`, color: m.color, backgroundColor: `${m.color}08` }}>
-                      {m.icon}<span>{moduleLabels?.[key as Module] || m.label}</span>
-                    </button>
-                  ))}
-                  <a href="/founder"
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] transition-all hover:scale-105"
-                    style={{ borderColor: '#FFCC0025', color: '#FFCC00', backgroundColor: '#FFCC0008' }}>
-                    <Quote className="w-3 h-3" /><span>{t?.nav?.founder || '分身致辞'}</span>
-                  </a>
-                  <div className="ml-auto">
-                    <LanguageSwitcher />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
