@@ -26,7 +26,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
   const [prompt, setPrompt] = useState('');
   const [title, setTitle] = useState('');
   const [outline, setOutline] = useState('');
-  const [wordTarget, setWordTarget] = useState<500 | 1000>(1000);
+  const [wordTarget, setWordTarget] = useState<500 | 1000 | 2000 | 3000>(1000);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [style, setStyle] = useState<'concise' | 'detailed' | 'academic' | 'casual'>('detailed');
   const [persona, setPersona] = useState<PersonaType>('scholar');
@@ -186,7 +186,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       setError((err as Error).message);
       setState('error');
     }
-  }, [prompt, style, title]);
+  }, [prompt, style, title, outline, wordTarget]);
 
   const stopStream = () => {
     abortRef.current?.abort();
@@ -377,18 +377,18 @@ export function Writer({ session }: { session: VesselSession | null }) {
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-[#666] font-mono">篇幅规格:</span>
                 <div className="flex gap-1">
-                  {[500, 1000].map((num) => (
+                  {[500, 1000, 2000, 3000].map((num) => (
                     <button
                       key={num}
                       type="button"
                       onClick={() => setWordTarget(num as any)}
                       className={`text-xs px-2.5 py-0.5 rounded border transition-all ${
                         wordTarget === num
-                          ? 'border-[#00FFCC] text-[#00FFCC] bg-[#00FFCC]/10 font-bold'
+                          ? 'border-[#00FFCC] text-[#00FFCC] bg-[#00FFCC]/10 font-bold shadow-[0_0_8px_rgba(0,255,204,0.3)]'
                           : 'border-white/[0.06] text-[#666] hover:text-white'
                       }`}
                     >
-                      {num} 字短长篇
+                      {num} 字{num >= 2000 ? '旗舰长文' : '短长篇'}
                     </button>
                   ))}
                 </div>

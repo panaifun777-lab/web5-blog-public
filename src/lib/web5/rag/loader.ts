@@ -4,13 +4,15 @@
 // ════════════════════════════════════════════════════════════════
 
 import { loadKnowledgeBase, buildRagContext } from './retriever';
+import fs from 'fs';
+import path from 'path';
 
 let loaded = false;
 let loading: Promise<void> | null = null;
 
 /**
- * 加载知识库 (从 /rag-knowledge.json)
- * 自动去重加载
+ * 加载知识库 (从 public/rag-knowledge.json)
+ * 服务端直接读文件，客户端走 fetch，彻底杜绝 ERR_INVALID_URL 报错
  */
 export async function ensureKnowledgeBase(): Promise<void> {
   if (loaded) return;
@@ -18,13 +20,27 @@ export async function ensureKnowledgeBase(): Promise<void> {
 
   loading = (async () => {
     try {
-      const res = await fetch('/rag-knowledge.json');
-      if (res.ok) {
-        const docs = await res.json();
-        if (Array.isArray(docs) && docs.length > 0) {
-          loadKnowledgeBase(docs);
-          loaded = true;
-          console.log(`[RAG] 知识库已加载: ${docs.length} 条文档`);
+      if (typeof window === 'undefined') {
+        const filePath = path.join(process.cwd(), 'public', 'rag-knowledge.json');
+        if (fs.existsSync(filePath)) {
+          const raw = fs.readFileSync(filePath, 'utf-8');
+          const docs = JSON.parse(raw);
+          if (Array.isArray(docs) && docs.length > 0) {
+            loadKnowledgeBase(docs);
+            loaded = true;
+            console.log(`[RAG] 服务端直接加载知识库成功: ${docs.length} 条文档`);
+            return;
+          }
+        }
+      } else {
+        const res = await fetch('/rag-knowledge.json');
+        if (res.ok) {
+          const docs = await res.json();
+          if (Array.isArray(docs) && docs.length > 0) {
+            loadKnowledgeBase(docs);
+            loaded = true;
+            console.log(`[RAG] 客户端加载知识库成功: ${docs.length} 条文档`);
+          }
         }
       }
     } catch (err) {

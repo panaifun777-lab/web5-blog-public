@@ -44,18 +44,22 @@ export async function POST(req: NextRequest) {
 
     // ── 两步式“意识种子”流水线构建 ──
     let dynamicPrompt = prompt;
-    let targetTokens = maxTokens || (wordTarget === 500 ? 500 : 1000);
+    let targetTokens = maxTokens || (
+      wordTarget === 3000 ? 4000 :
+      wordTarget === 2000 ? 2800 :
+      wordTarget === 500 ? 700 : 1500
+    );
 
     if (mode === 'outline') {
       // Step 1: 毫秒级主题大纲与层次罗列
       dynamicPrompt = buildOutlinePrompt(title || prompt.slice(0, 30), prompt, '');
-      targetTokens = 250;
+      targetTokens = 400;
     } else if (outline) {
       // Step 2: 结合大纲与 DWN 记忆切片进行结构化扩写
       dynamicPrompt = buildArticleExpansionPrompt({
         title: title || prompt.slice(0, 30),
         seedThesis: prompt,
-        wordTarget: wordTarget === 500 ? 500 : 1000,
+        wordTarget: wordTarget || 1000,
         style: style || 'detailed',
       }, outline);
     }
