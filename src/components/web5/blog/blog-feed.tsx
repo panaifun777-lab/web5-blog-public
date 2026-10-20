@@ -29,6 +29,7 @@ import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-p
 import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
 import { CognitiveThread } from '@/components/web5/blog/cognitive-thread';
 import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
+import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { getCognitiveCoreState } from '@/lib/web5/eidolon/cognitive-core';
 import { Zap, Activity, Users, Bot } from 'lucide-react';
 import { vesselWalletTransfer, getOrCreateVesselWallet, getVesselWalletBalance } from '@/lib/web5/vessel-wallet';
@@ -96,6 +97,17 @@ export function BlogFeed({
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
   const [langFilter, setLangFilter] = useState<'ALL' | 'ZH' | 'EN'>('ALL');
+
+  // 监听并持久化 URL 上的 ?ref= 策展人推荐参数
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlRef = params.get('ref');
+      if (urlRef) {
+        sessionStorage.setItem('web5_curator_ref', urlRef);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (locale !== 'zh-CN') {
@@ -267,9 +279,12 @@ export function BlogFeed({
           interactions: data.interactions || [],
         });
 
-        // ━━ SPA 独立路由更新：使浏览器地址栏对齐独立永久 URL ━━
+        // ━━ SPA 独立路由更新：使浏览器地址栏对齐独立永久 URL (保留 ref 参数) ━━
         if (typeof window !== 'undefined') {
-          window.history.pushState({ postHash: post.arweaveHash }, '', `/p/${post.arweaveHash}`);
+          const urlParams = new URLSearchParams(window.location.search);
+          const currentRef = urlParams.get('ref') || sessionStorage.getItem('web5_curator_ref');
+          const targetUrl = currentRef ? `/p/${post.arweaveHash}?ref=${encodeURIComponent(currentRef)}` : `/p/${post.arweaveHash}`;
+          window.history.pushState({ postHash: post.arweaveHash }, '', targetUrl);
         }
 
         // 记录 READ 交互
@@ -321,7 +336,14 @@ export function BlogFeed({
 
       const txHash = await vesselWalletTransfer(treasury, tipAmount);
 
-      // ━━ 后端验证链上交易并 80/20 分润记账 ━━
+      // ━━ 提取策展推荐人 ref (优先 URL 参数，其次 sessionStorage) ━━
+      let curatorRef: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        curatorRef = urlParams.get('ref') || sessionStorage.getItem('web5_curator_ref') || null;
+      }
+
+      // ━━ 后端验证链上交易并 80/20 分润记账（支持 15% 策展返佣） ━━
       const res = await fetch('/api/ap2/settle', {
         method: 'POST',
         headers: {
@@ -333,11 +355,16 @@ export function BlogFeed({
           toDid: post.authorDid,
           amountUsdc: tipAmount,
           fromAddress: vessel.address,
+          ref: curatorRef,
+          contentHash: post.arweaveHash,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setMessage(`✅ 专用钱包已打赏 ${tipAmount} USDC！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC`);
+        const rebateMsg = data.split?.curatorAmountUsdc
+          ? ` · 策展返佣 ${data.split.curatorAmountUsdc} USDC (15%)`
+          : '';
+        setMessage(`✅ 专用钱包已打赏 ${tipAmount} USDC！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC${rebateMsg}`);
         setTimeout(() => setMessage(null), 6000);
       } else {
         setMessage(`✗ ${data.error || '结算验证失败'}`);
@@ -604,6 +631,14 @@ export function BlogFeed({
                     <Coins className="w-4 h-4 mr-1" />
                     {submitting ? '打赏结算中...' : `立即打赏 ${tipAmount} USDC`}
                   </Button>
+                  <CurateShareButton
+                    arweaveHash={detail.arweaveHash}
+                    title={detail.title}
+                    excerpt={detail.excerpt}
+                    session={session}
+                    variant="outline"
+                    className="flex-shrink-0"
+                  />
                   <Button
                     onClick={() => {
                       const citeText = `> ${detail.title}\n> 作者: ${detail.authorName}\n> 来源: https://explorer.arc.io/token/${detail.tokenId || detail.arweaveHash}\n\n[Web5.blog — ${detail.title}](${window.location.origin}/?post=${detail.arweaveHash})`;
@@ -779,16 +814,27 @@ export function BlogFeed({
                   <span className="text-[#888]">{isEn ? 'AA2P Verified' : 'AA2P 验证通过'}</span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs cyber-mono text-[#666]">
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-3 h-3" /> {post.stats.reads}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle className="w-3 h-3" /> {post.stats.comments}
-                  </span>
-                  <span className="flex items-center gap-1 text-[#FFCC00]">
-                    <Coins className="w-3 h-3" /> {fromTokenUnits(BigInt(post.stats.tipsAmount))} USDC
-                  </span>
+                <div className="flex items-center justify-between text-xs cyber-mono text-[#666]">
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" /> {post.stats.reads}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="w-3 h-3" /> {post.stats.comments}
+                    </span>
+                    <span className="flex items-center gap-1 text-[#FFCC00]">
+                      <Coins className="w-3 h-3" /> {fromTokenUnits(BigInt(post.stats.tipsAmount))} USDC
+                    </span>
+                  </div>
+                  <CurateShareButton
+                    arweaveHash={post.arweaveHash}
+                    title={post.title}
+                    excerpt={post.excerpt}
+                    session={session}
+                    size="sm"
+                    variant="ghost"
+                    className="text-[11px] h-7 px-2 border border-white/[0.06] hover:border-[#00FFCC]/40"
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -24,6 +24,8 @@ const publicClient = createPublicClient({
 const TREASURY_ADDR = TREASURY.toLowerCase();
 // 协议抽成 20%
 const PROTOCOL_FEE_RATIO = 0.20;
+// 策展人返佣 15% (Curate-to-Earn 裂变返佣)
+const CURATOR_REBATE_RATIO = 0.15;
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
     const session = await resolveVesselSessionFromToken(token);
 
     const body = await req.json();
-    const { txHash, toDid, amountUsdc, fromAddress } = body;
+    const { txHash, toDid, amountUsdc, fromAddress, ref, contentHash } = body;
 
     if (!txHash || !toDid || !amountUsdc) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -76,11 +78,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '链上金额与申报金额不一致，请重新核对' }, { status: 400 });
     }
 
-    // ━━ 2. 记账与 80/20 分润（容错：核心是链上交易已验证真实） ━━
+    // ━━ 2. 记账与 80/20 分润及 15% 策展人返佣（容错：核心是链上交易已验证真实） ━━
     const authorAmountUsdc = amount * (1 - PROTOCOL_FEE_RATIO);
     const protocolFeeUsdc = amount * PROTOCOL_FEE_RATIO;
+    const curatorRef = typeof ref === 'string' && ref.trim() ? ref.trim() : null;
+    const curatorAmountUsdc = curatorRef ? amount * CURATOR_REBATE_RATIO : 0;
 
     let ledgerId: string | null = null;
+    let curatorLedgerId: string | null = null;
     try {
       const recipientPrime = await db.prime.findUnique({ where: { did: toDid } });
       const vessel = session?.vesselDid
@@ -99,11 +104,49 @@ export async function POST(req: NextRequest) {
               totalAmountUsdc: amount,
               authorAmountUsdc,
               protocolFeeUsdc,
+              curatorAmountUsdc,
+              curatorRef,
               recipientPrimeId: recipientPrime?.id || null,
             }),
           },
         });
         ledgerId = log.id;
+      }
+
+      // 如果存在推荐人 ref，记录策展人分润日志
+      if (curatorRef) {
+        // 查找或记录策展人分润
+        const curatorPrime = await db.prime.findFirst({
+          where: {
+            OR: [
+              { did: curatorRef },
+              { walletAddress: curatorRef.toLowerCase() },
+            ],
+          },
+          include: { vessels: true },
+        });
+
+        const curatorVesselId = curatorPrime?.vessels?.[0]?.id || vessel?.id;
+        if (curatorVesselId) {
+          const curatorLog = await db.autonomousLog.create({
+            data: {
+              vesselId: curatorVesselId,
+              action: 'curate_rebate',
+              targetDid: curatorRef,
+              targetContent: contentHash || null,
+              yieldAmount: parseUnits(curatorAmountUsdc.toFixed(6), 18),
+              metadata: JSON.stringify({
+                sourceTxHash: txHash,
+                totalPaymentUsdc: amount,
+                curatorRebateUsdc: curatorAmountUsdc,
+                rebateRate: '15%',
+                curatorRef,
+                payerDid: session?.vesselDid || fromAddress || null,
+              }),
+            },
+          });
+          curatorLedgerId = curatorLog.id;
+        }
       }
     } catch (e) {
       console.warn('[ap2/settle] Ledger write skipped (non-fatal):', e);
@@ -119,10 +162,18 @@ export async function POST(req: NextRequest) {
         protocolFeeUsdc: Number(protocolFeeUsdc.toFixed(6)),
         authorRatio: '80%',
         protocolFeeRatio: '20%',
+        ...(curatorRef ? {
+          curatorAmountUsdc: Number(curatorAmountUsdc.toFixed(6)),
+          curatorRatio: '15%',
+          curatorRef,
+        } : {}),
       },
       ledgerId,
+      curatorLedgerId,
       explorerUrl: `https://explorer.arc.io/tx/${txHash}`,
-      message: `✅ 真实链上打赏已确认入账！作者实得 ${authorAmountUsdc.toFixed(2)} USDC，平台抽成 ${protocolFeeUsdc.toFixed(2)} USDC (其中 50% 将自动注入 Uniswap LP 锁定)。`,
+      message: curatorRef
+        ? `✅ 真实链上打赏已确认入账！作者实得 ${authorAmountUsdc.toFixed(2)} USDC，策展人分润 ${curatorAmountUsdc.toFixed(2)} USDC (15%)，平台抽成 ${protocolFeeUsdc.toFixed(2)} USDC。`
+        : `✅ 真实链上打赏已确认入账！作者实得 ${authorAmountUsdc.toFixed(2)} USDC，平台抽成 ${protocolFeeUsdc.toFixed(2)} USDC (其中 50% 将自动注入 Uniswap LP 锁定)。`,
     });
   } catch (err: any) {
     console.error('[ap2/settle] Error:', err);

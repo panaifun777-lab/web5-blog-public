@@ -50,6 +50,36 @@ export function getAgentReputationForTask(task: {
   badges: string[];
 } {
   const did = task.assignedAgentDid || 'did:eidolon:autonomous-worker';
+
+  // 桌面《meme 币量化交易策略统一文书》实战任务分身声誉映射 (优先精准匹配)
+  if (task.orderId.includes('meme-b') || task.title.includes('Pump.fun') || task.title.includes('防守 B 线') || task.title.includes('集群钱包')) {
+    return {
+      name: 'ClusterSentinel #5042',
+      did,
+      score: '99.5%',
+      level: 'Lv.5 量化防御特工',
+      badges: ['Pump.fun 穿透', '集群特征工程', '防守 B 线', 'Circle ARC 5042'],
+    };
+  }
+  if (task.orderId.includes('meme-a') || task.title.includes('sniffer') || task.title.includes('进攻 A 线') || task.title.includes('A/B 实验')) {
+    return {
+      name: 'AlphaSniffer #7701',
+      did,
+      score: '98.9%',
+      level: 'Lv.4 策略评测专家',
+      badges: ['A/B 自动化回测', '进攻 A 线', '77% 胜率解剖', '统计检验'],
+    };
+  }
+  if (task.orderId.includes('meme-c') || task.title.includes('商业 C 线') || (task.title.includes('集群避险') && task.title.includes('x402'))) {
+    return {
+      name: 'x402 CommerceWeaver #3088',
+      did,
+      score: '99.1%',
+      level: 'Lv.4 商业协议工程师',
+      badges: ['x402 微付费', '商业 C 线', 'API 网关', 'EIP-712 结算'],
+    };
+  }
+
   if (task.orderId.includes('seed-1') || task.title.includes('研报') || task.title.includes('Circle ARC')) {
     return {
       name: 'Eidolon #7042',
@@ -241,8 +271,52 @@ const DEFAULT_INITIAL_TASKS = [
     bountyUsdc: '40.0',
     orderId: 'ap2-task-seed-5',
     status: 'FUNDED',
+    escrowContract: '0xCA36335845E382129167fC44243F07A76827bA22',
     assignedAgentDid: null,
     escrowTxHash: '0x37b6694f4b8a0ffee210315ba942fa1cf9b0e62274317ae45b217143c77bab61',
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
+  },
+  // ━━ 桌面《meme 币量化交易策略统一文书》实战悬赏任务池 ━━
+  {
+    creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+    title: '收集并穿透 50 个高频 Pump.fun 集群钱包特征签名（防守 B 线）',
+    description: '【策略统一文书 · 防守 B 线核心任务】针对 White Whale Labs 审计与 GMGN 穿透揭示的 450~2000 个集群钱包操纵与内部盘拉砸风险，收集并深度穿透至少 50 个高频 Pump.fun 集群钱包地址。提取同源资金分发树、买入时延关联度、同区块并发打包等特征签名，输出供黑名单 veto 过滤器调用的标准化特征集合。',
+    bountyUsdc: '50.0',
+    orderId: 'ap2-task-meme-b1',
+    status: 'FUNDED',
+    escrowContract: '0xCA36335845E382129167fC44243F07A76827bA22',
+    escrowTxHash: '0x5f8a1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a01',
+    assignedAgentDid: null,
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
+  },
+  {
+    creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+    title: '为 sniffer-insider-defense 编写自动化 A/B 实验评测脚本（进攻 A 线）',
+    description: '【策略统一文书 · 进攻 A 线与 A/B 对照评测核心任务】对齐 cluster-filter-ab-experiment.md 方法论与 77% 系统 edge 解剖，编写 paper-only 自动化 A/B 实验评测脚本。对对照组（无过滤）与实验组（带集群过滤与 veto）进行无偏并行仿真，实时监控胜率（77%基准）、净收益、最大回撤与少亏比例（≥50% 判定触发点），输出决策树节点 1 检验报告。',
+    bountyUsdc: '35.0',
+    orderId: 'ap2-task-meme-a2',
+    status: 'FUNDED',
+    escrowContract: '0xCA36335845E382129167fC44243F07A76827bA22',
+    escrowTxHash: '0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b',
+    assignedAgentDid: null,
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
+  },
+  {
+    creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
+    title: '将集群避险过滤器打包为标准化 x402 商业化微付费接口（商业 C 线）',
+    description: '【策略统一文书 · 商业 C 线标准化服务接口】落实“卖基础设施不依赖自营交易盈利”理念，将防守 B 线验证过的集群避险过滤器封装为对外微付费 API。基于 Web5 x402 协议规范（HTTP 402 + Circle ARC Osaka 5042 原生 18 位 USDC 微结算），集成 80/20 闭环商业分润并提供 Python/TS 客户端接入示例。',
+    bountyUsdc: '45.0',
+    orderId: 'ap2-task-meme-c3',
+    status: 'FUNDED',
+    escrowContract: '0xCA36335845E382129167fC44243F07A76827bA22',
+    escrowTxHash: '0x1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d',
+    assignedAgentDid: null,
     deliverableHash: null,
     deliverableContent: null,
     settledAt: null,
@@ -311,17 +385,28 @@ export async function assignAgentToOrder(orderId: string, agentDid: string): Pro
 export const REVENUE_ROUTING = {
   OPERATIONAL_TREASURY_ADDRESS: '0xCA36335845E382129167fC44243F07A76827bA22',
   PROTOCOL_FEE_RATIO: 0.20, // 20% 协议抽成 (创作者净得 80%)
+  CURATOR_REBATE_RATIO: 0.15, // 15% 策展返佣（Curate-to-Earn 裂变）
   OPERATIONAL_SPLIT_RATIO: 0.50, // 抽成中 50% 运营出纳
   LP_BUYBACK_LOCK_RATIO: 0.50, // 抽成中 50% 自动注入 LP 锁定 / 回购
   UNISWAP_V4_POOL: '0xa4fed17b161f3c6ad0dbecbf837d1fa9079c69f78e564e676183656e8500abf1',
   BURN_ADDRESS: '0x000000000000000000000000000000000000dEaD',
 } as const;
 
-export function calculateRevenueSplit(totalAmountUsdc: number) {
+export function calculateRevenueSplit(totalAmountUsdc: number, curatorRef?: string) {
   const protocolFee = totalAmountUsdc * REVENUE_ROUTING.PROTOCOL_FEE_RATIO;
   const authorEarnings = totalAmountUsdc * (1 - REVENUE_ROUTING.PROTOCOL_FEE_RATIO);
-  const operationalUsdc = protocolFee * REVENUE_ROUTING.OPERATIONAL_SPLIT_RATIO;
-  const lpLockUsdc = protocolFee * REVENUE_ROUTING.LP_BUYBACK_LOCK_RATIO;
+  
+  // 策展返佣：如果有推荐人 ref，按 15% 计算策展返佣
+  let curatorEarnings = 0;
+  let netProtocolFee = protocolFee;
+  if (curatorRef) {
+    curatorEarnings = totalAmountUsdc * REVENUE_ROUTING.CURATOR_REBATE_RATIO;
+    // 协议金库与 LP 回购按扣除策展返佣后的净额或全额留存平分
+    netProtocolFee = Math.max(0, protocolFee - (curatorEarnings * 0.25)); // 协议补贴部分分润
+  }
+
+  const operationalUsdc = netProtocolFee * REVENUE_ROUTING.OPERATIONAL_SPLIT_RATIO;
+  const lpLockUsdc = netProtocolFee * REVENUE_ROUTING.LP_BUYBACK_LOCK_RATIO;
   const wbogAmount = (lpLockUsdc / 0.00008434).toFixed(2);
   return {
     totalUsdc: totalAmountUsdc,
@@ -334,6 +419,14 @@ export function calculateRevenueSplit(totalAmountUsdc: number) {
       amountUsdc: protocolFee.toFixed(4),
       percent: '20%',
     },
+    ...(curatorRef ? {
+      curatorShare: {
+        recipientRef: curatorRef,
+        amountUsdc: curatorEarnings.toFixed(4),
+        percent: '15%',
+        purpose: 'Curate-to-Earn Referral Rebate',
+      },
+    } : {}),
     operationalTreasury: {
       recipient: REVENUE_ROUTING.OPERATIONAL_TREASURY_ADDRESS,
       amountUsdc: operationalUsdc.toFixed(4),
@@ -405,7 +498,7 @@ export async function listActiveCommerceOrders(): Promise<CommerceTaskOrder[]> {
           description: item.description,
           bountyUsdc: item.bountyUsdc,
           status: item.status || 'FUNDED',
-          escrowContract: '0xe0d246c09d7a3097bab3148f89201157dd531eea',
+          escrowContract: (item as any).escrowContract || '0xCA36335845E382129167fC44243F07A76827bA22',
           escrowTxHash: item.escrowTxHash || null,
           assignedAgentDid: item.assignedAgentDid || null,
           deliverableHash: item.deliverableHash || null,

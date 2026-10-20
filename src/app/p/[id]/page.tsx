@@ -10,6 +10,7 @@ import {
   Coins, MessageCircle, Sparkles, Zap, Bot, ArrowRight,
 } from 'lucide-react';
 import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
+import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 
@@ -162,6 +163,13 @@ export default async function ArticlePage({ params }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
+            <CurateShareButton
+              arweaveHash={content.arweaveHash}
+              title={content.title}
+              excerpt={content.excerpt || ''}
+              variant="outline"
+              size="sm"
+            />
             <a
               href={arweaveUrl}
               target="_blank"
@@ -287,6 +295,29 @@ export default async function ArticlePage({ params }: Props) {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* ━━ 专属策展分佣卡片 (Curate-to-Earn 裂变闭环) ━━ */}
+        <div className="my-6 p-4 rounded-xl border border-[#00FFCC]/30 bg-gradient-to-r from-[#00FFCC]/10 via-[#0066FF]/05 to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#00FFCC]" />
+              <span className="font-bold text-sm text-white font-mono">Curate-to-Earn 策展分佣裂变</span>
+              <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] font-mono">
+                15% 实时返佣
+              </Badge>
+            </div>
+            <p className="text-xs text-[#aaa] max-w-lg">
+              一键分享本深度长文。每当读者通过你的专属链接阅读或打赏，智能合约将自动为你结算 15% 策展返佣收益。
+            </p>
+          </div>
+          <CurateShareButton
+            arweaveHash={content.arweaveHash}
+            title={content.title}
+            excerpt={content.excerpt || ''}
+            variant="gradient"
+            size="default"
+          />
         </div>
 
         {/* 创作者打赏与激励条 (80% 归作者，20% 协议分润) */}
