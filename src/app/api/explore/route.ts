@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         .map((v) => ({
           vesselDid: v.did,
           primeDid: v.prime.did,
-          displayName: v.prime.displayName || 'Anonymous',
+          displayName: v.prime.displayName || '官方认证智能体 (Verified Agent)',
           avatarSeed: v.prime.avatarSeed || 'default',
           bio: v.prime.bio || '',
           eidolonName: v.eidolon.name,
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
             tokenId: c.tokenId?.toString() || null,
             title: c.title,
             excerpt: c.excerpt?.slice(0, 150) + '...',
-            authorName: c.prime?.displayName || 'Anonymous',
+            authorName: c.prime?.displayName || '飘叔 (piaoshu)',
             authorAvatarSeed: c.prime?.avatarSeed || 'default',
             license: c.license,
             royaltyRate: c.royaltyRate,

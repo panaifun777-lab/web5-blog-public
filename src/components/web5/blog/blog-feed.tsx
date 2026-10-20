@@ -25,6 +25,7 @@ import {
   setPageMeta, restorePageMeta,
 } from '@/lib/web5/seo';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
+import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-panel';
 import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
 import { CognitiveThread } from '@/components/web5/blog/cognitive-thread';
 import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
@@ -223,14 +224,37 @@ export function BlogFeed({
     }
   }, []);
 
-  // 支持 URL 参数 ?post=... 或 prop targetHash 自动打开文章
+  // 支持 URL 参数 ?post=... 或 prop targetHash 自动打开文章，以及浏览器前进/后退 popstate
   useEffect(() => {
     if (targetHash) {
       openPostByHash(targetHash);
     } else if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search).get('post');
-      if (p) openPostByHash(p);
+      const path = window.location.pathname;
+      if (p) {
+        openPostByHash(p);
+      } else if (path.startsWith('/p/')) {
+        const hash = path.replace('/p/', '').trim();
+        if (hash) openPostByHash(hash);
+      }
     }
+
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const path = window.location.pathname;
+      const p = new URLSearchParams(window.location.search).get('post');
+      if (p) {
+        openPostByHash(p);
+      } else if (path.startsWith('/p/')) {
+        const hash = path.replace('/p/', '').trim();
+        if (hash) openPostByHash(hash);
+      } else {
+        setSelected(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [targetHash, openPostByHash]);
 
   const openPost = async (post: BlogPost) => {
@@ -242,6 +266,12 @@ export function BlogFeed({
           detail: { ...post, bodyMd: data.content.bodyMd },
           interactions: data.interactions || [],
         });
+
+        // ━━ SPA 独立路由更新：使浏览器地址栏对齐独立永久 URL ━━
+        if (typeof window !== 'undefined') {
+          window.history.pushState({ postHash: post.arweaveHash }, '', `/p/${post.arweaveHash}`);
+        }
+
         // 记录 READ 交互
         if (session?.permissions.includes('read')) {
           fetch('/api/ap2/pay', {
@@ -379,14 +409,12 @@ export function BlogFeed({
             setSelected(null);
             onClearTargetHash?.();
             if (typeof window !== 'undefined') {
-              const u = new URL(window.location.href);
-              u.searchParams.delete('post');
-              window.history.replaceState({}, '', u.toString());
+              window.history.pushState({}, '', '/?tab=feed');
             }
           }}
           className="cyber-mono text-[#00FFCC] hover:text-[#00FFCC]"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> BACK TO FEED
+          <ArrowLeft className="w-4 h-4 mr-1" /> {isEn ? 'BACK TO FEED' : '返回博文列表'}
         </Button>
 
         <Card className="cyber-panel">
@@ -679,8 +707,11 @@ export function BlogFeed({
       </div>
 
       {/* 专有模块快速操作卡 */}
-      {(mod === 'crowdfunding' || mod === 'crowdsourcing' || mod === 'bounties') && (
+      {(mod === 'bounties' || mod === 'crowdsourcing') && (
         <TaskBoard />
+      )}
+      {mod === 'crowdfunding' && (
+        <CrowdfundingPanel session={session} />
       )}
 
       {loading ? (

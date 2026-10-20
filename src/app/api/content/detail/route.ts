@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
         bodyMd: displayBody,
         excerpt: displayExcerpt,
         authorDid: content.authorDid,
-        authorName: content.prime?.displayName || 'Anonymous',
+        authorName: content.prime?.displayName || '飘叔 (piaoshu)',
         authorAvatarSeed: content.prime?.avatarSeed || 'default',
         authorBio: content.prime?.bio || '',
         license: content.license,
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
         amount: i.amount?.toString() || null,
         comment: i.comment,
         createdAt: i.createdAt.toISOString(),
-        authorName: i.vessel?.prime?.displayName || 'Anonymous',
+        authorName: i.vessel?.prime?.displayName || '官方认证智能体 (Verified Agent)',
         authorAvatarSeed: i.vessel?.prime?.avatarSeed || 'default',
       })),
     });

@@ -34,6 +34,7 @@ import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
 import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
 import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
+import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-panel';
 import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
@@ -446,13 +447,16 @@ export default function Home() {
               <>
                 {activeModule === 'bounties' && <TaskBoard session={session} />}
                 {activeModule === 'experts' && <ExpertChamber session={session} />}
-                <BlogFeed
-                  session={session}
-                  module={activeModule}
-                  searchQuery={searchQuery}
-                  targetHash={targetPostHash}
-                  onClearTargetHash={() => setTargetPostHash(null)}
-                />
+                {activeModule === 'crowdfunding' && <CrowdfundingPanel session={session} />}
+                {activeModule !== 'crowdfunding' && (
+                  <BlogFeed
+                    session={session}
+                    module={activeModule}
+                    searchQuery={searchQuery}
+                    targetHash={targetPostHash}
+                    onClearTargetHash={() => setTargetPostHash(null)}
+                  />
+                )}
               </>
             )}
             {tab === 'write' && <Writer session={session} />}
@@ -844,18 +848,25 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   : '基于 Arweave 全球公链永久存储与 Circle ARC 链上秒级结算。博文存证 200 年不灭，外部 AI 引用检索按次付费，创作收益 80% 秒级直达个人钱包。'}
               </p>
 
-              {/* 首屏三大核心行动 CTA 按钮组 */}
+              {/* 首屏核心行动 CTA 按钮组 (收敛至获客与赚钱主干) */}
               <div className="flex flex-wrap items-center gap-3 mb-6">
                 <button
-                  onClick={() => { setView('app'); setTab('feed'); }}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-[#00FFCC]/20 hover:scale-[1.02] transition-all"
+                  onClick={() => { setView('app'); setTab('feed'); setActiveModule('tech'); }}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#00FFCC]/25 hover:scale-[1.02] transition-all"
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>{isEn ? '📖 Read Articles' : '📖 立即阅读博文'}</span>
+                  <span>{isEn ? '📖 Read Curated Articles' : '📖 立即阅读思想博文'}</span>
+                </button>
+                <button
+                  onClick={() => { setView('app'); setTab('feed'); setActiveModule('bounties'); }}
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#FFCC00] to-[#FF6633] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#FFCC00]/25 hover:scale-[1.02] transition-all"
+                >
+                  <Target className="w-4 h-4" />
+                  <span>{isEn ? '🎯 Bounty Plaza (Earn USDC)' : '🎯 悬赏任务大厅 (做任务赚 USDC)'}</span>
                 </button>
                 <button
                   onClick={() => { setView('app'); setTab('write'); }}
-                  className="px-4 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.15] font-bold text-xs flex items-center gap-1.5 transition-all"
+                  className="px-4 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.15] font-bold text-xs flex items-center gap-1.5 transition-all"
                 >
                   <Zap className="w-4 h-4 text-[#FFCC00]" />
                   <span>{isEn ? '✍️ Start Writing' : '✍️ 开启 AI 写作'}</span>
@@ -864,10 +875,10 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   href="/api/openapi.json"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-2.5 rounded-xl border border-white/[0.08] bg-black/40 text-[#888] hover:text-[#00FFCC] hover:border-[#00FFCC]/30 font-mono text-xs flex items-center gap-1.5 transition-all"
+                  className="px-3.5 py-3 rounded-xl border border-white/[0.08] bg-black/40 text-[#888] hover:text-[#00FFCC] hover:border-[#00FFCC]/30 font-mono text-xs flex items-center gap-1.5 transition-all"
                 >
                   <Bot className="w-4 h-4 text-[#00FFCC]" />
-                  <span>{isEn ? '🤖 Agent API (OpenAPI)' : '🤖 接入 Agent API'}</span>
+                  <span>{isEn ? '🤖 Agent API' : '🤖 接入 Agent API'}</span>
                 </a>
               </div>
 

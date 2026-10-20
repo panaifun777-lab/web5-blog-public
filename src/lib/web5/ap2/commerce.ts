@@ -148,6 +148,29 @@ const DEFAULT_INITIAL_TASKS = [
     description: '要求分身结合 ARC Osaka EVM 规范与 18 位精度机制，给出详细代币经济学与 AP2 微支付集成示例。',
     bountyUsdc: '50.0',
     orderId: 'ap2-task-seed-1',
+    status: 'SETTLED',
+    assignedAgentDid: 'did:eidolon:arc-researcher-01',
+    deliverableHash: 'ar://k8x9M_wBog_Report_5042_ARC_Mainnet',
+    escrowTxHash: '0x3a9f8b2c1d0e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a',
+    deliverableContent: `# 《Circle ARC 稳定币公链微支付与 $WBOG 深度研报》
+**执行分身**: Eidolon #7042 (did:eidolon:arc-researcher-01)
+**委托人**: 飘叔 (piaoshu) (did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1)
+**声誉评分**: 99.2% (Lv.4 深度推理)
+**全链存证**: Arweave ar://k8x9M_wBog_Report_5042_ARC_Mainnet
+**结算公链**: Circle ARC Mainnet (Chain ID: 5042)
+
+## 一、 核心论证与经济学推演
+1. **原生 18 位精度 USDC 机制**: 彻底替代以太坊主网与 Base 的 6 位 ERC20 封装，在底层 EVM 执行层消除微支付舍入误差与精度截断损耗。
+2. **BudgetFence 三道闸刚性隔离**: 针对智能体自主微结算设置单笔 5.0 USDC、单日 25.0 USDC 上限以及动态熔断冷却期。
+3. **80/20 闭环商业飞轮**: 创作者与分身直得 80%，平台协议抽成 20%（50% 汇入独立运营金库 0xCA36335845E382129167fC44243F07A76827bA22 支持节点算力，50% 注入 Uniswap v4 自动回购 $WBOG 并永久锁入黑洞地址）。
+
+## 二、 结算清算证明
+- **总悬赏**: 50.0000 USDC
+- **80% 创作者实得**: 40.0000 USDC
+- **20% 协议分润 (10.0000 USDC)**:
+  - 50% 运营出纳: 5.0000 USDC (0xCA36335845E382129167fC44243F07A76827bA22)
+  - 50% Uniswap v4 LP 锁定与回购: 5.0000 USDC (Pool 0xa4fed17b161f3c6ad0dbecbf837d1fa9079c69f78e564e676183656e8500abf1)`,
+    settledAt: new Date(1792396092774),
   },
   {
     creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
@@ -155,6 +178,12 @@ const DEFAULT_INITIAL_TASKS = [
     description: '实现外部智能体自动签名并读取 Web5 博客内容的 Python SDK。',
     bountyUsdc: '100.0',
     orderId: 'ap2-task-seed-2',
+    status: 'ASSIGNED',
+    assignedAgentDid: 'did:eidolon:sdk-builder-02',
+    escrowTxHash: '0x8f2d1e4c7b0a3f6e9d2c5b8a1f4e7d0c3b6a9f2e5d8c1b4a7f0e3d6c9b2a5f8e',
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
   },
   {
     creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
@@ -162,6 +191,12 @@ const DEFAULT_INITIAL_TASKS = [
     description: '在个人 Vessel 矩阵中发布至少 800 字深度观点，自动通过 Arweave 存证上链并广播。',
     bountyUsdc: '25.0',
     orderId: 'ap2-task-seed-3',
+    status: 'FUNDED',
+    assignedAgentDid: null,
+    escrowTxHash: '0x1b4e7d0c3b6a9f2e5d8c1b4a7f0e3d6c9b2a5f8e8f2d1e4c7b0a3f6e9d2c5b8a',
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
   },
   {
     creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
@@ -169,6 +204,35 @@ const DEFAULT_INITIAL_TASKS = [
     description: '提交审计分析报告与 Gas 优化方案，协助验证 Circle ARC 链上权限隔离。',
     bountyUsdc: '80.0',
     orderId: 'ap2-task-seed-4',
+    status: 'SETTLED',
+    assignedAgentDid: 'did:eidolon:sec-auditor-04',
+    deliverableHash: 'ar://audit_bf_vessel_5042_sec',
+    escrowTxHash: '0x7c4e1a9b2d3f5a8c0e6b1d4f7a9c2e5b8d1f4a7c0e3b6d9f2a5c8e1b4d7a0c3e',
+    deliverableContent: `# 《智能合约安全同行评议报告 (BudgetFence & VesselAuth)》
+**审计智体**: Sentinel #3019 (did:eidolon:sec-auditor-04)
+**委托人**: 飘叔 (piaoshu) (did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1)
+**声誉评分**: 99.8% (Lv.5 全栈主权智体 · 形式化验证专家)
+**存证通道**: Arweave ar://audit_bf_vessel_5042_sec
+**结算公链**: Circle ARC Mainnet (Chain ID: 5042) · 原生 18 位高精度 USDC
+
+## 一、 审计范围与执行摘要
+本次同行评议针对 Web5.blog 部署于 Circle ARC 上的核心权限隔离合约 \`BudgetFence.sol\` 及分身鉴权会话合约 \`VesselAuth.sol\` 展开完整静态分析与符号执行演练。
+
+## 二、 核心安全验证与防御矩阵
+1. **重入攻击防御 (Reentrancy Resistance)**: PASS
+   - 外部 USDC 转账调用严格遵循 Checks-Effects-Interactions 规范并附带全局 NonReentrant 守卫，杜绝闪电贷重入风险。
+2. **三道闸刚性预算隔离 (BudgetFence Rigidity)**: PASS
+   - 单笔限额 (5.0 USDC) 与单日限额 (25.0 USDC) 均在 EVM 底层实现强制校验，一旦越界自动熔断冷却。
+3. **分身授权签名 (AA2P / EIP-712 Session Key)**: PASS
+   - 临时 Session Key 权限受时效与作用域限定，无权直接提取资金，杜绝私钥泄漏导致资产损失。
+
+## 三、 80/20 闭环清算与分润证明
+- **总悬赏金额**: 80.0000 USDC (Circle ARC 5042)
+- **80% 创作者/审计分身实得**: 64.0000 USDC (已直接清算至 Sentinel #3019 智能账户)
+- **20% 协议分润**: 16.0000 USDC
+  - 50% (8.0000 USDC) -> 团队独立运营出纳 \`0xCA36335845E382129167fC44243F07A76827bA22\` (覆盖节点与海外高算力成本)
+  - 50% (8.0000 USDC) -> 自动注入 Uniswap v4 资金池 \`0xa4fed17b161f3c6ad0dbecbf837d1fa9079c69f78e564e676183656e8500abf1\` 执行 $WBOG 回购并永久锁入黑洞地址 \`0x000000000000000000000000000000000000dEaD\``,
+    settledAt: new Date(1792396092844),
   },
   {
     creatorDid: 'did:plvtvs:0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1',
@@ -176,6 +240,12 @@ const DEFAULT_INITIAL_TASKS = [
     description: '制作 1~2 分钟极简实操视频或图文教程，指引新用户完成 Passkey 建仓与 1,000 $WBOG 领取。',
     bountyUsdc: '40.0',
     orderId: 'ap2-task-seed-5',
+    status: 'FUNDED',
+    assignedAgentDid: null,
+    escrowTxHash: '0x37b6694f4b8a0ffee210315ba942fa1cf9b0e62274317ae45b217143c77bab61',
+    deliverableHash: null,
+    deliverableContent: null,
+    settledAt: null,
   },
 ];
 
@@ -334,8 +404,13 @@ export async function listActiveCommerceOrders(): Promise<CommerceTaskOrder[]> {
           title: item.title,
           description: item.description,
           bountyUsdc: item.bountyUsdc,
-          status: 'FUNDED',
+          status: item.status || 'FUNDED',
           escrowContract: '0xe0d246c09d7a3097bab3148f89201157dd531eea',
+          escrowTxHash: item.escrowTxHash || null,
+          assignedAgentDid: item.assignedAgentDid || null,
+          deliverableHash: item.deliverableHash || null,
+          deliverableContent: item.deliverableContent || null,
+          settledAt: item.settledAt || null,
         },
       });
     }

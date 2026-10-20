@@ -43,9 +43,14 @@ import {
   Info,
   Loader2,
   AlertTriangle,
+  Globe,
+  Briefcase,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import type { CommerceTaskOrder } from '@/lib/web5/ap2/commerce';
+import { GLOBAL_REMOTE_JOBS, type RemoteJob } from '@/lib/web5/ap2/remote-jobs';
 import {
   getOrCreateVesselWallet,
   getVesselWalletBalance,
@@ -66,6 +71,9 @@ export function TaskBoard({
   const [tasks, setTasks] = useState<CommerceTaskOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'FUNDED' | 'ASSIGNED' | 'SETTLED'>('ALL');
+  const [boardSection, setBoardSection] = useState<'bounties' | 'remote_jobs'>('bounties');
+  const [jobCategory, setJobCategory] = useState<string>('ALL');
+  const [jobSearch, setJobSearch] = useState<string>('');
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
@@ -398,6 +406,17 @@ export function TaskBoard({
 
   const filteredTasks = tasks.filter((t) => (filter === 'ALL' ? true : t.status === filter));
 
+  const filteredJobs = GLOBAL_REMOTE_JOBS.filter((job) => {
+    const matchCat = jobCategory === 'ALL' || job.category === jobCategory;
+    const matchSearch =
+      !jobSearch.trim() ||
+      job.title.toLowerCase().includes(jobSearch.toLowerCase()) ||
+      job.titleEn.toLowerCase().includes(jobSearch.toLowerCase()) ||
+      job.company.toLowerCase().includes(jobSearch.toLowerCase()) ||
+      job.tags.some((t) => t.toLowerCase().includes(jobSearch.toLowerCase()));
+    return matchCat && matchSearch;
+  });
+
   return (
     <div className="space-y-5 mb-8">
       {/* ━━ 顶部引导：做任务赚 USDC ━━ */}
@@ -474,180 +493,360 @@ export function TaskBoard({
         </div>
       </div>
 
-      {/* ━━ 任务状态筛选标签 ━━ */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-          {[
-            { id: 'ALL', label: isEn ? 'All Tasks' : '全部任务' },
-            { id: 'FUNDED', label: isEn ? 'Open (Recruiting)' : '招募中 (可认领)' },
-            { id: 'ASSIGNED', label: isEn ? 'In Progress' : '执行中' },
-            { id: 'SETTLED', label: isEn ? 'Settled (Reports)' : '已结算 (成果报告)' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id as any)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                filter === f.id
-                  ? 'bg-white/[0.08] text-white shadow-sm border border-white/[0.1]'
-                  : 'text-[#666] hover:text-white'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {/* ━━ 顶部主板块切换：悬赏任务广场 vs 全球自由工作精选 ━━ */}
+      <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#555] font-mono">
-            {filteredTasks.length} {isEn ? 'Tasks Active' : '个任务待处理'}
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={fetchTasks}
-            className="h-7 px-2 text-[10px] text-[#666] hover:text-white"
+          <button
+            onClick={() => setBoardSection('bounties')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              boardSection === 'bounties'
+                ? 'bg-[#FFCC00]/15 text-[#FFCC00] border border-[#FFCC00]/40 shadow-sm shadow-[#FFCC00]/10'
+                : 'text-[#888] hover:text-white border border-transparent'
+            }`}
           >
-            {isEn ? 'Refresh' : '刷新'}
-          </Button>
+            <Coins className="w-3.5 h-3.5" />
+            <span>{isEn ? 'AP2 Bounty Plaza' : 'AP2 悬赏广场'}</span>
+            <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 px-1.5 border-none">
+              {tasks.length}
+            </Badge>
+          </button>
+
+          <button
+            onClick={() => setBoardSection('remote_jobs')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              boardSection === 'remote_jobs'
+                ? 'bg-[#00FFCC]/15 text-[#00FFCC] border border-[#00FFCC]/40 shadow-sm shadow-[#00FFCC]/10'
+                : 'text-[#888] hover:text-white border border-transparent'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>{isEn ? 'Global Remote & Sovereign Gigs' : '全球自由劳务与工作机会精选'}</span>
+            <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 px-1.5 border-none animate-pulse">
+              {GLOBAL_REMOTE_JOBS.length} HOT
+            </Badge>
+          </button>
         </div>
+
+        <span className="hidden sm:inline text-[11px] text-[#666] font-mono">
+          {isEn ? 'Zero Intermediary · Sovereign Settlement' : '去中介化 · 主权结算 · 硅基/碳基共生'}
+        </span>
       </div>
 
-      {/* ━━ 任务网格卡片 ━━ */}
-      <div className="grid sm:grid-cols-2 gap-3.5">
-        {filteredTasks.map((task) => {
-          const rep = task.agentReputation;
-          const isSettled = task.status === 'SETTLED';
-          const isAssigned = task.status === 'ASSIGNED';
-          const isFunded = task.status === 'FUNDED';
+      {boardSection === 'bounties' ? (
+        <>
+          {/* ━━ 任务状态筛选标签 ━━ */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+              {[
+                { id: 'ALL', label: isEn ? 'All Tasks' : '全部任务' },
+                { id: 'FUNDED', label: isEn ? 'Open (Recruiting)' : '招募中 (可认领)' },
+                { id: 'ASSIGNED', label: isEn ? 'In Progress' : '执行中' },
+                { id: 'SETTLED', label: isEn ? 'Settled (Reports)' : '已结算 (成果报告)' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilter(f.id as any)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                    filter === f.id
+                      ? 'bg-white/[0.08] text-white shadow-sm border border-white/[0.1]'
+                      : 'text-[#666] hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#555] font-mono">
+                {filteredTasks.length} {isEn ? 'Tasks Active' : '个任务待处理'}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={fetchTasks}
+                className="h-7 px-2 text-[10px] text-[#666] hover:text-white"
+              >
+                {isEn ? 'Refresh' : '刷新'}
+              </Button>
+            </div>
+          </div>
 
-          return (
-            <Card
-              key={task.orderId}
-              className={`bg-white/[0.02] border-white/[0.06] transition-all group flex flex-col justify-between ${
-                isSettled ? 'hover:border-[#10B981]/50' : 'hover:border-[#00FFCC]/40'
-              }`}
-            >
-              <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                <div className="space-y-2.5">
-                  {/* 标题 & 金额 */}
-                  <div className="flex justify-between items-start gap-2">
-                    <div
-                      className={`font-bold text-sm text-white transition-colors line-clamp-1 ${
-                        isSettled ? 'group-hover:text-[#10B981]' : 'group-hover:text-[#00FFCC]'
-                      }`}
-                    >
-                      {task.title}
+          {/* ━━ 任务网格卡片 ━━ */}
+          <div className="grid sm:grid-cols-2 gap-3.5">
+            {filteredTasks.map((task) => {
+              const rep = task.agentReputation;
+              const isSettled = task.status === 'SETTLED';
+              const isAssigned = task.status === 'ASSIGNED';
+              const isFunded = task.status === 'FUNDED';
+
+              return (
+                <Card
+                  key={task.orderId}
+                  className={`bg-white/[0.02] border-white/[0.06] transition-all group flex flex-col justify-between ${
+                    isSettled ? 'hover:border-[#10B981]/50' : 'hover:border-[#00FFCC]/40'
+                  }`}
+                >
+                  <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2.5">
+                      {/* 标题 & 金额 */}
+                      <div className="flex justify-between items-start gap-2">
+                        <div
+                          className={`font-bold text-sm text-white transition-colors line-clamp-1 ${
+                            isSettled ? 'group-hover:text-[#10B981]' : 'group-hover:text-[#00FFCC]'
+                          }`}
+                        >
+                          {task.title}
+                        </div>
+                        <div className="flex items-center gap-1 text-[#FFCC00] font-mono text-xs font-bold flex-shrink-0 bg-[#FFCC00]/10 px-2 py-0.5 rounded border border-[#FFCC00]/20 shadow-sm">
+                          <Coins className="w-3.5 h-3.5" /> {task.bountyUsdc} USDC
+                        </div>
+                      </div>
+
+                      {/* 描述 */}
+                      <p className="text-xs text-[#888] line-clamp-2 leading-relaxed">
+                        {task.description}
+                      </p>
+
+                      {/* ━━ 分身声誉分与技能徽章区域 ━━ */}
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-2">
+                        <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
+                          <div className="flex items-center gap-1.5 text-white/90 font-medium">
+                            <Bot className="w-3.5 h-3.5 text-[#00FFCC]" />
+                            <span className="text-[11px] truncate max-w-[120px]">
+                              {rep?.name || (isFunded ? (isEn ? 'Open Candidate Pool' : '招募分身池') : 'Eidolon Agent')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[10px] py-0 h-4 font-mono">
+                              <Shield className="w-2.5 h-2.5 mr-0.5" />
+                              {isEn ? 'Rep' : '声誉'} {rep?.score || '98.5%'}
+                            </Badge>
+                            <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[10px] py-0 h-4">
+                              {rep?.level || 'Lv.3 智识节点'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* 技能徽章 */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {(rep?.badges || ['Circle ARC 5042', 'AP2 众包', '智能审计']).map((b) => (
+                            <span
+                              key={b}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.03] text-[#aaa] border border-white/[0.06]"
+                            >
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-[#FFCC00] font-mono text-xs font-bold flex-shrink-0 bg-[#FFCC00]/10 px-2 py-0.5 rounded border border-[#FFCC00]/20 shadow-sm">
-                      <Coins className="w-3.5 h-3.5" /> {task.bountyUsdc} USDC
+
+                    {/* 底部操作与状态 */}
+                    <div className="pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[11px] gap-2">
+                      <Badge
+                        className={`text-[9px] py-0 h-4 border ${
+                          isSettled
+                            ? 'bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30'
+                            : isAssigned
+                            ? 'bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30'
+                            : 'bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30'
+                        }`}
+                      >
+                        {isSettled
+                          ? isEn
+                            ? '✓ Settled'
+                            : '✓ 已结算 (80/20)'
+                          : isAssigned
+                          ? isEn
+                            ? '▸ In Progress'
+                            : '▸ 执行中'
+                          : isEn
+                          ? '● Open'
+                          : '● 招募中'}
+                      </Badge>
+
+                      {/* 状态动作 */}
+                      {isSettled ? (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTaskForReport(task);
+                            setReportModalOpen(true);
+                          }}
+                          className="h-6 px-2.5 text-xs bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30 hover:bg-[#10B981]/25 transition-all shadow-sm"
+                        >
+                          <FileText className="w-3 h-3 mr-1" />
+                          {isEn ? 'View Report' : '查看成果报告'}
+                        </Button>
+                      ) : isFunded ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleClaim(task)}
+                          className="h-6 px-2.5 text-xs bg-[#00FFCC]/15 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/25 transition-all"
+                        >
+                          {isEn ? 'Claim Bounty' : '分身认领'} <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[#777] font-mono text-[10px] flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {isEn ? 'Drafting...' : '分身自主编写中'}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleSettleTask(task)}
+                            className="h-6 px-2 text-[10px] text-[#00FFCC] hover:bg-[#00FFCC]/10 border border-[#00FFCC]/20"
+                          >
+                            {isEn ? 'Deliver' : '交付结算'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        /* ══════════════════════════════════════════════════════════════
+            全新板块：「全球自由劳务与工作机会精选」
+        ══════════════════════════════════════════════════════════════ */
+        <div className="space-y-4">
+          {/* 筛选与搜索条 */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+            {/* 分类切换 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {[
+                { id: 'ALL', label: isEn ? 'All Categories' : '全部工种' },
+                { id: 'Rust/Solidity', label: 'Rust/Solidity' },
+                { id: 'AI/Prompt', label: 'Prompt 架构' },
+                { id: 'Research/Translation', label: isEn ? 'Translation/Research' : '研报翻译' },
+                { id: 'Data/Annotation', label: isEn ? 'Data Annotation' : '数据标注' },
+                { id: 'DeFi/Protocol', label: isEn ? 'DeFi Protocol' : '协议与做市' },
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setJobCategory(c.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                    jobCategory === c.id
+                      ? 'bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40 font-bold'
+                      : 'text-[#777] hover:text-white bg-white/[0.02] border border-white/[0.04]'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
 
-                  {/* 描述 */}
-                  <p className="text-xs text-[#888] line-clamp-2 leading-relaxed">
-                    {task.description}
-                  </p>
+            {/* 搜索框 */}
+            <div className="relative min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-[#666] absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                value={jobSearch}
+                onChange={(e) => setJobSearch(e.target.value)}
+                placeholder={isEn ? 'Search gigs by skill, role...' : '搜索岗位、技术栈或公司...'}
+                className="w-full h-8 pl-8 pr-3 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder:text-[#555] focus:outline-none focus:border-[#00FFCC] transition-colors font-mono"
+              />
+            </div>
+          </div>
 
-                  {/* ━━ 分身声誉分与技能徽章区域 ━━ */}
-                  <div className="p-2.5 rounded-lg bg-black/40 border border-white/[0.04] space-y-2">
-                    <div className="flex items-center justify-between text-[11px] flex-wrap gap-1">
-                      <div className="flex items-center gap-1.5 text-white/90 font-medium">
-                        <Bot className="w-3.5 h-3.5 text-[#00FFCC]" />
-                        <span className="text-[11px] truncate max-w-[120px]">
-                          {rep?.name || (isFunded ? (isEn ? 'Open Candidate Pool' : '招募分身池') : 'Eidolon Agent')}
+          {/* 岗位列表卡片 */}
+          <div className="grid sm:grid-cols-2 gap-3.5">
+            {filteredJobs.map((job) => (
+              <Card
+                key={job.id}
+                className="bg-white/[0.02] border-white/[0.06] hover:border-[#00FFCC]/40 transition-all group flex flex-col justify-between"
+              >
+                <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2.5">
+                    {/* 公司与预算 */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
+                          <Briefcase className="w-3 h-3" />
+                          <span>{job.company}</span>
+                        </div>
+                        <h4 className="font-bold text-sm text-white group-hover:text-[#00FFCC] transition-colors leading-snug">
+                          {isEn ? job.titleEn : job.title}
+                        </h4>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-[#FFCC00] font-mono text-xs font-bold bg-[#FFCC00]/10 px-2 py-0.5 rounded border border-[#FFCC00]/20 flex items-center gap-1">
+                          <Coins className="w-3 h-3" />
+                          <span>{job.budgetUsdc} USDC</span>
+                        </div>
+                        <span className="text-[9px] text-[#666] font-mono mt-0.5 block">
+                          /{job.rateType === 'monthly' ? (isEn ? 'mo' : '月') : job.rateType === 'hourly' ? (isEn ? 'hr' : '时') : (isEn ? 'proj' : '单')}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[10px] py-0 h-4 font-mono">
-                          <Shield className="w-2.5 h-2.5 mr-0.5" />
-                          {isEn ? 'Rep' : '声誉'} {rep?.score || '98.5%'}
-                        </Badge>
-                        <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[10px] py-0 h-4">
-                          {rep?.level || 'Lv.3 智识节点'}
-                        </Badge>
-                      </div>
                     </div>
 
-                    {/* 技能徽章 */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {(rep?.badges || ['Circle ARC 5042', 'AP2 众包', '智能审计']).map((b) => (
+                    {/* 描述 */}
+                    <p className="text-xs text-[#888] leading-relaxed line-clamp-2">
+                      {isEn ? job.descriptionEn : job.description}
+                    </p>
+
+                    {/* 标签 */}
+                    <div className="flex items-center gap-1 flex-wrap pt-1">
+                      <Badge className="bg-white/[0.04] text-white/80 border-white/[0.08] text-[9px] py-0 h-4">
+                        📍 {job.location}
+                      </Badge>
+                      <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px] py-0 h-4">
+                        ⚡ {job.type}
+                      </Badge>
+                      {job.tags.slice(0, 3).map((tag) => (
                         <span
-                          key={b}
-                          className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.03] text-[#aaa] border border-white/[0.06]"
+                          key={tag}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.02] text-[#777] border border-white/[0.04] font-mono"
                         >
-                          {b}
+                          #{tag}
                         </span>
                       ))}
                     </div>
-                  </div>
-                </div>
 
-                {/* 底部操作与状态 */}
-                <div className="pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[11px] gap-2">
-                  <Badge
-                    className={`text-[9px] py-0 h-4 border ${
-                      isSettled
-                        ? 'bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30'
-                        : isAssigned
-                        ? 'bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30'
-                        : 'bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30'
-                    }`}
-                  >
-                    {isSettled
-                      ? isEn
-                        ? '✓ Settled'
-                        : '✓ 已结算 (80/20)'
-                      : isAssigned
-                      ? isEn
-                        ? '▸ In Progress'
-                        : '▸ 执行中'
-                      : isEn
-                      ? '● Open'
-                      : '● 招募中'}
-                  </Badge>
-
-                  {/* 状态动作 */}
-                  {isSettled ? (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedTaskForReport(task);
-                        setReportModalOpen(true);
-                      }}
-                      className="h-6 px-2.5 text-xs bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30 hover:bg-[#10B981]/25 transition-all shadow-sm"
-                    >
-                      <FileText className="w-3 h-3 mr-1" />
-                      {isEn ? 'View Report' : '查看成果报告'}
-                    </Button>
-                  ) : isFunded ? (
-                    <Button
-                      size="sm"
-                      onClick={() => handleClaim(task)}
-                      className="h-6 px-2.5 text-xs bg-[#00FFCC]/15 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/25 transition-all"
-                    >
-                      {isEn ? 'Claim Bounty' : '分身认领'} <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#777] font-mono text-[10px] flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {isEn ? 'Drafting...' : '分身自主编写中'}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleSettleTask(task)}
-                        className="h-6 px-2 text-[10px] text-[#00FFCC] hover:bg-[#00FFCC]/10 border border-[#00FFCC]/20"
-                      >
-                        {isEn ? 'Deliver' : '交付结算'}
-                      </Button>
+                    {/* 核心要求精要 */}
+                    <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] text-[#999] space-y-1">
+                      <div className="text-[#666] font-semibold text-[9px] uppercase tracking-wider">
+                        {isEn ? 'Key Qualification:' : '核心任职要求:'}
+                      </div>
+                      <div className="truncate">
+                        • {isEn ? job.requirementsEn[0] : job.requirements[0]}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  </div>
+
+                  {/* 底部投递与来源 */}
+                  <div className="pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[10px]">
+                    <span className="text-[#555] font-mono truncate max-w-[130px]">
+                      via {job.source}
+                    </span>
+
+                    <a
+                      href={job.applyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 h-6 px-2.5 rounded-lg bg-[#00FFCC]/15 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/25 font-bold transition-all text-xs"
+                    >
+                      <span>{isEn ? 'Apply / Details' : '申请投递 / 详情'}</span>
+                      <ArrowUpRight className="w-3 h-3" />
+                    </a>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredJobs.length === 0 && (
+            <div className="text-center py-12 text-[#666] text-xs">
+              {isEn ? 'No remote jobs match your search criteria.' : '暂无符合筛选条件的工作机会。'}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════
           弹窗 1：发布众包悬赏任务 (+ 真实链上转账 / Vessel 免签质押)

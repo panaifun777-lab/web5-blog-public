@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
           title: c.title,
           excerpt: c.excerpt,
           authorDid: c.authorDid,
-          authorName: c.prime?.displayName || 'Anonymous',
+          authorName: c.prime?.displayName || '飘叔 (piaoshu)',
           authorAvatarSeed: c.prime?.avatarSeed || 'default',
           authorBio: c.prime?.bio || '',
           license: c.license,

@@ -100,7 +100,7 @@ export function generateArticleSchema(article: {
     author: {
       '@type': 'Person',
       name: article.authorName,
-      identifier: article.authorDid || 'did:plvtvs:anonymous',
+      identifier: article.authorDid || 'did:plvtvs:piaoshu',
       url: article.authorUrl || 'https://web5.blog',
     },
     publisher: {

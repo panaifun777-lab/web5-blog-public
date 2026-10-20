@@ -49,6 +49,12 @@ enum ContentLicense {
   CUSTOM
 }
 
+// ━━ 两段式账户生命周期 ━━
+enum AccountStage {
+  STAGE_1_CONTAINER_ACTIVE // 阶段1：仅容器/轻钱包激活
+  STAGE_2_MASTER_VERIFIED   // 阶段2：EIP-712 签名绑定真实主钱包完成确权
+}
+
 // ━━ Prime（本体）层：真人意识根身份 ━━
 model Prime {
   id            String    @id @default(cuid())
@@ -56,6 +62,7 @@ model Prime {
   walletAddress String    @unique // EVM 地址
   role          UserRole  @default(USER)
   status        UserStatus @default(ACTIVE)
+  accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
   displayName   String?
   bio           String?
   avatarSeed    String? // 用于生成 PixelAvatar
@@ -70,6 +77,8 @@ model Prime {
   interactions  Interaction[]
   ap2Budgets    AP2Budget[]
   adminLogs     AdminLog[]
+  backupWallet  BackupWallet?
+  authNonces    AuthNonce[]
 
   @@index([walletAddress])
   @@index([role, status])
@@ -104,6 +113,7 @@ model Vessel {
   smartAccountAddress String @unique // ERC-4337 智能账户地址
   sessionKeyConfig String? // JSON: ERC-4337 Session Key 配置
   status        VesselStatus @default(INACTIVE)
+  accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
   lastActiveAt  DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -114,6 +124,7 @@ model Vessel {
   interactions  Interaction[]
   ap2Budgets    AP2Budget[]
   autonomousLogs AutonomousLog[]
+  backupWallet  BackupWallet?
 
   @@index([eidolonId])
   @@index([status])
@@ -274,4 +285,62 @@ model TaskOrder {
   @@index([status])
   @@index([assignedAgentDid])
 }
+
+// ━━ BackupWallet：站内备用轻钱包资产模型（Circle ARC 主网原生 18-decimal USDC） ━━
+model BackupWallet {
+  id              String           @id @default(cuid())
+  address         String           @unique // 站内备用轻钱包地址 (0x...)
+  primeId         String?          @unique
+  prime           Prime?           @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  vesselId        String?          @unique
+  vessel          Vessel?          @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  balanceWei      String           @default("0") // 18 位精度原生 USDC (Wei 字符串，展示时除以 1e18)
+  asset           String           @default("USDC") // 资产符号 (默认 Circle ARC 主网原生 USDC)
+  nonce           BigInt           @default(0) // 签名递增序号
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  transactions    BackupWalletTx[]
+
+  @@index([address])
+  @@index([primeId])
+  @@index([vesselId])
+}
+
+// ━━ BackupWalletTx：备用轻钱包流水记录（充值、提现结算、打赏消费等） ━━
+model BackupWalletTx {
+  id              String        @id @default(cuid())
+  backupWalletId  String
+  backupWallet    BackupWallet  @relation(fields: [backupWalletId], references: [id], onDelete: Cascade)
+  type            String        // DEPOSIT | WITHDRAW_SETTLEMENT | TRANSFER | CONSUME
+  amountWei       String        // 18 位精度变动量 (Wei)
+  balanceAfterWei String        // 变动后余额 (Wei)
+  txHash          String?       // 链上交易哈希或内部凭证
+  targetAddress   String?       // 提现目的主钱包地址
+  status          String        @default("SUCCESS") // PENDING | SUCCESS | FAILED
+  signature       String?       // EIP-712 签名
+  metadata        String?       // JSON 扩展数据
+  createdAt       DateTime      @default(now())
+
+  @@index([backupWalletId, createdAt])
+  @@index([type])
+}
+
+// ━━ AuthNonce：EIP-712 防重放与签名验签记录 ━━
+model AuthNonce {
+  id          String   @id @default(cuid())
+  address     String   // 签名主钱包地址 (小写)
+  primeId     String?
+  prime       Prime?   @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  purpose     String   // BIND_MASTER_WALLET | WITHDRAW_SETTLEMENT
+  nonce       BigInt   // 消费的 nonce
+  signature   String   @unique // 签名 hex，保证全局唯一不可复用
+  messageHash String?  // EIP-712 结构体哈希
+  deadline    BigInt   // 过期时间戳 (秒)
+  consumedAt  DateTime @default(now())
+
+  @@unique([address, purpose, nonce])
+  @@index([address, purpose])
+}
+
 

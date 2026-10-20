@@ -13,8 +13,9 @@ import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { fromTokenUnits } from '@/lib/web5/types';
 import {
   Users, Activity, FileText, Coins, TrendingUp,
-  Trophy, Ticket, RefreshCw,
+  Trophy, Ticket, RefreshCw, Globe, ArrowUpRight, Briefcase,
 } from 'lucide-react';
+import { GLOBAL_REMOTE_JOBS } from '@/lib/web5/ap2/remote-jobs';
 
 interface ExploreData {
   stats: {
@@ -232,7 +233,80 @@ export function ExplorePanel() {
 
       {/* NFT 市场 */}
       <MarketplaceSection />
+
+      {/* 全球自由劳务与工作机会精选 */}
+      <GlobalRemoteJobsSection />
     </div>
+  );
+}
+
+function GlobalRemoteJobsSection() {
+  return (
+    <Card className="cyber-panel">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <h3 className="cyber-mono text-[#00FFCC] flex items-center gap-2">
+            <Globe className="w-4 h-4" /> 全球自由劳务与工作机会精选
+          </h3>
+          <Badge variant="outline" className="border-[#00FFCC]/50 text-[#00FFCC]">
+            {GLOBAL_REMOTE_JOBS.length} 岗位在招
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {GLOBAL_REMOTE_JOBS.map((job) => (
+            <div
+              key={job.id}
+              className="border border-[#1a1a1a] p-3 rounded-lg hover:border-[#00FFCC]/40 transition-colors bg-black/40 flex flex-col justify-between"
+            >
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-start gap-2">
+                  <h4 className="text-sm font-bold text-white line-clamp-1">{job.title}</h4>
+                  <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] text-[10px] flex-shrink-0 font-mono">
+                    {job.budgetUsdc} U/{job.rateType === 'monthly' ? '月' : job.rateType === 'hourly' ? '时' : '单'}
+                  </Badge>
+                </div>
+                <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
+                  <Briefcase className="w-3 h-3" />
+                  <span>{job.company}</span>
+                  <span className="text-[#555]">·</span>
+                  <span className="text-[#888]">{job.location}</span>
+                </div>
+                <p className="text-xs text-[#888] line-clamp-2 leading-relaxed">
+                  {job.description}
+                </p>
+                <div className="flex items-center gap-1 flex-wrap pt-1">
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#B080E8]/10 text-[#B080E8] border border-[#B080E8]/20 font-mono">
+                    {job.type}
+                  </span>
+                  {job.tags.slice(0, 3).map((t) => (
+                    <span
+                      key={t}
+                      className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-[#777] border border-white/[0.06] font-mono"
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-[10px] pt-2 mt-2 border-t border-white/[0.04]">
+                <span className="text-[#555] font-mono">来源: {job.source}</span>
+                <a
+                  href={job.applyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#00FFCC] hover:underline flex items-center gap-0.5 font-bold"
+                >
+                  申请投递 <ArrowUpRight className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
