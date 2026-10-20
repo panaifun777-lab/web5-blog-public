@@ -44,24 +44,31 @@ export async function POST(req: NextRequest) {
 
     // ── 两步式“意识种子”流水线构建 ──
     let dynamicPrompt = prompt;
-    let targetTokens = maxTokens || (
-      wordTarget === 3000 ? 4000 :
-      wordTarget === 2000 ? 2800 :
-      wordTarget === 500 ? 700 : 1500
-    );
+    let targetTokens =
+      maxTokens ||
+      (wordTarget >= 3000
+        ? 4500
+        : wordTarget >= 2000
+          ? 3000
+          : wordTarget >= 1000
+            ? 1800
+            : 800);
+
+    const effectiveTitle = (title || prompt.split('\n')[0] || '').slice(0, 80);
 
     if (mode === 'outline') {
-      // Step 1: 毫秒级主题大纲与层次罗列
-      dynamicPrompt = buildOutlinePrompt(title || prompt.slice(0, 30), prompt, '');
-      targetTokens = 400;
+      dynamicPrompt = buildOutlinePrompt(effectiveTitle, prompt, '');
+      targetTokens = 450;
     } else if (outline) {
-      // Step 2: 结合大纲与 DWN 记忆切片进行结构化扩写
-      dynamicPrompt = buildArticleExpansionPrompt({
-        title: title || prompt.slice(0, 30),
-        seedThesis: prompt,
-        wordTarget: wordTarget || 1000,
-        style: style || 'detailed',
-      }, outline);
+      dynamicPrompt = buildArticleExpansionPrompt(
+        {
+          title: effectiveTitle,
+          seedThesis: prompt,
+          wordTarget: wordTarget || 1000,
+          style: style || 'detailed',
+        },
+        outline
+      );
     }
 
     const encoder = new TextEncoder();
@@ -69,8 +76,13 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         const ac = new AbortController();
         try {
+          // 大纲模式走专用 prompt；正文模式传原始种子 + 大纲，由引擎自行组装
+          const writePrompt = mode === 'outline' ? dynamicPrompt : prompt;
           for await (const chunk of streamWrite({
-            prompt: dynamicPrompt,
+            prompt: writePrompt,
+            title: effectiveTitle,
+            outline: mode === 'outline' ? '' : outline || '',
+            wordTarget: wordTarget || 2000,
             style: style || 'detailed',
             maxTokens: targetTokens,
             signal: ac.signal,

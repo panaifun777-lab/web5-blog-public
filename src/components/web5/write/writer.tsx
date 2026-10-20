@@ -493,8 +493,8 @@ export function Writer({ session }: { session: VesselSession | null }) {
             <RefreshCw className="w-3 h-3 mr-1" /> REGENERATE
           </Button>
           <Button size="sm" variant="outline" onClick={() => {
-            const edited = prompt('编辑内容:', output);
-            if (edited) setOutput(edited);
+            const edited = window.prompt('编辑内容（可直接修改后保存）:', output);
+            if (edited && edited.trim()) setOutput(edited);
           }} className="border-[#00FFCC]/30 text-[#00FFCC] text-xs">
             <FileText className="w-3 h-3 mr-1" /> EDIT
           </Button>
