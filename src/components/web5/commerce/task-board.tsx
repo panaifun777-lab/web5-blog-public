@@ -49,6 +49,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { OpportunityRadar } from '@/components/web5/reach/opportunity-radar';
 import type { CommerceTaskOrder } from '@/lib/web5/ap2/commerce';
 import { GLOBAL_REMOTE_JOBS, type RemoteJob } from '@/lib/web5/ap2/remote-jobs';
 import {
@@ -534,6 +535,9 @@ export function TaskBoard({
 
       {boardSection === 'bounties' ? (
         <>
+          {/* ━━ 外部劳务机会雷达（真实抓取 + 推荐分） ━━ */}
+          <OpportunityRadar compact />
+
           {/* ━━ 任务状态筛选标签 ━━ */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-1.5 p-1 rounded-lg bg-white/[0.02] border border-white/[0.04]">

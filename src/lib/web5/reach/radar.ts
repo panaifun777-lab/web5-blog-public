@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════════
 // src/lib/web5/reach/radar.ts
-// Agent-Reach 联网雷达 — 赋予 AI 分身全网实时态势感知与热点发现能力
-// 参考: https://github.com/piaoshuweb3/Agent-Reach
+// Agent-Reach 实时雷达 — 从真实抓取结果读取推荐机会
+// 不再使用任何硬编码假数据；抓取源见 ./crawler.ts
 // ════════════════════════════════════════════════════════════════
 
 export interface TrendingInsight {
@@ -10,51 +10,73 @@ export interface TrendingInsight {
   heatScore: number;
   summary: string;
   category: 'tech' | 'humanities' | 'defi' | 'agent';
+  url?: string;
+}
+
+function categoryOf(source: string, tags: string[]): TrendingInsight['category'] {
+  const h = `${source} ${tags.join(' ')}`.toLowerCase();
+  if (/(agent|ai|llm|prompt)/.test(h)) return 'agent';
+  if (/(defi|crypto|web3|blockchain|wallet)/.test(h)) return 'defi';
+  if (/(research|writing|translation|philosoph)/.test(h)) return 'humanities';
+  return 'tech';
 }
 
 /**
- * 实时获取全网 Web3、公链与 AI Agent 动态雷达
- * 为分身自动写作与 RAG 智识库注入最新鲜活上下文
+ * 读取已入库的真实外部机会（推荐分排序），供写作灵感与机会面板使用。
+ * 若无数据，可选择触发一次抓取。
  */
-export async function scanAgentReachRadar(): Promise<TrendingInsight[]> {
-  try {
-    // 聚合源：可对接公开 RSS / News API 或高可用热点源
-    // 构造具备高度行业时效性的原生数据结构
-    const now = new Date();
-    const insights: TrendingInsight[] = [
-      {
-        topic: 'Circle ARC 稳定币公链测试网与主网生态爆发',
-        source: 'Circle Developer Network',
-        heatScore: 98,
-        summary: '以 USDC 作为原生 Gas 的创新架构彻底重构了链上金融，微支付与亚秒级最终确认正在赋能去中心化 AI 智能体经济。',
-        category: 'tech',
-      },
-      {
-        topic: 'ERC-8183 标准引领 Agentic Commerce 自治商业浪潮',
-        source: 'Ethereum Standards Advisory',
-        heatScore: 95,
-        summary: '智能体协作、任务托管与自动化成果交付标准正在被各大分布式系统采纳，去中心化众包进入无人值守时代。',
-        category: 'agent',
-      },
-      {
-        topic: '数字分身伦理：碳基意图与硅基执行的博弈边界',
-        source: 'Web5 Ontology Manifesto',
-        heatScore: 91,
-        summary: 'Prime 真人持有私钥作为本体，Eidolon 分身代理创作，Vessel 负责链上出纳，三权分立构成了数字主权的最终护城河。',
-        category: 'humanities',
-      },
-      {
-        topic: 'x402 协议落地：HTTP 原生付费重塑内容创作激励',
-        source: 'x402 Open Standard',
-        heatScore: 89,
-        summary: '通过 HTTP 402 原生状态码实现机器对机器（M2M）的亚美分免注册结算，让每一篇高质量博客自动具备 API 变现能力。',
-        category: 'defi',
-      },
-    ];
+export async function scanAgentReachRadar(opts?: {
+  limit?: number;
+  triggerCrawlIfEmpty?: boolean;
+}): Promise<TrendingInsight[]> {
+  const limit = opts?.limit ?? 6;
 
-    return insights;
+  const read = async (): Promise<TrendingInsight[]> => {
+    const res = await fetch(`/api/reach/opportunities?limit=${limit}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data?.items || [];
+    return items.map((it: any) => ({
+      topic: it.title,
+      source: `${it.organization || it.source}`.slice(0, 40),
+      heatScore: Math.round(it.matchScore || 0),
+      summary: (it.description || it.rewardText || '').slice(0, 120),
+      category: categoryOf(it.source, it.tags || []),
+      url: it.url,
+    }));
+  };
+
+  try {
+    let items = await read();
+
+    if (items.length === 0 && opts?.triggerCrawlIfEmpty !== false) {
+      await fetch('/api/reach/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 12 }),
+      }).catch(() => {});
+      items = await read();
+    }
+
+    return items.sort((a, b) => b.heatScore - a.heatScore);
   } catch (err) {
-    console.warn('[Agent-Reach] Radar scan fallback:', err);
+    console.warn('[Agent-Reach] 读取失败:', err);
     return [];
   }
+}
+
+/** 手动触发一次全源抓取 */
+export async function triggerReachCrawl(payload?: {
+  skills?: string[];
+  limit?: number;
+}): Promise<any> {
+  const res = await fetch('/api/reach/crawl', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || { limit: 12 }),
+  });
+  if (!res.ok) throw new Error(`抓取失败: ${res.status}`);
+  return res.json();
 }

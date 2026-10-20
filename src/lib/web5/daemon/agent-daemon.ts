@@ -410,6 +410,7 @@ class HeadlessAgentDaemon {
   private isRunning: boolean = false;
   private timer: NodeJS.Timeout | null = null;
   private eventQueue: AgentEventMessage[] = [];
+  private lastReachCrawlAt: number = 0;
 
   /**
    * 启动无头分身常驻后台巡航服务
@@ -490,6 +491,76 @@ class HeadlessAgentDaemon {
       await this.processCommerceTasksPipeline();
     } catch (err: any) {
       console.warn('⚠️ [Headless Daemon] Commerce task pipeline error (isolated):', err?.message);
+    }
+
+    // ━━ 阶段 4：外部劳务机会自动抓取与推荐（默认 6 小时一次，异常隔离） ━━
+    try {
+      await this.processReachCrawlPipeline();
+    } catch (err: any) {
+      console.warn('⚠️ [Headless Daemon] Reach crawl pipeline error (isolated):', err?.message);
+    }
+  }
+
+  /**
+   * 子流水线 4：外部劳务机会周期抓取 + 推荐打分入库
+   * 节流：默认 6 小时一次；可用 REACH_CRAWL_INTERVAL_HOURS 覆盖
+   */
+  public async processReachCrawlPipeline(): Promise<number> {
+    const intervalHours = Number(process.env.REACH_CRAWL_INTERVAL_HOURS || 6);
+    const now = Date.now();
+    if (now - this.lastReachCrawlAt < intervalHours * 3600 * 1000) return 0;
+    this.lastReachCrawlAt = now;
+
+    try {
+      const { crawlAllSources } = await import('@/lib/web5/reach/crawler');
+      const { rankOpportunities } = await import('@/lib/web5/reach/recommender');
+
+      const { items, stats } = await crawlAllSources(10);
+      const ranked = rankOpportunities(items, {
+        skills: ['typescript', 'rust', 'solidity', 'prompt', 'audit', 'translation'],
+      });
+
+      let saved = 0;
+      for (const op of ranked) {
+        const existing = await db.externalOpportunity.findUnique({
+          where: {
+            source_externalId: { source: op.source, externalId: op.externalId },
+          },
+          select: { id: true },
+        });
+
+        const payload = {
+          title: op.title.slice(0, 300),
+          organization: op.organization?.slice(0, 200) || null,
+          url: op.url,
+          description: op.description || null,
+          rewardText: op.rewardText || null,
+          rewardUsdc: op.rewardUsdc ?? null,
+          tags: JSON.stringify(op.tags || []),
+          remote: op.remote,
+          publishedAt: op.publishedAt || null,
+          matchScore: op.matchScore,
+          matchReasons: JSON.stringify(op.matchReasons),
+          fetchedAt: new Date(),
+        };
+
+        if (existing) {
+          await db.externalOpportunity.update({ where: { id: existing.id }, data: payload });
+        } else {
+          await db.externalOpportunity.create({
+            data: { source: op.source, externalId: op.externalId, ...payload },
+          });
+        }
+        saved++;
+      }
+
+      console.log(
+        `🌐 [Reach] 外部机会抓取完成: ${saved} 条 | 源=${JSON.stringify(stats)}`
+      );
+      return saved;
+    } catch (err: any) {
+      console.warn('⚠️ [Reach] 周期抓取失败:', err?.message);
+      return 0;
     }
   }
 

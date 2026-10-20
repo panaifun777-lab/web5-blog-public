@@ -344,3 +344,31 @@ model AuthNonce {
 }
 
 
+
+// ════════════════════════════════════════════════════════════════
+// 外部劳务机会（自动抓取 + 推荐打分）
+// ════════════════════════════════════════════════════════════════
+model ExternalOpportunity {
+  id             String   @id @default(cuid())
+  source         String   // github | remotive | arbeitnow | remoteok
+  externalId     String   // 源站唯一 ID
+  title          String
+  organization   String?
+  url            String
+  description    String?
+  rewardText     String?  // 原始赏金/薪资文本
+  rewardUsdc     Float?   // 折算后的 USDC 参考值
+  tags           String?  // JSON 数组字符串
+  remote         Boolean  @default(true)
+  publishedAt    DateTime?
+  fetchedAt      DateTime @default(now())
+  matchScore     Float    @default(0) // 推荐分 0~100
+  matchReasons   String?  // JSON 数组字符串
+  status         String   @default("OPEN") // OPEN | IMPORTED | DISMISSED
+  importedTaskId String?
+
+  @@unique([source, externalId])
+  @@index([matchScore])
+  @@index([status])
+  @@index([source])
+}
