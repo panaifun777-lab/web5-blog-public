@@ -377,14 +377,6 @@ export default function Home() {
                 }}
               >{m.icon}<span>{moduleLabels[key as Module] || m.label}</span></button>
             ))}
-            {/* Founder link */}
-            <a href="/founder"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap text-[#555] hover:text-[#FFCC00] hover:bg-[#FFCC00]/10"
-              style={{ borderLeft: '2px solid transparent' }}
-            >
-              <Quote className="w-3.5 h-3.5" />
-              <span>{t?.nav?.founder || '分身致辞'}</span>
-            </a>
             {/* Language switcher */}
             <LanguageSwitcher />
           </nav>
