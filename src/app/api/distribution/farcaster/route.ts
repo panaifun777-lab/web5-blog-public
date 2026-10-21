@@ -11,8 +11,26 @@ import {
   getRecentCasts,
   PIAOSHU_FC,
 } from '@/lib/web5/distribution/farcaster';
+import { authorizeAdmin } from '@/lib/admin/guard';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export async function POST(req: NextRequest) {
+  const identity = authorizeAdmin(req);
+  if (!identity.ok) {
+    return NextResponse.json(
+      { error: identity.error || 'Unauthorized' },
+      { status: identity.status || 401 }
+    );
+  }
+
+  const limited = rateLimit(`farcaster-distribute:${clientIp(req)}`, 5, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const { vesselId, contentArweaveHash } = await req.json();
     if (!vesselId || !contentArweaveHash) {

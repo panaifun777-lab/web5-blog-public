@@ -9,7 +9,7 @@ import { db } from '@/lib/db';
 export async function GET() {
   try {
     const nfts = await db.content.findMany({
-      where: { tokenId: { not: null } },
+      where: { tokenId: { not: null }, nftStatus: 'MINTED' },
       orderBy: { publishedAt: 'desc' },
       take: 50,
       include: { prime: { select: { displayName: true, did: true } } },
@@ -21,19 +21,21 @@ export async function GET() {
       tokenId: nft.tokenId?.toString(),
       title: nft.title,
       excerpt: nft.excerpt,
-      authorName: nft.prime?.displayName || nft.authorDid.slice(0, 10) + '...',
+      authorName: nft.prime?.displayName || `${nft.authorDid.slice(0, 10)}...`,
       authorDid: nft.authorDid,
       royaltyRate: nft.royaltyRate,
       license: nft.license,
       publishedAt: nft.publishedAt,
-      forSale: parseInt(nft.arweaveHash.slice(-2), 16) % 3 !== 0,
-      price: (parseInt(nft.arweaveHash.slice(-4), 16) % 500 + 10) / 100,
-      priceUsdc: BigInt(parseInt(nft.arweaveHash.slice(-4), 16) % 50000 + 1000) * 1000n,
+      forSale: false,
+      price: null,
+      priceUsdc: null,
     }));
 
     return NextResponse.json({
       total: listings.length,
       listings,
+      marketplaceStatus: 'PREVIEW',
+      message: 'NFT 交易市场尚未上线：当前仅展示已铸造的持有记录，不提供挂单、报价或成交。',
       marketplaceContract: '0x8537fe7268296f37c2f85f9aad992f11659d1c8a',
       chain: 'Arc Mainnet',
     });

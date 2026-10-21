@@ -110,7 +110,7 @@ model Vessel {
   did           String   @unique // did:vessel:...
   eidolonId     String
   eidolon       Eidolon  @relation(fields: [eidolonId], references: [id], onDelete: Cascade)
-  smartAccountAddress String @unique // ERC-4337 智能账户地址
+  smartAccountAddress String?  @unique // ERC-4337 智能账户地址；未真实部署时为空
   sessionKeyConfig String? // JSON: ERC-4337 Session Key 配置
   status        VesselStatus @default(INACTIVE)
   accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
@@ -166,7 +166,11 @@ model Content {
   license       ContentLicense @default(CC_BY)
   royaltyRate   Int      @default(100) // basis points, 100 = 1%
   splits        String?  // JSON: [{recipient, share}]
-  arpVcId       String?  // ARP 确权 VC ID
+  arpVcId       String?  // 平台确权记录 ID（仅真实铸造后生成）
+  storageProvider String @default("DATABASE") // ARWEAVE | DATABASE
+  storageStatus   String @default("UNVERIFIED") // CONFIRMED | UNVERIFIED
+  nftStatus       String @default("NOT_MINTED") // MINTED | NOT_MINTED | FAILED
+  nftTxHash       String?
   publishedAt   DateTime @default(now())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -275,15 +279,19 @@ model TaskOrder {
   status             String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, SETTLED, REFUNDED
   escrowContract     String
   escrowTxHash       String?   // 真实链上托管转账哈希
+  payoutTxHash       String?   // 真实链上分账交易哈希
   assignedAgentDid   String?
   deliverableHash    String?   // 交付成果哈希
   deliverableContent String?   // 交付报告文本
+  isDemo             Boolean   @default(false)
+  submittedAt        DateTime?
   createdAt          DateTime  @default(now())
   settledAt          DateTime?
 
   @@index([creatorDid])
   @@index([status])
   @@index([assignedAgentDid])
+  @@index([escrowTxHash])
 }
 
 // ━━ BackupWallet：站内备用轻钱包资产模型（Circle ARC 主网原生 18-decimal USDC） ━━
@@ -301,10 +309,30 @@ model BackupWallet {
   updatedAt       DateTime         @updatedAt
 
   transactions    BackupWalletTx[]
+  deposits        ChainDeposit[]
 
   @@index([address])
   @@index([primeId])
   @@index([vesselId])
+}
+
+// ━━ ChainDeposit：链上充值凭证（防重复入账） ━━
+model ChainDeposit {
+  id              String        @id @default(cuid())
+  txHash          String        @unique
+  fromAddress     String
+  toAddress       String
+  amountWei       String
+  asset           String        @default("USDC")
+  chainId         Int
+  blockNumber     String
+  status          String        @default("CREDITED") // CREDITED | REVERSED
+  backupWalletId  String?
+  backupWallet    BackupWallet? @relation(fields: [backupWalletId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@index([fromAddress, createdAt])
+  @@index([status])
 }
 
 // ━━ BackupWalletTx：备用轻钱包流水记录（充值、提现结算、打赏消费等） ━━

@@ -9,6 +9,10 @@ import { createPublicClient, http, parseUnits } from 'viem';
 import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
+import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 const publicClient = createPublicClient({
   chain: {
@@ -28,10 +32,23 @@ const PROTOCOL_FEE_RATIO = 0.20;
 const CURATOR_REBATE_RATIO = 0.15;
 
 export async function POST(req: NextRequest) {
+  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
+
+  const limited = rateLimit(`ap2-settle:${clientIp(req)}`, 20, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const session = await resolveVesselSessionFromToken(token);
+    if (!session || session.accessMode !== 'vessel') {
+      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+    }
 
     const body = await req.json();
     const { txHash, toDid, amountUsdc, fromAddress, ref, contentHash } = body;
@@ -78,7 +95,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '链上金额与申报金额不一致，请重新核对' }, { status: 400 });
     }
 
-    // ━━ 2. 记账与 80/20 分润及 15% 策展人返佣（容错：核心是链上交易已验证真实） ━━
+    // ━━ 2. 交易级防重放：同一 txHash 只允许入账一次 ━━
+    try {
+      await db.authNonce.create({
+        data: {
+          address: expectedFrom || session.primeDid.replace('did:plvtvs:', '').toLowerCase(),
+          purpose: 'AP2_SETTLE_TX',
+          nonce: BigInt(`0x${txHash.slice(2, 18)}`),
+          signature: txHash.toLowerCase(),
+          deadline: BigInt(Math.floor(Date.now() / 1000) + 86_400),
+        },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        return NextResponse.json(
+          { error: '该交易已入账，不能重复结算', code: 'REPLAY' },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
+
+    // ━━ 3. 记账与计划分润（链上收款已确认；作者分账仍需出款） ━━
     const authorAmountUsdc = amount * (1 - PROTOCOL_FEE_RATIO);
     const protocolFeeUsdc = amount * PROTOCOL_FEE_RATIO;
     const curatorRef = typeof ref === 'string' && ref.trim() ? ref.trim() : null;
@@ -157,23 +195,23 @@ export async function POST(req: NextRequest) {
       settled: true,
       realTxHash: txHash,
       amountUsdc: amount,
+      walletReceivedUsdc: amount,
       split: {
-        authorAmountUsdc: Number(authorAmountUsdc.toFixed(6)),
+        plannedAuthorAmountUsdc: Number(authorAmountUsdc.toFixed(6)),
         protocolFeeUsdc: Number(protocolFeeUsdc.toFixed(6)),
         authorRatio: '80%',
         protocolFeeRatio: '20%',
         ...(curatorRef ? {
-          curatorAmountUsdc: Number(curatorAmountUsdc.toFixed(6)),
+          plannedCuratorAmountUsdc: Number(curatorAmountUsdc.toFixed(6)),
           curatorRatio: '15%',
           curatorRef,
         } : {}),
       },
+      payoutStatus: 'PENDING_MANUAL_DISTRIBUTION',
       ledgerId,
       curatorLedgerId,
       explorerUrl: `https://explorer.arc.io/tx/${txHash}`,
-      message: curatorRef
-        ? `✅ 真实链上打赏已确认入账！作者实得 ${authorAmountUsdc.toFixed(2)} USDC，策展人分润 ${curatorAmountUsdc.toFixed(2)} USDC (15%)，平台抽成 ${protocolFeeUsdc.toFixed(2)} USDC。`
-        : `✅ 真实链上打赏已确认入账！作者实得 ${authorAmountUsdc.toFixed(2)} USDC，平台抽成 ${protocolFeeUsdc.toFixed(2)} USDC (其中 50% 将自动注入 Uniswap LP 锁定)。`,
+      message: `链上打赏 ${amount.toFixed(2)} USDC 已确认进入平台金库；作者分账尚未自动执行，当前仅记录待分账台账。`,
     });
   } catch (err: any) {
     console.error('[ap2/settle] Error:', err);

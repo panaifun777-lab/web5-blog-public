@@ -36,6 +36,11 @@ import {
   getVesselWalletBalance,
   vesselWalletTransfer,
 } from '@/lib/web5/vessel-wallet';
+import {
+  PUBLIC_MONEY_FLOWS_ENABLED,
+  PUBLIC_DEMO_NOTICE,
+  PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE,
+} from '@/lib/launch/public';
 
 const CROWDFUND_ESCROW_VAULT = '0xCA36335845E382129167fC44243F07A76827bA22';
 const ARC_CHAIN_ID_HEX = '0x13b2'; // 5042
@@ -54,7 +59,7 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
 
   // 众筹目标与统计
   const targetGoal = 500; // 500 USDC
-  const [raisedAmount, setRaisedAmount] = useState(185.5); // 基础已筹集金额
+  const [raisedAmount, setRaisedAmount] = useState(0);
   const [supportAmount, setSupportAmount] = useState('10.0');
   const [supportMethod, setSupportMethod] = useState<'vessel' | 'web3'>('vessel');
   const [vesselBalance, setVesselBalance] = useState<number>(0);
@@ -64,33 +69,7 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 支持者列表展示
-  const [backers, setBackers] = useState<Backer[]>([
-    {
-      address: '0x3a4b...c912',
-      amount: 50.0,
-      time: '10 分钟前',
-      note: '支持《人文思辨五部曲》德语与法语学术翻译节点！',
-    },
-    {
-      address: '0x8f21...e04a',
-      amount: 35.5,
-      time: '35 分钟前',
-      note: 'Web5 永久本体论存证是真正的人类思想遗产。',
-    },
-    {
-      address: '0x1c99...4d3b',
-      amount: 60.0,
-      time: '2 小时前',
-      note: '愿思想穿透时代，Arweave 永久存证基金贡献一份力量。',
-    },
-    {
-      address: '0x7e88...2a1f',
-      amount: 40.0,
-      time: '5 小时前',
-      note: '飘叔与硅基文明的思辨之光。',
-    },
-  ]);
+  const [backers, setBackers] = useState<Backer[]>([]);
 
   const loadVesselBalance = async () => {
     try {
@@ -111,6 +90,10 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
 
   // 注入资金支持
   const handleSupport = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      setErrorMsg(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     const num = parseFloat(supportAmount);
     if (isNaN(num) || num <= 0) {
       setErrorMsg(isEn ? 'Please enter a valid amount.' : '请输入有效的支持金额。');
@@ -205,6 +188,17 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
 
   return (
     <div className="space-y-6">
+      {!PUBLIC_MONEY_FLOWS_ENABLED && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#FFCC00]/40 bg-[#FFCC00]/10 px-3.5 py-2.5 text-[11px] text-[#FFE58A]">
+          <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-bold">{PUBLIC_DEMO_NOTICE}</div>
+            <div className="text-[#c9b06a] mt-0.5">
+              {PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE} 众筹金库、退款与分账尚未实现，本页暂停收款，仅展示项目说明。
+            </div>
+          </div>
+        </div>
+      )}
       {/* 头部 Banner */}
       <div className="relative overflow-hidden rounded-2xl border border-[#B080E8]/30 bg-gradient-to-br from-[#B080E8]/15 via-[#0a0e17] to-transparent p-6 sm:p-8">
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
@@ -214,24 +208,24 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-[#B080E8]/20 text-[#B080E8] border-[#B080E8]/40 text-xs px-2.5 py-0.5 font-mono">
-              OFFICIAL CROWDFUND · 官方主权众筹 #001
+              DEMO · 众筹方案展示
             </Badge>
-            <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-xs font-mono">
-              ● 筹资中 ACTIVE
+            <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] border-none text-xs font-mono">
+              ● 内测展示，暂不收款
             </Badge>
             <Badge className="bg-white/[0.06] text-[#aaa] border-none text-xs font-mono">
-              Circle ARC 5042 托管
+              托管尚未上线
             </Badge>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-            <span>《人文思辨五部曲》全球学术多语言翻译与 Arweave 永久节点众筹计划</span>
+            <span>《人文思辨五部曲》全球学术多语言翻译计划（方案展示）</span>
           </h1>
 
           <p className="text-xs sm:text-sm text-[#aaa] leading-relaxed">
             {isEn
-              ? 'Translating the foundational philosophical quintology into English, French, German, Japanese, and Spanish. Permanent dual-permaweb storage on Arweave and IPFS, enabling global AI autonomous syndication.'
-              : '本计划旨在将 Web5.blog 核心思想母体《人文思辨五部曲》（从文明反思、AI 分身主体性到数字本体论）系统翻译为全球 5 大主要学术语种（英、法、德、日、西），并部署专有 Arweave 永久网关与检索加速节点，让全人类与全球自治智能体永久自由研读与确权引用。'}
+              ? 'Plan to translate the foundational philosophical quintology into English, French, German, Japanese, and Spanish, with Arweave/IPFS storage planned. No funds are collected during the closed beta.'
+              : '计划将 Web5.blog 核心思想母体《人文思辨五部曲》翻译为英、法、德、日、西五种主要学术语言，Arweave/IPFS 存储与检索节点尚在规划中。内测期间不收取任何资金。'}
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-6 text-xs font-mono">
@@ -244,8 +238,8 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
               <span className="text-[#FFCC00] font-bold">500.00 USDC</span>
             </div>
             <div>
-              <span className="text-[#666]">存证网络：</span>
-              <span className="text-[#B080E8] font-bold">Arweave Permaweb & Circle ARC</span>
+              <span className="text-[#666]">计划存储网络：</span>
+              <span className="text-[#B080E8] font-bold">Arweave / IPFS（规划）</span>
             </div>
           </div>
         </div>
@@ -259,7 +253,7 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
             <CardContent className="p-6 space-y-5">
               <div className="flex items-baseline justify-between font-mono">
                 <div>
-                  <div className="text-xs text-[#888]">已筹集资金 (RAISED)</div>
+                  <div className="text-xs text-[#888]">已筹集资金（众筹账本未接入）</div>
                   <div className="text-3xl font-black text-white mt-1 flex items-baseline gap-2">
                     <span className="text-[#00FFCC]">{raisedAmount.toFixed(2)}</span>
                     <span className="text-sm text-[#888] font-normal">/ {targetGoal.toFixed(2)} USDC</span>
@@ -277,7 +271,7 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
               <div className="space-y-1.5">
                 <Progress value={progressPercent} className="h-3 bg-white/[0.08]" />
                 <div className="flex justify-between text-[11px] font-mono text-[#666]">
-                  <span>已锁定 4 位早期资助者</span>
+                  <span>暂无真实资助记录</span>
                   <span>剩余差额: {(Math.max(0, targetGoal - raisedAmount)).toFixed(2)} USDC</span>
                 </div>
               </div>
@@ -311,9 +305,9 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
                   <span>支持者专属回馈 (Backer Perks)</span>
                 </div>
                 <div className="text-xs text-[#bbb] leading-relaxed space-y-1">
-                  <div>• <b>&gt; 5 USDC</b>：铭刻在 Arweave 全球永久译本《资助者功德碑》创世名单中。</div>
-                  <div>• <b>&gt; 20 USDC</b>：获得 Circle ARC 链上限量版「思想火种」Genesis Patron 徽章。</div>
-                  <div>• <b>&gt; 50 USDC</b>：享有后续多语言译本外部 AI 商业引用检索分润池 5% 长期质押收益权。</div>
+                  <div>• 回馈方案尚在设计中，内测期间不产生任何资金往来。</div>
+                  <div>• 正式规则、资金用途与退款政策上线前将单独公示。</div>
+                  <div>• 请勿在开放前向任何地址转账。</div>
                 </div>
               </div>
             </CardContent>
@@ -327,10 +321,15 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
                   <Users className="w-4 h-4 text-[#00FFCC]" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white">支持者名单 (BACKERS)</span>
                 </div>
-                <span className="text-[10px] text-[#666] font-mono">REAL-TIME ESCROW</span>
+                <span className="text-[10px] text-[#666] font-mono">暂无数据</span>
               </div>
 
               <div className="space-y-2.5">
+                {backers.length === 0 && (
+                  <div className="p-4 rounded-lg border border-dashed border-white/[0.08] text-center text-[11px] text-[#666]">
+                    众筹账本尚未接入，暂无支持者记录。
+                  </div>
+                )}
                 {backers.map((b, idx) => (
                   <div
                     key={idx}
@@ -458,8 +457,9 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
               {/* 支持按钮 */}
               <Button
                 onClick={handleSupport}
-                disabled={backing}
-                className="w-full h-10 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:scale-[1.01] text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#00FFCC]/20 transition-all"
+                disabled={backing || !PUBLIC_MONEY_FLOWS_ENABLED}
+                title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
+                className="w-full h-10 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:scale-[1.01] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#00FFCC]/20 transition-all"
               >
                 {backing ? (
                   <>
@@ -469,13 +469,13 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
                 ) : (
                   <>
                     <Heart className="w-4 h-4 text-red-500 fill-red-500" />
-                    <span>即刻注资支持 ({supportAmount} USDC)</span>
+                    <span>{PUBLIC_MONEY_FLOWS_ENABLED ? `即刻注资支持 (${supportAmount} USDC)` : PUBLIC_DEMO_NOTICE}</span>
                   </>
                 )}
               </Button>
 
               <div className="text-[10px] text-[#666] leading-relaxed text-center">
-                资金将直接托管至去中心化众筹金库，达成后自动触发多语言翻译交付与 Arweave 永久母体刻录。
+                内测期间暂停收款。众筹金库、退款与资金用途公示上线后才会开放注资。
               </div>
             </CardContent>
           </Card>

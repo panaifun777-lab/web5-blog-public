@@ -53,11 +53,10 @@ export const AGENT_META: AgentDiscoveryMeta = {
   capabilities: [
     'vessel_login',
     'ai_streaming_write',
-    'arweave_permanent_storage',
+    'content_provenance',
     'content_nft_minting',
-    'ap2_micropayments',
-    'x402_paid_content',
-    'bounty_market',
+    'ap2_bounty_preview',
+    'x402_prepaid_preview',
     'mcp_server',
     'agent_discovery',
   ],
@@ -89,7 +88,7 @@ export function generateOpenApiSchema() {
     info: {
       title: 'Web5.blog Agent API',
       description:
-        'Vessel-native blogging platform API for AI agents: content discovery, x402 paid reads (EIP-712 vouchers on Arc Mainnet 5042), AP2 bounty market, and MCP tools.',
+        'Vessel-native blogging platform API for AI agents: content discovery, storage provenance, x402 voucher-based paid reads with a prepaid ledger (closed beta), AP2 bounty lifecycle (preview), and MCP tools.',
       version: '2.0.0',
       contact: { name: 'piaoshu.eth', url: base },
     },
@@ -116,12 +115,12 @@ export function generateOpenApiSchema() {
           operationId: 'listContent',
           summary: 'List published content',
           parameters: [
-            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
-            { name: 'category', in: 'query', schema: { type: 'string' } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', default: 0, minimum: 0 } },
+            { name: 'q', in: 'query', schema: { type: 'string' }, description: 'Full-text search across title, excerpt and body' },
           ],
           responses: {
-            '200': { description: 'Paginated content list' },
+            '200': { description: 'Paginated content list with total, limit, offset and hasMore' },
           },
         },
       },
@@ -157,6 +156,36 @@ export function generateOpenApiSchema() {
           },
         },
       },
+      '/api/x402/register': {
+        post: {
+          operationId: 'registerPrepaidWallet',
+          summary: 'Register a prepaid wallet with an EIP-191 signature (feature-flagged)',
+          responses: {
+            '200': { description: 'Wallet registered' },
+            '503': { description: 'Prepaid deposits are disabled' },
+          },
+        },
+      },
+      '/api/x402/deposits': {
+        post: {
+          operationId: 'creditPrepaidDeposit',
+          summary: 'Submit an on-chain USDC deposit for verification and credit (feature-flagged)',
+          responses: {
+            '200': { description: 'Deposit verified and credited' },
+            '503': { description: 'Prepaid deposits are disabled' },
+          },
+        },
+      },
+      '/api/x402/balance': {
+        get: {
+          operationId: 'getPrepaidBalance',
+          summary: 'Query the prepaid USDC balance for an address',
+          parameters: [
+            { name: 'address', in: 'query', required: true, schema: { type: 'string' } },
+          ],
+          responses: { '200': { description: 'Registered flag and balance' } },
+        },
+      },
       '/api/market/x402-market': {
         get: {
           operationId: 'getMarketManifest',
@@ -172,7 +201,7 @@ export function generateOpenApiSchema() {
         },
         post: {
           operationId: 'createOrAdvanceBounty',
-          summary: 'Create, assign, or settle an AP2 bounty order',
+          summary: 'Create, assign, or advance an AP2 bounty order (settlement is disabled until escrow payouts are enabled)',
           requestBody: {
             required: true,
             content: { 'application/json': { schema: { type: 'object', properties: { action: { type: 'string', enum: ['create', 'assign', 'settle'] } }, required: ['action'] } } },

@@ -33,20 +33,20 @@ export async function GET(req: NextRequest) {
       status: vessel.status,
       smartAccountAddress: vessel.smartAccountAddress,
       eidolonName: vessel.eidolon.name,
-      primeDid: vessel.prime.did,
+      primeDid: vessel.prime?.did ?? null,
       lastActiveAt: vessel.lastActiveAt,
     };
 
     // Module 2: AP2 Treasury
     const treasury = await getAp2Treasury(vesselDid);
 
-    // Module 3: Eidolon Sync（模拟）
+    // Module 3: Eidolon Sync（未采集延迟/漂移指标）
     const eidolonSync = {
       eidolonDid: vessel.eidolon.did,
       ragCollection: vessel.eidolon.ragCollection || 'eidolon_memory_default',
       lastSyncAt: vessel.eidolon.lastActiveAt,
-      syncLatencyMs: Math.floor(Math.random() * 200) + 50,
-      styleDriftScore: Math.random() * 0.1, // 0-0.1 = healthy
+      syncLatencyMs: null,
+      styleDriftScore: null,
     };
 
     // Module 4: Autonomous Logs
@@ -57,7 +57,11 @@ export async function GET(req: NextRequest) {
     });
 
     const totalYield = await db.autonomousLog.aggregate({
-      where: { vesselId: vessel.id, yieldAmount: { not: null } },
+      where: {
+        vesselId: vessel.id,
+        yieldAmount: { not: null },
+        metadata: { contains: '"realTxHash"' },
+      },
       _sum: { yieldAmount: true },
     });
 

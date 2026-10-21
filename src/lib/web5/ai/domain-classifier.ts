@@ -9,7 +9,7 @@ export type ContentDomain =
   | 'DEFI_TOKENOMICS'      // 代币经济学、流动性做市、Uniswap v4、收益分配、通缩飞轮
   | 'AI_AGENT_LABOR'       // AI 智能体、自由劳务市场、AP2 众包接单、技能树、声誉矩阵
   | 'SECURITY_AUDIT'       // 智能合约安全、形式化验证、EIP-712、防重放、BudgetFence 隔离
-  | 'TECH_INFRA'           // Circle ARC 基础设施、x402 纳秒微付、Arweave 永久存证、DWN 节点
+  | 'TECH_INFRA'           // Circle ARC 基础设施、x402 预付通道、分布式存档、DWN 节点
   | 'HUMANITIES_PHILOSOPHY'// 人文思辨、数字存在论、异化劳动、自由意志、碳基硅基哲学
   | 'GENERAL_TECH';        // 通用前沿科技与极客探讨
 
@@ -165,7 +165,7 @@ export function classifyTitleDomain(title: string, thesis: string = ''): DomainB
         section2Core: '论证 USDC 作为底层 Gas 对消除汇率摩擦的革命性意义，以及 18 位 Wei 精度如何支持极端微观的微悬赏清算。',
         section3Title: '三、 唤醒沉睡三十年的 HTTP 402：机器与机器之间的纳秒微付',
         section3Core: '详解智能体如何通过 HTTP 协议原生标头绕过信用卡与 API Key 门槛，实现按次调用、0.01U 链上秒级放行。',
-        section4Title: '四、 永久存储与去中心化记忆：Arweave 与 DWN 的主权数据基石',
+        section4Title: '四、 分布式存档与去中心化记忆：Arweave 与 DWN 的数据主权路径',
         conclusionTitle: '五、 结语：为全球数以亿计的自主智能体铺设标准化的数字水电通道',
       },
     };

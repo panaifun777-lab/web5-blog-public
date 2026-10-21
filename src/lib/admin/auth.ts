@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 
 export const SUPERADMIN = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1';
 export const SUPERADMIN_ENS = 'piaoshu.eth';
@@ -40,8 +40,11 @@ export function generateAdminChallenge(): { message: string; nonce: string } {
 
 export function validateApiKey(apiKey: string | null): boolean {
   const expected = process.env.ADMIN_API_KEY;
-  if (!expected) return false;
-  return apiKey === expected;
+  if (!expected || !apiKey) return false;
+  const left = Buffer.from(apiKey);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
 }
 
 export function isSuperadmin(address: string): boolean {

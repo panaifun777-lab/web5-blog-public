@@ -30,15 +30,17 @@ export function getCircleClient() {
 }
 
 export interface VesselWalletInfo {
-  walletId: string;
-  address: string;
+  walletId: string | null;
+  address: string | null;
   blockchain: string;
   walletSetId?: string;
-  isMock: boolean;
+  provisioned: boolean;
+  error?: string;
 }
 
 /**
- * 为 AI 分身创建/派发 ARC 链专属的 Vessel 托管钱包
+ * 为 AI 分身创建/派发 ARC 链专属的 Vessel 托管钱包。
+ * 未配置或调用失败时返回未部署状态，绝不生成占位地址。
  */
 export async function createVesselWallet(params: {
   eidolonDid: string;
@@ -48,15 +50,14 @@ export async function createVesselWallet(params: {
   const client = getCircleClient();
   const targetChain = (params.blockchain || 'ARC-TESTNET') as any;
 
-  // 模拟模式 fallback（当未配置 Circle API Key 时）
   if (!client) {
-    const mockHash = Buffer.from(params.eidolonDid).toString('hex').slice(0, 40);
-    const mockAddress = `0x${mockHash.padEnd(40, 'a')}`;
+    console.warn('[Circle] client not configured; vessel wallet not provisioned');
     return {
-      walletId: `circle-mock-${mockHash.slice(0, 16)}`,
-      address: mockAddress,
+      walletId: null,
+      address: null,
       blockchain: targetChain,
-      isMock: true,
+      provisioned: false,
+      error: 'CIRCLE_NOT_CONFIGURED',
     };
   }
 
@@ -88,16 +89,16 @@ export async function createVesselWallet(params: {
       address: createdWallet.address,
       blockchain: createdWallet.blockchain,
       walletSetId,
-      isMock: false,
+      provisioned: true,
     };
   } catch (error) {
-    console.error('[Circle] createVesselWallet failed, falling back to local simulation:', error);
-    const mockHash = Buffer.from(params.eidolonDid).toString('hex').slice(0, 40);
+    console.error('[Circle] createVesselWallet failed; vessel wallet not provisioned:', error);
     return {
-      walletId: `circle-fallback-${mockHash.slice(0, 16)}`,
-      address: `0x${mockHash.padEnd(40, 'b')}`,
+      walletId: null,
+      address: null,
       blockchain: targetChain,
-      isMock: true,
+      provisioned: false,
+      error: 'CIRCLE_PROVISION_FAILED',
     };
   }
 }
@@ -113,12 +114,7 @@ export async function executeVesselPayment(params: {
 }) {
   const client = getCircleClient();
   if (!client) {
-    // 模拟交易成功
-    return {
-      success: true,
-      txId: `mock-tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      isMock: true,
-    };
+    throw new Error('Circle is not configured; cannot execute payment');
   }
 
   const txParams: any = {

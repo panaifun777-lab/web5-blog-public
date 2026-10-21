@@ -7,7 +7,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from 'react';
-import { ScanRitual } from '@/components/web5/ritual/scan-ritual';
+import dynamic from 'next/dynamic';
 import { MatrixRain } from '@/components/web5/effects/matrix-rain';
 import { SplashAwakening } from '@/components/web5/effects/splash-awakening';
 import { getCurrentVesselSession, revokeVesselSession } from '@/lib/web5/vessel-auth';
@@ -21,24 +21,58 @@ import {
   Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket,
 } from 'lucide-react';
 
-import { BlogFeed } from '@/components/web5/blog/blog-feed';
-import { Writer } from '@/components/web5/write/writer';
-import { ExplorePanel } from '@/components/web5/explore/explore-panel';
-import { MyVessels } from '@/components/web5/dashboard/my-vessels';
-import { SettingsPanel } from '@/components/web5/settings/settings-panel';
-import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
-import { Footer } from '@/components/web5/footer';
-import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
-import { SponsorModal } from '@/components/web5/trending/sponsor-modal';
-import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
-import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
-import { TaskBoard } from '@/components/web5/commerce/task-board';
-import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
-import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-panel';
-import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
 import { useI18n } from '@/lib/i18n/index';
+
+const PanelLoading = ({ label }: { label: string }) => (
+  <div className="flex items-center justify-center py-16 text-xs font-mono text-[#555]">{label}</div>
+);
+
+const ScanRitual = dynamic(() => import('@/components/web5/ritual/scan-ritual').then((m) => m.ScanRitual), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING RITUAL…" />,
+});
+const BlogFeed = dynamic(() => import('@/components/web5/blog/blog-feed').then((m) => m.BlogFeed), {
+  loading: () => <PanelLoading label="LOADING FEED…" />,
+});
+const Writer = dynamic(() => import('@/components/web5/write/writer').then((m) => m.Writer), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING EDITOR…" />,
+});
+const ExplorePanel = dynamic(() => import('@/components/web5/explore/explore-panel').then((m) => m.ExplorePanel), {
+  loading: () => <PanelLoading label="LOADING EXPLORE…" />,
+});
+const MyVessels = dynamic(() => import('@/components/web5/dashboard/my-vessels').then((m) => m.MyVessels), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING DASHBOARD…" />,
+});
+const SettingsPanel = dynamic(() => import('@/components/web5/settings/settings-panel').then((m) => m.SettingsPanel), {
+  loading: () => <PanelLoading label="LOADING SETTINGS…" />,
+});
+const LanguageSwitcher = dynamic(() => import('@/components/web5/i18n/language-switcher').then((m) => m.LanguageSwitcher));
+const Footer = dynamic(() => import('@/components/web5/footer').then((m) => m.Footer));
+const GenesisAirdropModal = dynamic(() => import('@/components/web5/airdrop/genesis-airdrop-modal').then((m) => m.GenesisAirdropModal), { ssr: false });
+const SponsorModal = dynamic(() => import('@/components/web5/trending/sponsor-modal').then((m) => m.SponsorModal), { ssr: false });
+const GenesisCurveModal = dynamic(() => import('@/components/web5/vault/genesis-curve-modal').then((m) => m.GenesisCurveModal), { ssr: false });
+const WalletGuideModal = dynamic(() => import('@/components/web5/auth/wallet-guide-modal').then((m) => m.WalletGuideModal), { ssr: false });
+const TaskBoard = dynamic(() => import('@/components/web5/commerce/task-board').then((m) => m.TaskBoard), {
+  loading: () => <PanelLoading label="LOADING BOUNTIES…" />,
+});
+const ExpertChamber = dynamic(() => import('@/components/web5/experts/expert-chamber').then((m) => m.ExpertChamber), {
+  loading: () => <PanelLoading label="LOADING EXPERTS…" />,
+});
+const CrowdfundingPanel = dynamic(() => import('@/components/web5/crowdfunding/crowdfunding-panel').then((m) => m.CrowdfundingPanel), {
+  loading: () => <PanelLoading label="LOADING CROWDFUNDING…" />,
+});
+const HologramAvatarStage = dynamic(() => import('@/components/web5/hero/hologram-avatar-stage').then((m) => m.HologramAvatarStage), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[520px] rounded-3xl border border-[#00FFCC]/10 bg-[#070b12] flex items-center justify-center">
+      <span className="text-[10px] font-mono text-[#3a5a55] tracking-[0.3em]">INITIALIZING STAGE…</span>
+    </div>
+  ),
+});
 
 // ━━ 协议色语义映射 ━━
 const COLORS = {
@@ -57,17 +91,6 @@ const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: str
   bounties:      { label: '悬赏广场', icon: <Target />,   color: '#FF6633' },
   crowdfunding:  { label: '创意众筹', icon: <Users />,    color: '#B080E8' },
 };
-
-// ━━ 趋势数据 ━━
-const TRENDING = [
-  { rank: 1, title: 'Web5 宣言：从 Web3 到个人解放的范式跃迁', views: 2341, tag: '科技' },
-  { rank: 2, title: 'Vessel 经济模型深度分析：AP2 收益机制', views: 1890, tag: '众筹' },
-  { rank: 3, title: 'AP2 协议实战：三步实现微支付分润', views: 1567, tag: '科技' },
-  { rank: 4, title: 'AI 分身哲学：Eidolon 人格的边界在哪里', views: 1234, tag: '人文' },
-  { rank: 5, title: '从 Observer 到 Vessel：转化率优化指南', views: 987, tag: 'AI专家' },
-  { rank: 6, title: '数字解放：飘叔 的治理哲学', views: 876, tag: '人文' },
-  { rank: 7, title: 'Circle ARC 稳定币公链：10 亿 $WBOG 架构', views: 765, tag: '科技' },
-];
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -306,13 +329,12 @@ export default function Home() {
           {/* Brand & 动态唤醒光环 */}
           <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
             <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#00FFCC]/40 shadow-lg shadow-[#00FFCC]/20 bg-black flex items-center justify-center">
-              <video
-                src="/brand-awakening.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover scale-110"
+              <img
+                src="/brand-awakening-poster.jpg"
+                alt="Web5.blog"
+                width={72}
+                height={72}
+                className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-[#00FFCC]/10 pointer-events-none" />
             </div>
@@ -656,19 +678,19 @@ export default function Home() {
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
-                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格信标</span>
+                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格参考</span>
                   </div>
                   <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] py-0 h-4 font-mono">
                     #304322
                   </Badge>
                 </div>
                 <div className="flex items-baseline justify-between font-mono">
-                  <span className="text-[11px] text-[#888]">$WBOG 单价:</span>
+                  <span className="text-[11px] text-[#888]">$WBOG 单价 (示例):</span>
                   <span className="text-base font-bold text-[#00FFCC]">$0.000080 USDC</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[#666] font-mono">
-                  <span>1 USDC = 12,500 WBOG</span>
-                  <span className="text-[#10B981]">● 交易活跃 (已连接真实池)</span>
+                  <span>示例汇率 1 USDC = 12,500 WBOG</span>
+                  <span className="text-[#888]">○ 静态示例价 · 未接入实时报价</span>
                 </div>
                 <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2">
                   <a
@@ -832,6 +854,8 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-[#00FFCC]/50 shadow-2xl shadow-[#00FFCC]/30 bg-black flex items-center justify-center">
                   <video
                     src="/brand-awakening.mp4"
+                    poster="/brand-awakening-poster.jpg"
+                    preload="metadata"
                     autoPlay
                     loop
                     muted
@@ -862,17 +886,17 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   {isEn ? 'Write Once, ' : '写一次，'}
                 </span>
                 <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.3)' }}>
-                  {isEn ? 'Preserved Forever.' : '永久保存。'}
+                  {isEn ? 'Long-term Archive.' : '长期存档。'}
                 </span>
                 <br />
                 <span className="text-white/90 text-2xl sm:text-4xl mt-1.5 block font-bold">
-                  {isEn ? 'Readable by Humans & AI · Tips Direct to Wallet' : 'AI 和人类都能读，打赏直达钱包。'}
+                  {isEn ? 'Readable by Humans & AI · Transparent Provenance' : 'AI 和人类都能读，存证状态透明。'}
                 </span>
               </h1>
               <p className="text-[#888] text-xs sm:text-sm mb-6 leading-relaxed max-w-xl">
                 {isEn
-                  ? 'Built on Arweave permaweb storage & Circle ARC USDC gas settlement. Every essay is permanently archived, syndicated by AI agents, and settled on-chain.'
-                  : '基于 Arweave 全球公链永久存储与 Circle ARC 链上秒级结算。博文存证 200 年不灭，外部 AI 引用检索按次付费，创作收益 80% 秒级直达个人钱包。'}
+                  ? 'Built with distributed storage (Arweave when confirmed) and Circle ARC USDC settlement rails. Every essay publishes its storage and provenance status, is discoverable by AI agents, and follows transparent revenue rules. Real payments and payouts remain in closed beta.'
+                  : '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。真实打赏与结算通道内测中，暂不开放打款。'}
               </p>
 
               {/* 首屏核心行动 CTA 按钮组 (收敛至获客与赚钱主干) */}
@@ -889,7 +913,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#FFCC00] to-[#FF6633] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#FFCC00]/25 hover:scale-[1.02] transition-all"
                 >
                   <Target className="w-4 h-4" />
-                  <span>{isEn ? '🎯 Bounty Plaza (Earn USDC)' : '🎯 悬赏任务大厅 (做任务赚 USDC)'}</span>
+                  <span>{isEn ? '🎯 Bounty Plaza (Preview)' : '🎯 悬赏任务大厅 (内测展示)'}</span>
                 </button>
                 <button
                   onClick={() => { setView('app'); setTab('write'); }}
@@ -920,13 +944,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Live' : '创世先锋 $WBOG 空投进行中'}</span>
+                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Preview' : '创世先锋 $WBOG 空投预告'}</span>
                       <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">
-                        {isEn ? '10k Slots' : '前 10,000 名'}
+                        {isEn ? 'Not Open' : '未开放'}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? '1,000 WBOG per user + Genesis NFT Badge · Click to Claim' : '每人 1,000 WBOG + 创世勋章 · 点击领取'}
+                      {isEn ? 'Planned allocation · Claim not yet open' : '方案展示 · 领取暂未开放，请勿打款'}
                     </div>
                   </div>
                 </div>
@@ -944,13 +968,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis Curve Angel Vault (3,000U Cap)' : 'GenesisCurve 创世金库 3,000U 冲刺认购'}</span>
+                      <span>{isEn ? 'Genesis Curve Angel Vault (Preview)' : 'GenesisCurve 创世金库（内测展示）'}</span>
                       <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 h-4 font-mono">
-                        {curveReserve.toFixed(2)} / 3,000U ({((curveReserve / 3000) * 100).toFixed(1)}%)
+                        {isEn ? 'Not Open' : '未开放'}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? '100% of funds locked into Uniswap v4 on cap · Renounce ownership on graduation' : '单笔限额 20U 防鲸 · 满额 3000U 永久锁池并丢弃权限 · 点击认购 →'}
+                      {isEn ? 'Subscription and custody are not open · Do not send funds' : '认购与资金托管尚未开放 · 请勿打款'}
                     </div>
                   </div>
                 </div>

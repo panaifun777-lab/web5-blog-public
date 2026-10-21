@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       eidolonDid?: string;
     };
 
-    if (!challenge || !aa2pClaim || !vesselDid) {
+    if (!challenge || !aa2pClaim || !vesselDid || !eidolonDid) {
       return NextResponse.json(
-        { error: 'Missing required fields: challenge, aa2pClaim, vesselDid' },
+        { error: 'Missing required fields: challenge, aa2pClaim, vesselDid, eidolonDid' },
         { status: 400 }
       );
     }
@@ -120,14 +120,14 @@ export async function POST(req: NextRequest) {
       update: {
         status: 'ACTIVE',
         lastActiveAt: new Date(now),
-        smartAccountAddress: circleWallet.address,
+        ...(circleWallet.address ? { smartAccountAddress: circleWallet.address } : {}),
         sessionKeyConfig: JSON.stringify(circleWallet),
       },
       create: {
         did: vesselDid,
         eidolonId: eidolon.id,
         primeId: prime.id,
-        smartAccountAddress: circleWallet.address,
+        ...(circleWallet.address ? { smartAccountAddress: circleWallet.address } : {}),
         sessionKeyConfig: JSON.stringify(circleWallet),
         status: 'ACTIVE',
       },

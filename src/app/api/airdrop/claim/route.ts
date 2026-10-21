@@ -1,21 +1,27 @@
 // ════════════════════════════════════════════════════════════════
 // src/app/api/airdrop/claim/route.ts
-// 创世先锋 1,000 $WBOG 链上空投申领 API (Circle ARC Mainnet 5042)
+// Genesis airdrop claim. Disabled by default.
+// Requires a fresh wallet signature; the recipient is recovered from it.
 // ════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createWalletClient, createPublicClient, http, defineChain, parseUnits, parseGwei } from 'viem';
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  isAddress,
+  parseUnits,
+  parseGwei,
+  verifyMessage,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { db } from '@/lib/db';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { arcChain } from '@/lib/web5/payments/arc';
+import { AIRDROP_ENABLED, featureDisabled } from '@/lib/launch/flags';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
-const arcMainnetChain = defineChain({
-  id: ARC_MAINNET.id,
-  name: ARC_MAINNET.name,
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: [ARC_MAINNET.rpcUrl] } },
-  blockExplorers: { default: { name: 'ArcScan', url: ARC_MAINNET.explorer } },
-});
+export const dynamic = 'force-dynamic';
 
 const ERC20_ABI = [
   {
@@ -28,98 +34,155 @@ const ERC20_ABI = [
     outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'nonpayable',
   },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view',
-  },
 ] as const;
 
+function claimMessage(address: string, timestamp: number) {
+  return [
+    'Web5.blog Genesis Airdrop Claim',
+    '',
+    `Wallet: ${address.toLowerCase()}`,
+    `Timestamp: ${timestamp}`,
+    '',
+    'Signing does not move funds. It only proves control of this wallet.',
+  ].join('\n');
+}
+
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(`airdrop:${clientIp(req)}`, 5, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
+  if (!AIRDROP_ENABLED) {
+    return featureDisabled('AIRDROP_DISABLED', '创世空投处于内测展示阶段，尚未开放领取。');
+  }
+
   try {
-    const { walletAddress, primeDid } = await req.json();
-    const recipient = (walletAddress || (primeDid ? primeDid.replace('did:plvtvs:', '') : '')).toLowerCase();
+    const body = await req.json().catch(() => ({}));
+    const walletAddress = typeof body.walletAddress === 'string' ? body.walletAddress : '';
+    const timestamp = Number(body.timestamp);
+    const signature = typeof body.signature === 'string' ? body.signature : '';
 
-    if (!recipient || !recipient.startsWith('0x') || recipient.length !== 42) {
-      return NextResponse.json({ error: '无效的 Web3 钱包地址，无法接收代币' }, { status: 400 });
+    if (!isAddress(walletAddress) || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+      return NextResponse.json(
+        { error: '钱包地址与签名必填' },
+        { status: 400 }
+      );
+    }
+    if (!Number.isSafeInteger(timestamp) || Math.abs(Date.now() - timestamp) > 5 * 60_000) {
+      return NextResponse.json(
+        { error: '签名已过期，请重新签名' },
+        { status: 401 }
+      );
     }
 
-    // 检查是否已在数据库中领取过 (防女巫双花)
-    const existing = await db.interaction.findFirst({
-      where: {
-        primeId: recipient,
-        type: 'TIP',
-        comment: { startsWith: '[GENESIS_AIRDROP_CLAIMED]' },
-      },
-    });
+    const normalized = walletAddress.toLowerCase();
+    const message = claimMessage(normalized, timestamp);
 
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        alreadyClaimed: true,
-        message: '该钱包已领取过创世先锋 1,000 $WBOG 空投！',
-        txHash: (existing.comment || '').replace('[GENESIS_AIRDROP_CLAIMED]:', '').trim(),
-      });
-    }
-
-    const deployerPk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`;
-    if (!deployerPk || !deployerPk.startsWith('0x')) {
-      return NextResponse.json({ error: '出纳私钥未就绪' }, { status: 500 });
-    }
-
-    const account = privateKeyToAccount(deployerPk);
-    const walletClient = createWalletClient({
-      account,
-      chain: arcMainnetChain,
-      transport: http(),
-    });
-    const publicClient = createPublicClient({
-      chain: arcMainnetChain,
-      transport: http(),
-    });
-
-    const amount = parseUnits('1000', 18);
-
-    console.log(`[Airdrop] Transferring 1,000 $WBOG to ${recipient} on Circle ARC...`);
-    const txHash = await walletClient.writeContract({
-      address: ARC_MAINNET.addresses.WBOG as `0x${string}`,
-      abi: ERC20_ABI,
-      functionName: 'transfer',
-      args: [recipient as `0x${string}`, amount],
-      maxFeePerGas: parseGwei('25'),
-      maxPriorityFeePerGas: parseGwei('2'),
-    });
-
-    console.log(`[Airdrop] Tx submitted: ${txHash}`);
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-    console.log(`[Airdrop] Confirmed: ${txHash}`);
-
-    // 记录在数据库中防止重复领取
+    let valid = false;
     try {
-      await db.interaction.create({
+      valid = await verifyMessage({
+        address: normalized as `0x${string}`,
+        message,
+        signature: signature as `0x${string}`,
+      });
+    } catch {
+      valid = false;
+    }
+    if (!valid) {
+      return NextResponse.json({ error: '签名验证失败' }, { status: 401 });
+    }
+
+    const deployerPk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+    if (!deployerPk || !/^0x[0-9a-fA-F]{64}$/.test(deployerPk)) {
+      return featureDisabled('AIRDROP_SIGNER_MISSING', '空投出纳签名器未配置。');
+    }
+
+    // Claim once per wallet. The record is created before broadcasting.
+    let claimRecordId: string;
+    try {
+      const record = await db.authNonce.create({
         data: {
-          contentId: 'genesis-airdrop-pool',
-          vesselDid: `did:eidolon:airdrop-cashier`,
-          primeId: recipient,
-          type: 'TIP',
-          amount: amount,
-          comment: `[GENESIS_AIRDROP_CLAIMED]:${txHash}`,
+          address: normalized,
+          purpose: 'AIRDROP_CLAIM',
+          nonce: 0n,
+          signature,
+          deadline: BigInt(Math.floor(timestamp / 1000) + 300),
         },
       });
-    } catch (_) {}
+      claimRecordId = record.id;
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        return NextResponse.json(
+          {
+            success: true,
+            alreadyClaimed: true,
+            message: '该钱包已提交过创世空投领取。',
+          },
+          { status: 200 }
+        );
+      }
+      throw err;
+    }
 
-    return NextResponse.json({
-      success: true,
-      amount: 1000,
-      token: 'WBOG',
-      recipient,
-      txHash,
-      explorerUrl: `https://explorer.arc.io/tx/${txHash}`,
-    });
+    try {
+      const account = privateKeyToAccount(deployerPk);
+      const walletClient = createWalletClient({
+        account,
+        chain: arcChain,
+        transport: http(ARC_MAINNET.rpcUrl),
+      });
+      const publicClient = createPublicClient({
+        chain: arcChain,
+        transport: http(ARC_MAINNET.rpcUrl),
+      });
+
+      const amount = parseUnits('1000', 18);
+      const txHash = await walletClient.writeContract({
+        address: ARC_MAINNET.addresses.WBOG as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'transfer',
+        args: [normalized as `0x${string}`, amount],
+        maxFeePerGas: parseGwei('25'),
+        maxPriorityFeePerGas: parseGwei('2'),
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+        confirmations: 1,
+        timeout: 120_000,
+      });
+      if (receipt.status !== 'success') {
+        throw new Error('Airdrop transaction reverted');
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          amount: 1000,
+          token: 'WBOG',
+          recipient: normalized,
+          txHash,
+          explorerUrl: `${ARC_MAINNET.explorer}/tx/${txHash}`,
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
+    } catch (err: any) {
+      await db.authNonce.delete({ where: { id: claimRecordId } }).catch(() => {});
+      console.error('[Airdrop Claim Error]:', err);
+      return NextResponse.json(
+        { error: '空投划拨失败，请稍后重试' },
+        { status: 500 }
+      );
+    }
   } catch (err: any) {
     console.error('[Airdrop Claim Error]:', err);
-    return NextResponse.json({ error: err.message || '空投划拨失败' }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || '空投划拨失败' },
+      { status: 500 }
+    );
   }
 }

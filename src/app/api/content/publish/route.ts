@@ -7,8 +7,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { publishContent } from '@/lib/web5/content/publisher';
 import { serializeForJson } from '@/lib/web5/types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(`content-publish:${clientIp(req)}`, 5, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: '发布过于频繁，请稍后再试。' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();

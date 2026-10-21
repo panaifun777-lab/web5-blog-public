@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         permissions: ['read'],  // Observer Mode 仅阅读权限
         accessMode: 'observer' as const,
       }),
-      upgradeHint: '您正在使用 Web3 的旧壳。唤醒容器以解锁 Web5 的躺赚特权：AI 分身自动交互、AP2 微支付分润、永久确权。',
+      upgradeHint: '当前为只读观察模式。完成容器登录后可发布内容、管理分身与查看存证状态；支付与分润功能内测中。',
     });
   } catch (err) {
     console.error('[observer-login] Error:', err);

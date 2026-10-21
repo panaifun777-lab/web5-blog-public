@@ -57,6 +57,11 @@ import {
   getVesselWalletBalance,
   vesselWalletTransfer,
 } from '@/lib/web5/vessel-wallet';
+import {
+  PUBLIC_MONEY_FLOWS_ENABLED,
+  PUBLIC_DEMO_NOTICE,
+  PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE,
+} from '@/lib/launch/public';
 
 const ESCROW_VAULT_ADDRESS = '0xCA36335845E382129167fC44243F07A76827bA22';
 const ARC_CHAIN_ID_HEX = '0x13b2'; // 5042
@@ -145,6 +150,7 @@ export function TaskBoard({
 
   // ━━ 1. Web3 主钱包直接发起链上托管转账 ━━
   const transferViaWeb3Wallet = async (amount: string): Promise<string> => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) throw new Error(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
     const ethereum = (window as any).ethereum;
     if (!ethereum) {
       throw new Error(
@@ -208,6 +214,7 @@ export function TaskBoard({
 
   // ━━ 2. Vessel 专用钱包快速免签质押 ━━
   const transferViaVesselWallet = async (amount: string): Promise<string> => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) throw new Error(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
     const vw = getOrCreateVesselWallet();
     const bal = await getVesselWalletBalance(vw.address);
     const need = parseFloat(amount) + 0.001;
@@ -227,6 +234,10 @@ export function TaskBoard({
 
   // ━━ 主钱包为 Vessel 专用钱包充值 ━━
   const handleTopUpVessel = async (topUpAmount = '1.0') => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     const ethereum = (window as any).ethereum;
     if (!ethereum) {
       alert(isEn ? 'Please connect your Web3 wallet first.' : '请先连接主钱包。');
@@ -284,6 +295,10 @@ export function TaskBoard({
 
   // ━━ 执行发布任务 ━━
   const handleSubmitNewTask = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      setPublishError(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     if (!taskTitle.trim()) {
       setPublishError(isEn ? 'Please enter a task title.' : '请输入悬赏任务标题。');
       return;
@@ -384,7 +399,7 @@ export function TaskBoard({
   // ━━ 模拟或执行分身交付结算 ━━
   const handleSettleTask = async (task: CommerceTaskOrder) => {
     try {
-      const mockContent = `# 《${task.title} — 深度交付成果报告》\n**执行分身**: ${task.agentReputation?.name || 'Eidolon Agent'}\n**存证网络**: Circle ARC 5042 & Arweave\n\n## 成果核心摘要\n分身已自主调用高维推理框架完成该项需求，通过代码测试并进行形式化验证。全量存证哈希已上链锁定，触发 80/20 刚性智能分润合约。`;
+      const mockContent = `# 《${task.title} — 深度交付成果报告》\n**执行分身**: ${task.agentReputation?.name || 'Eidolon Agent'}\n**存证网络**: Circle ARC 5042 & Arweave\n\n## 成果核心摘要\n分身已自主调用高维推理框架完成该项需求，通过代码测试并进行形式化验证。全量存证哈希已上链锁定，按 80/20 规则预览分润（结算通道内测中）。`;
       const res = await fetch('/api/commerce/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -397,7 +412,7 @@ export function TaskBoard({
       });
       const data = await res.json();
       if (data.success) {
-        alert(isEn ? '✅ Deliverable settled & on-chain revenue split!' : '✅ 分身成果已提交并完成 80/20 链上分润！');
+        alert(isEn ? '✅ Deliverable submitted for review. No on-chain payout has occurred.' : '✅ 分身成果已提交，等待审核（未发生链上分润或出款）。');
         await fetchTasks();
       }
     } catch (e: any) {
@@ -420,6 +435,17 @@ export function TaskBoard({
 
   return (
     <div className="space-y-5 mb-8">
+      {!PUBLIC_MONEY_FLOWS_ENABLED && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-[#FFCC00]/40 bg-[#FFCC00]/10 px-3.5 py-2.5 text-[11px] text-[#FFE58A]">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-bold">{PUBLIC_DEMO_NOTICE}</div>
+            <div className="text-[#c9b06a] mt-0.5">
+              {PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE} 托管验证与自动退款上线前，发布与质押入口保持关闭；已有任务仅作流程展示。
+            </div>
+          </div>
+        </div>
+      )}
       {/* ━━ 顶部引导：做任务赚 USDC ━━ */}
       <div className="p-4 sm:p-5 rounded-2xl border border-[#FFCC00]/30 bg-gradient-to-br from-[#FFCC00]/10 via-[#0a0e17] to-transparent shadow-lg shadow-black/40">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -436,23 +462,31 @@ export function TaskBoard({
               </h3>
               <p className="text-[11px] text-[#888] mt-0.5">
                 {isEn
-                  ? 'Smart contract escrowed at 0xCA36...bA22. Digital twins claim, deliver reports, and settle with 80/20 splits.'
-                  : '资金由 0xCA36...bA22 独立金库硬托管。分身一键接单，自主交付报告并触发 80/20 链上秒级结算。'}
+                  ? 'Escrow verification and automatic refunds are not live yet. Publishing is disabled during the closed beta.'
+                  : '托管验证与自动退款尚未上线，内测期间发布与质押入口关闭；页面仅展示任务流程。'}
               </p>
             </div>
           </div>
           <Button
             size="sm"
+            disabled={!PUBLIC_MONEY_FLOWS_ENABLED}
+            title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
             onClick={() => {
+              if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+                alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+                return;
+              }
               setPublishError(null);
               setSuccessTxHash(null);
               setPublishStatusText('');
               refreshVesselInfo();
               setCreateModalOpen(true);
             }}
-            className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-95 text-black font-bold text-xs h-8 px-3.5 flex-shrink-0 shadow-md shadow-[#00FFCC]/10"
+            className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold text-xs h-8 px-3.5 flex-shrink-0 shadow-md shadow-[#00FFCC]/10"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" /> {isEn ? '+ Post Bounty Task' : '+ 发布悬赏任务'}
+            <Plus className="w-3.5 h-3.5 mr-1" /> {PUBLIC_MONEY_FLOWS_ENABLED
+              ? (isEn ? '+ Post Bounty Task' : '+ 发布悬赏任务')
+              : PUBLIC_DEMO_NOTICE}
           </Button>
         </div>
 
@@ -485,9 +519,9 @@ export function TaskBoard({
               3
             </span>
             <div className="text-[11px]">
-              <div className="font-semibold text-white">{isEn ? '80/20 On-Chain Settlement' : '80/20 闭环分润到账'}</div>
+              <div className="font-semibold text-white">{isEn ? 'Revenue rules preview · settlement in closed beta' : '分润规则预览 · 结算通道内测中'}</div>
               <div className="text-[#666] text-[10px]">
-                {isEn ? '80% Creator, 10% Ops, 10% LP Lock' : '80% 创作者实得 · 10% 运营 · 10% LP 销毁'}
+                {isEn ? '80/20 split rule preview · no payouts yet' : '80/20 规则预览 · 暂不出款'}
               </div>
             </div>
           </div>
@@ -522,8 +556,8 @@ export function TaskBoard({
           >
             <Globe className="w-3.5 h-3.5" />
             <span>{isEn ? 'Global Remote & Sovereign Gigs' : '全球自由劳务与工作机会精选'}</span>
-            <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 px-1.5 border-none animate-pulse">
-              {GLOBAL_REMOTE_JOBS.length} HOT
+            <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 px-1.5 border-none">
+              {GLOBAL_REMOTE_JOBS.length} DEMO
             </Badge>
           </button>
         </div>
@@ -718,6 +752,15 @@ export function TaskBoard({
             全新板块：「全球自由劳务与工作机会精选」
         ══════════════════════════════════════════════════════════════ */
         <div className="space-y-4">
+          <div className="flex items-center gap-2 rounded-xl border border-[#FFCC00]/30 bg-[#FFCC00]/10 px-3 py-2 text-[11px] text-[#FFE58A]">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>
+              {isEn
+                ? 'Sample roles · not real hiring. The listings below are demo data for layout preview only.'
+                : '示例岗位 · 非真实招聘。以下岗位为演示数据，仅用于界面预览。'}
+            </span>
+          </div>
+
           {/* 筛选与搜索条 */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
             {/* 分类切换 */}
@@ -772,6 +815,11 @@ export function TaskBoard({
                         <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
                           <Briefcase className="w-3 h-3" />
                           <span>{job.company}</span>
+                          {job.demo && (
+                            <span className="bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/30 rounded px-1 text-[9px]">
+                              DEMO
+                            </span>
+                          )}
                         </div>
                         <h4 className="font-bold text-sm text-white group-hover:text-[#00FFCC] transition-colors leading-snug">
                           {isEn ? job.titleEn : job.title}
@@ -860,12 +908,12 @@ export function TaskBoard({
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
               <Coins className="w-5 h-5 text-[#FFCC00]" />
-              <span>{isEn ? 'Post New Escrowed Bounty Task' : '发布悬赏众包任务 (链上资金硬托管)'}</span>
+              <span>{isEn ? 'Post New Bounty Task (closed beta)' : '发布悬赏众包任务（内测）'}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-[#888]">
               {isEn
-                ? 'Funds are locked into the on-chain vault on Circle ARC (Chain ID 5042). Automatically settled upon deliverable verification.'
-                : '发布任务将直接向独立金库托管合约锁定 USDC，由分身自主接单并在交付审核后按 80/20 自动结算。'}
+                ? 'Closed beta: escrow verification, refunds and automatic payouts are not live. Publishing stays disabled.'
+                : '内测阶段：托管验证、退款与自动分账尚未上线，发布入口保持关闭。'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1077,7 +1125,9 @@ export function TaskBoard({
               ) : (
                 <>
                   <Coins className="w-3 h-3 mr-1.5" />
-                  {isEn ? `Lock ${bountyAmount} USDC & Publish` : `链上质押 ${bountyAmount} USDC 并发布`}
+                  {PUBLIC_MONEY_FLOWS_ENABLED
+                    ? (isEn ? `Lock ${bountyAmount} USDC & Publish` : `链上质押 ${bountyAmount} USDC 并发布`)
+                    : PUBLIC_DEMO_NOTICE}
                 </>
               )}
             </Button>
@@ -1097,7 +1147,9 @@ export function TaskBoard({
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-xs px-2.5 py-0.5 font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                    {isEn ? 'VERIFIED & SETTLED ON-CHAIN' : '链上自主交付与结算已完成'}
+                    {selectedTaskForReport.payoutTxHash
+                      ? (isEn ? 'PAYOUT CONFIRMED ON-CHAIN' : '出款交易已上链确认')
+                      : (isEn ? 'SUBMITTED · PAYOUT PENDING' : '已交付 · 待出款')}
                   </Badge>
                   <span className="text-[11px] text-[#777] font-mono">
                     ID: {selectedTaskForReport.orderId}
@@ -1108,8 +1160,8 @@ export function TaskBoard({
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#888]">
                   {isEn
-                    ? 'Autonomous execution verified by BudgetFence. Provenance permanently stored on Arweave.'
-                    : '本报告由 AI 分身自主撰写/审计完成，全量交付物已存证至 Arweave，结算资金通过 Circle ARC 合约硬执行 80/20 分流。'}
+                    ? 'Deliverable submitted. Payout is shown only when a confirmed on-chain transfer exists; storage is labeled by its actual provider.'
+                    : '交付物已提交。只有存在已确认的链上转账时才显示“已出款”；存储位置按实际提供方标注，未上链的内容不声称永久存证。'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1171,8 +1223,7 @@ export function TaskBoard({
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-black/60 border border-white/[0.08] font-mono text-[11px] leading-relaxed text-[#ccc] whitespace-pre-wrap max-h-52 overflow-y-auto">
-                    {selectedTaskForReport.deliverableContent ||
-                      `# 《${selectedTaskForReport.title}》\n**执行分身**: ${selectedTaskForReport.agentReputation?.name || 'Eidolon #7042'}\n**存证公链**: Circle ARC Mainnet (Chain ID: 5042)\n\n## 成果核心摘要\n1. 分身结合 ARC Osaka EVM 规范与 18 位 USDC 精度完成全链微支付链路验证。\n2. 资金经由 0xCA36...bA22 独立托管并完成 80/20 收益分配。`}
+                    {selectedTaskForReport.deliverableContent || selectedTaskForReport.description}
                   </div>
                 </div>
 
@@ -1190,13 +1241,11 @@ export function TaskBoard({
                     {/* Arweave 永存存证 */}
                     <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04] space-y-1">
                       <div className="text-[#888] flex items-center justify-between">
-                        <span>Arweave 永久存储哈希</span>
+                        <span>成果哈希（未上链时仅数据库记录）</span>
                         <button
                           onClick={() =>
-                            copyToClipboard(
-                              selectedTaskForReport.deliverableHash || 'ar://k8x9M_wBog_Report_5042',
-                              'arweave'
-                            )
+                            selectedTaskForReport.deliverableHash &&
+                            copyToClipboard(selectedTaskForReport.deliverableHash, 'arweave')
                           }
                           className="hover:text-white"
                         >
@@ -1208,7 +1257,7 @@ export function TaskBoard({
                         </button>
                       </div>
                       <div className="font-mono text-white/90 truncate">
-                        {selectedTaskForReport.deliverableHash || 'ar://k8x9M_wBog_Report_5042_ARC_Mainnet'}
+                        {selectedTaskForReport.deliverableHash || '未提供'}
                       </div>
                     </div>
 
@@ -1218,10 +1267,8 @@ export function TaskBoard({
                         <span>SHA-256 完整性校验码</span>
                         <button
                           onClick={() =>
-                            copyToClipboard(
-                              selectedTaskForReport.deliverableSha256 || '0x4f8a91bc7d2e0f3a6b5c4d8e1f0a2b3c4d5e6f7a',
-                              'sha256'
-                            )
+                            selectedTaskForReport.deliverableSha256 &&
+                            copyToClipboard(selectedTaskForReport.deliverableSha256, 'sha256')
                           }
                           className="hover:text-white"
                         >
@@ -1233,32 +1280,36 @@ export function TaskBoard({
                         </button>
                       </div>
                       <div className="font-mono text-white/90 truncate">
-                        {selectedTaskForReport.deliverableSha256 || '0x4f8a91bc7d2e0f3a6b5c4d8e1f0a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a'}
+                        {selectedTaskForReport.deliverableSha256 || '未提供'}
                       </div>
                     </div>
                   </div>
 
                   {/* 链上质押/结算交易哈希 */}
                   <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/[0.04]">
-                    <span className="text-[#888]">Circle ARC 结算交易:</span>
-                    <a
-                      href={`${ARC_EXPLORER_URL}/tx/${selectedTaskForReport.escrowTxHash || '0x3a9f8b2c1d0e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a'}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-[#00FFCC] hover:underline flex items-center gap-1"
-                    >
-                      <span>{(selectedTaskForReport.escrowTxHash || '0x3a9f8b...8f9a').slice(0, 16)}...</span>
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
+                    <span className="text-[#888]">Circle ARC 托管交易:</span>
+                    {selectedTaskForReport.escrowTxHash ? (
+                      <a
+                        href={`${ARC_EXPLORER_URL}/tx/${selectedTaskForReport.escrowTxHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-[#00FFCC] hover:underline flex items-center gap-1"
+                      >
+                        <span>{selectedTaskForReport.escrowTxHash.slice(0, 16)}...</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    ) : (
+                      <span className="font-mono text-[#777]">未提供托管交易（演示数据）</span>
+                    )}
                   </div>
                 </div>
 
-                {/* ━━ 4. 80/20 收益分配明细面板 ━━ */}
+                {/* ━━ 4. 80/20 计划分润明细（未出款） ━━ */}
                 <div className="p-3.5 rounded-xl bg-gradient-to-br from-[#00FFCC]/10 via-[#0a0e17] to-[#B080E8]/10 border border-[#00FFCC]/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-bold text-white flex items-center gap-1.5 text-xs">
                       <TrendingUp className="w-4 h-4 text-[#00FFCC]" />
-                      <span>{isEn ? '80/20 Economic Revenue Split' : '80/20 闭环商业化分润明细'}</span>
+                      <span>{isEn ? 'Planned 80/20 Split (not paid out)' : '80/20 计划分润（尚未出款）'}</span>
                     </div>
                     <span className="font-mono font-bold text-sm text-[#FFCC00]">
                       {selectedTaskForReport.bountyUsdc} USDC
@@ -1277,16 +1328,16 @@ export function TaskBoard({
                     {/* 80% 创作者实得 */}
                     <div className="p-2 rounded-lg bg-black/40 border border-[#10B981]/30 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#10B981] font-bold text-[10px]">80% 创作者实得</span>
+                        <span className="text-[#10B981] font-bold text-[10px]">80% 创作者应得</span>
                         <Badge className="bg-[#10B981]/15 text-[#10B981] text-[9px] py-0 h-3.5">
-                          即时入账
+                          待出款
                         </Badge>
                       </div>
                       <div className="text-sm font-mono font-bold text-white">
                         {(parseFloat(selectedTaskForReport.bountyUsdc) * 0.8).toFixed(2)} USDC
                       </div>
                       <p className="text-[9px] text-[#777] leading-tight">
-                        直接到账执行分身/创作者主权金库
+                        需人工/后台出款流程，当前未自动执行
                       </p>
                     </div>
 

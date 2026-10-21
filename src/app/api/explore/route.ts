@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
           db.content.count(),
           db.interaction.count(),
           db.autonomousLog.aggregate({
-            where: { yieldAmount: { not: null } },
+            where: {
+              yieldAmount: { not: null },
+              metadata: { contains: '"realTxHash"' },
+            },
             _sum: { yieldAmount: true },
           }),
         ]);
@@ -39,7 +42,10 @@ export async function GET(req: NextRequest) {
           prime: { select: { displayName: true, did: true, avatarSeed: true, bio: true } },
           eidolon: { select: { name: true, did: true } },
           autonomousLogs: {
-            where: { yieldAmount: { not: null } },
+            where: {
+              yieldAmount: { not: null },
+              metadata: { contains: '"realTxHash"' },
+            },
             select: { yieldAmount: true },
           },
         },
@@ -48,10 +54,10 @@ export async function GET(req: NextRequest) {
       const topVesselsRanked = topVessels
         .map((v) => ({
           vesselDid: v.did,
-          primeDid: v.prime.did,
-          displayName: v.prime.displayName || '官方认证智能体 (Verified Agent)',
-          avatarSeed: v.prime.avatarSeed || 'default',
-          bio: v.prime.bio || '',
+          primeDid: v.prime?.did ?? null,
+          displayName: v.prime?.displayName || '官方认证智能体 (Verified Agent)',
+          avatarSeed: v.prime?.avatarSeed || 'default',
+          bio: v.prime?.bio || '',
           eidolonName: v.eidolon.name,
           smartAccountAddress: v.smartAccountAddress,
           lastActiveAt: v.lastActiveAt?.toISOString() || null,

@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Sparkles, Gift, CheckCircle2, Circle, ArrowRight, ShieldCheck, Share2, Coins, ExternalLink, Zap } from 'lucide-react';
 import type { VesselSession } from '@/lib/web5/types';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { PUBLIC_AIRDROP_ENABLED, PUBLIC_DEMO_NOTICE } from '@/lib/launch/public';
 
 interface AirdropModalProps {
   open: boolean;
@@ -63,7 +64,7 @@ export function GenesisAirdropModal({
 
   const handleShare = () => {
     const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://web5.blog'}?ref=${session?.primeDid || 'genesis'}`;
-    navigator.clipboard.writeText(`🚀 我正在 Web5.blog 体验 AI 分身自治博客！前 10,000 名创世用户可领取 1,000 枚 $WBOG 原生代币：${shareUrl}`);
+    navigator.clipboard.writeText(`🚀 Web5.blog 创世空投方案预告，领取尚未开放；额度与名额以官方公告为准。欢迎一起体验 AI 分身自治博客：${shareUrl}`);
     setCopied(true);
     setIsTask5Done(true);
     try { localStorage.setItem('web5_task_share', 'true'); } catch {}
@@ -71,6 +72,10 @@ export function GenesisAirdropModal({
   };
 
   const handleClaim = async () => {
+    if (!PUBLIC_AIRDROP_ENABLED) {
+      alert('空投尚未开放：领取与链上划拨流程未上线，请勿提供钱包或转账。');
+      return;
+    }
     if (completedCount < 5) {
       alert('请先完成全部 5 项创世先锋任务，防止女巫与机器刷量！');
       return;
@@ -111,16 +116,22 @@ export function GenesisAirdropModal({
             <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[10px] py-0.5">
               创世先锋特权
             </Badge>
-            <span className="text-xs text-[#888] font-mono">第 1,248 / 10,000 名</span>
+            <span className="text-xs text-[#888] font-mono">名额与资格以实际登记为准</span>
           </div>
           <DialogTitle className="text-xl font-bold flex items-center gap-2 text-white">
             <Gift className="w-5 h-5 text-[#00FFCC]" />
-            1,000 $WBOG 创世空投计划
+            创世空投计划 · 方案预告
           </DialogTitle>
           <DialogDescription className="text-xs text-[#aaa] leading-relaxed">
-            从社区冷启动基金池（10% 总量，1 亿枚）中全额划拨。为保障真实创作者权益并杜绝女巫脚本刷号，完成以下 5 项身份勋章任务即可直达钱包！
+            拟从社区冷启动基金池（10% 总量）中划拨 $WBOG 用于创世回馈。方案仍处预告阶段，领取与链上划拨尚未开放；完成以下 5 项身份勋章任务仅作流程演示，不代表已获得代币。
           </DialogDescription>
         </DialogHeader>
+
+        {!PUBLIC_AIRDROP_ENABLED && (
+          <div className="rounded-lg border border-[#FFCC00]/40 bg-[#FFCC00]/10 px-3 py-2 text-[11px] text-[#FFE58A]">
+            <b>{PUBLIC_DEMO_NOTICE}</b>。空投领取与链上划拨尚未上线，任务清单仅作流程展示。
+          </div>
+        )}
 
         {/* 进度条 */}
         <div className="my-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
@@ -220,10 +231,12 @@ export function GenesisAirdropModal({
           {claimed ? (
             <div className="p-4 rounded-xl bg-[#00FFCC]/10 border border-[#00FFCC]/30 text-center space-y-2">
               <div className="text-sm font-bold text-[#00FFCC] flex items-center justify-center gap-1.5">
-                <ShieldCheck className="w-5 h-5" /> 🎉 1,000 $WBOG 链上空投已到账！
+                <ShieldCheck className="w-5 h-5" /> {PUBLIC_AIRDROP_ENABLED ? '1,000 $WBOG 空投已到账' : '空投尚未开放'}
               </div>
               <div className="text-[11px] text-[#aaa]">
-                代币已直接从创世金库划拨至你的 Web3 钱包 ({session?.primeDid?.slice(0, 20)}...)
+                {PUBLIC_AIRDROP_ENABLED
+                  ? `代币已从创世金库划拨至你的钱包 (${session?.primeDid?.slice(0, 20)}...)`
+                  : '本机记录的“已领取”状态不代表真实到账，请以链上交易为准。'}
               </div>
               {claimTxHash && (
                 <div className="pt-1.5 border-t border-white/[0.06] flex items-center justify-center gap-1 text-[11px] font-mono">
@@ -280,10 +293,12 @@ export function GenesisAirdropModal({
           ) : (
             <Button
               onClick={handleClaim}
-              disabled={claiming || completedCount < 5}
-              className="w-full bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-90 text-black font-bold h-10 shadow-lg shadow-[#00FFCC]/20"
+              disabled={claiming || completedCount < 5 || !PUBLIC_AIRDROP_ENABLED}
+              className="w-full bg-gradient-to-r from-[#00FFCC] to-[#0066FF] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold h-10 shadow-lg shadow-[#00FFCC]/20"
             >
-              {claiming ? '正在 Circle ARC 链上划拨 1,000 $WBOG...' : completedCount === 5 ? '🎉 立即认领 1,000 $WBOG (链上直达钱包)' : `还需完成 ${5 - completedCount} 项任务解锁`}
+              {!PUBLIC_AIRDROP_ENABLED
+                ? PUBLIC_DEMO_NOTICE
+                : claiming ? '正在 Circle ARC 链上划拨 1,000 $WBOG...' : completedCount === 5 ? '🎉 立即认领 1,000 $WBOG' : `还需完成 ${5 - completedCount} 项任务解锁`}
             </Button>
           )}
 

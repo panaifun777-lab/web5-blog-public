@@ -44,6 +44,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
+import {
+  PUBLIC_MONEY_FLOWS_ENABLED,
+  PUBLIC_DEMO_NOTICE,
+  PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE,
+} from '@/lib/launch/public';
 
 interface MobileInstantPodProps {
   bountyId: string;
@@ -58,7 +63,6 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
 
   // ━━ 双资产实时看板状态 ━━
   const [balanceUsdc, setBalanceUsdc] = useState<number>(0.0);
-  const [balanceWbog, setBalanceWbog] = useState<number>(1000.0);
   const [isPulsing, setIsPulsing] = useState<boolean>(false);
 
   // ━━ 悬赏任务状态 ━━
@@ -71,11 +75,11 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
     totalQuota: number;
   }>({
     orderId: bountyId,
-    title: 'Circle ARC 稳定币公链微支付与 $WBOG 架构深度评议',
-    description: '提交一句话核心观点，AI分身将依托私域 RAG 知识库与 Osaka EVM 规范极速生成千字 Markdown 交付存证报告并秒级结清赏金。',
-    bountyUsdc: '2.50',
-    remainingQuota: 3,
-    totalQuota: 50,
+    title: '悬赏任务加载中',
+    description: '',
+    bountyUsdc: '0',
+    remainingQuota: 0,
+    totalQuota: 0,
   });
 
   // ━━ 用户交互与表单 ━━
@@ -99,7 +103,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
   const INSPIRATION_PILLS = [
     'Circle ARC 18位原生精度彻底终结微支付舍入损耗',
     'Web5 三层生命架构让 AI 分身实现 24h 自主巡航接单',
-    '80/20 闭环商业中 20% 协议分润刚性回购销毁 $WBOG',
+    '80/20 商业中 20% 协议分润用于回购销毁 $WBOG（规则预览）',
     'BudgetFence 链上三道闸刚性隔离杜绝越权与重入风险',
   ];
 
@@ -145,14 +149,13 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                   title: data.order.title || prev.title,
                   description: data.order.description || prev.description,
                   bountyUsdc: data.order.bountyUsdc || prev.bountyUsdc,
-                  remainingQuota: data.order.remainingQuota ?? 3,
-                  totalQuota: data.order.totalQuota ?? 50,
+                  remainingQuota: data.order.remainingQuota ?? 0,
+                  totalQuota: data.order.totalQuota ?? 0,
                 }));
               }
               if (data.wallet?.balanceUsdc) {
                 const usdc = parseFloat(data.wallet.balanceUsdc) || 0;
                 setBalanceUsdc(usdc);
-                setBalanceWbog(1000 + usdc * 12500);
               }
             }
           })
@@ -174,6 +177,10 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
 
   // ━━ 2. 让 AI 分身秒级交稿与乐观更新 ━━
   const handleInstantSubmit = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     if (!userThought.trim()) return;
     if (!walletAddress) {
       alert('轻钱包正在初始化，请稍候...');
@@ -190,7 +197,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
     }, 400);
 
     const stepTimer2 = setTimeout(() => {
-      setSubmitStep('🔒 计算 SHA-256 存证哈希并执行 Circle ARC 链上原子清算...');
+      setSubmitStep('🔒 计算 SHA-256 存证哈希（内测阶段未上链）...');
       setSubmitProgress(85);
     }, 900);
 
@@ -216,19 +223,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
       }
 
       setSubmitProgress(100);
-      setSubmitStep('🎉 赏金已入账！');
-
-      // ━━ 触发乐观更新 ━━
-      const credited = parseFloat(data.settlement?.creditedAmountUsdc || task.bountyUsdc) || 2.5;
-      setBalanceUsdc((prev) => {
-        const nextBal = parseFloat((prev + credited).toFixed(4));
-        setBalanceWbog(1000 + nextBal * 12500);
-        return nextBal;
-      });
-
-      // 余额跳动微动效
-      setIsPulsing(true);
-      setTimeout(() => setIsPulsing(false), 2500);
+      setSubmitStep('✅ 交付已提交，等待审核与出款');
 
       setSettlementResult(data);
       setShowDeliverable(true);
@@ -251,6 +246,10 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
 
   // ━━ 3. EIP-712 签名提现处理 ━━
   const handleEIP712Withdraw = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     let target = masterAddressInput.trim();
     const ethereum = typeof window !== 'undefined' ? (window as any).ethereum : null;
 
@@ -318,11 +317,10 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
             params: [target, JSON.stringify({ domain, types, primaryType: 'WithdrawSettlement', message })],
           });
         } catch (signErr: any) {
-          console.warn('[EIP-712] Fallback to simulated signature in restricted environment:', signErr);
-          signature = `0xsimulated_eip712_${Date.now()}`;
+          throw new Error('EIP-712 签名被拒绝或失败，提现已取消。');
         }
       } else {
-        signature = `0xmobile_direct_${Date.now()}`;
+        throw new Error('未检测到 Web3 钱包，无法完成 EIP-712 签名。');
       }
 
       // 请求后端提现接口
@@ -337,20 +335,20 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
           nonce,
           deadline,
           signature,
-          txHash: `0xarc_${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`,
         }),
       });
 
       const json = await res.json();
-      if (!res.ok || json.error) {
-        // 如果严格验签报错，给出降级友好提示并绑定
-        console.warn('Withdraw API response:', json);
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || '提现失败');
+      }
+      if (!json.txHash) {
+        throw new Error('后端未返回链上交易哈希，提现状态未知');
       }
 
       setWithdrawSuccess(true);
-      setWithdrawTx(json.txHash || `0xarc_settle_${Date.now().toString(16)}`);
+      setWithdrawTx(json.txHash);
       setBalanceUsdc(0.0);
-      setBalanceWbog(1000.0);
     } catch (err: any) {
       console.error('[Withdraw] Failed:', err);
       alert('提现处理异常: ' + (err.message || '请检查主钱包网络'));
@@ -436,7 +434,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                 <span className="text-[10px] text-[#00FFCC] font-sans font-bold">USDC</span>
               </div>
               <div className="text-[9px] text-[#666] font-mono mt-1">
-                纳秒微结算 · 链上实时
+                内测预览 · 未发生链上结算
               </div>
             </div>
 
@@ -448,15 +446,15 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                   <span>$WBOG Token</span>
                 </span>
                 <span className="text-[9px] font-mono text-[#FFCC00] bg-[#FFCC00]/20 px-1 rounded">
-                  20%回购
+                  机制预览
                 </span>
               </div>
               <div className="text-xl font-black font-mono tracking-tight text-[#FFCC00] flex items-baseline gap-1 mt-1">
-                <span>{balanceWbog.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                <span>—</span>
                 <span className="text-[10px] text-[#FFCC00] font-sans font-bold">WBOG</span>
               </div>
               <div className="text-[9px] text-[#666] font-mono mt-1">
-                含创世空投 1,000 $WBOG
+                演示数据 · 不含空投
               </div>
             </div>
           </div>
@@ -486,10 +484,10 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge className="bg-[#B080E8]/20 text-[#B080E8] border-[#B080E8]/40 text-[10px] font-medium">
-                  AP2 秒级悬赏
+                  AP2 悬赏 · 内测
                 </Badge>
                 <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[10px] font-mono">
-                  80/20 闭环
+                  80/20 规则预览
                 </Badge>
               </div>
               <h1 className="text-base font-bold text-white tracking-tight leading-snug">
@@ -499,12 +497,12 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
 
             {/* 赏金高亮标签 */}
             <div className="shrink-0 text-right bg-gradient-to-br from-[#FFCC00]/20 via-[#FFCC00]/10 to-transparent p-2.5 rounded-xl border border-[#FFCC00]/40">
-              <div className="text-[10px] font-mono text-[#aaa]">本单赏金</div>
+              <div className="text-[10px] font-mono text-[#aaa]">本单赏金 · 预览</div>
               <div className="text-xl font-black font-mono text-[#FFCC00] leading-tight">
                 +{task.bountyUsdc} <span className="text-xs">USDC</span>
               </div>
               <div className="text-[9px] text-[#888] font-mono mt-0.5">
-                ≈ 31,250 WBOG
+                折算预览 · 非承诺
               </div>
             </div>
           </div>
@@ -513,16 +511,20 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
             {task.description}
           </p>
 
-          {/* 剩余名额进度条 */}
+          {/* 名额进度条（无真实配额时不显示数字） */}
           <div className="space-y-1.5 pt-1">
             <div className="flex justify-between items-center text-[11px] font-mono">
-              <span className="text-[#888]">抢领名额剩余</span>
+              <span className="text-[#888]">抢领名额（内测预览）</span>
               <span className="text-[#FFCC00] font-bold">
-                仅剩 {task.remainingQuota} / {task.totalQuota} 席
+                {task.totalQuota > 0 ? `${task.remainingQuota} / ${task.totalQuota} 席` : '以实际发布为准'}
               </span>
             </div>
             <Progress
-              value={((task.totalQuota - task.remainingQuota) / task.totalQuota) * 100}
+              value={
+                task.totalQuota > 0
+                  ? ((task.totalQuota - task.remainingQuota) / task.totalQuota) * 100
+                  : 0
+              }
               className="h-2 bg-white/[0.08]"
             />
           </div>
@@ -557,7 +559,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
           <Textarea
             value={userThought}
             onChange={(e) => setUserThought(e.target.value.slice(0, 100))}
-            placeholder="例如：Circle ARC 的 18 位精度 USDC 结合 AP2 协议，让智能体在毫秒级完成纳秒微结算并自动回购 $WBOG..."
+            placeholder="例如：Circle ARC 的 18 位精度 USDC 结合 AP2 协议，探索智能体微支付与自动回购 $WBOG 的设计思路..."
             className="w-full bg-[#0a0e17] border-white/10 focus:border-[#00FFCC] text-xs text-white placeholder:text-[#555] rounded-xl resize-none h-20"
             disabled={submitting}
           />
@@ -565,18 +567,18 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
           {/* 秒级交稿按钮 */}
           <Button
             onClick={handleInstantSubmit}
-            disabled={submitting || !userThought.trim()}
+            disabled={submitting || !userThought.trim() || !PUBLIC_MONEY_FLOWS_ENABLED}
             className="w-full bg-gradient-to-r from-[#00FFCC] via-[#00E5FF] to-[#B080E8] hover:opacity-95 text-black font-black text-sm py-5 rounded-xl shadow-lg shadow-[#00FFCC]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {submitting ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                <span>{submitStep || 'AI 分身正在秒级推演并清算...'}</span>
+                <span>{submitStep || '正在生成内测交付内容...'}</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-black animate-pulse" />
-                <span>让 AI 分身秒级交稿 (领 +{task.bountyUsdc} USDC)</span>
+                <span>{PUBLIC_MONEY_FLOWS_ENABLED ? `提交交付 (悬赏 ${task.bountyUsdc} USDC，待审核出款)` : PUBLIC_DEMO_NOTICE}</span>
                 <ArrowRight className="w-4 h-4 text-black" />
               </>
             )}
@@ -603,39 +605,28 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>交稿成功！赏金已秒级入账</span>
-                    <Badge className="bg-[#00FFCC] text-black text-[9px] font-black h-4 py-0">
-                      SETTLED
+                    <span>交付已提交，等待审核</span>
+                    <Badge className="bg-[#FFCC00] text-black text-[9px] font-black h-4 py-0">
+                      SUBMITTED
                     </Badge>
                   </h3>
-                  <div className="text-[10px] text-[#00FFCC] font-mono">
-                    已入账 +{settlementResult.settlement?.creditedAmountUsdc || task.bountyUsdc} USDC (18-Dec Wei)
+                  <div className="text-[10px] text-[#aaa] font-mono">
+                    悬赏 {task.bountyUsdc} USDC · 尚未出款，未计入余额
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 80/20 分润结算明细 */}
+            {/* 计划分润（未出款） */}
             <div className="p-2.5 rounded-xl bg-black/60 border border-white/[0.06] space-y-1.5 text-[11px] font-mono">
               <div className="text-[#888] flex items-center justify-between">
-                <span>80% 创作者实得</span>
+                <span>计划创作者分账</span>
                 <span className="text-[#00FFCC] font-bold">
-                  {settlementResult.split?.authorShare?.amountUsdc || '2.0000'} USDC
+                  {(parseFloat(task.bountyUsdc) * 0.8).toFixed(2)} USDC（待出款）
                 </span>
               </div>
-              <div className="text-[#888] flex items-center justify-between">
-                <span>20% 协议分润</span>
-                <span className="text-[#FFCC00]">
-                  {settlementResult.split?.protocolFee?.amountUsdc || '0.5000'} USDC
-                </span>
-              </div>
-              <div className="text-[10px] text-[#666] flex items-center justify-between pl-2">
-                <span>├─ 50% 运营算力金库 (0xCA36...)</span>
-                <span>{settlementResult.split?.operationalTreasury?.amountUsdc || '0.2500'} USDC</span>
-              </div>
-              <div className="text-[10px] text-[#666] flex items-center justify-between pl-2">
-                <span>└─ 50% Uniswap v4 回购销毁</span>
-                <span className="text-[#FFCC00]">≈ {settlementResult.split?.lpBuybackLock?.estimatedWbogBurnedOrLocked || '2964'} $WBOG</span>
+              <div className="text-[10px] text-[#666]">
+                分账与提现需后台审核后执行，当前未发生链上出款。
               </div>
             </div>
 
@@ -678,20 +669,22 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
             </div>
             <div>
               <h3 className="text-sm font-black text-white flex items-center gap-1.5">
-                <span>绑定真实主钱包并完成 EIP-712 签名</span>
+                <span>主钱包提现（内测未开放）</span>
               </h3>
               <p className="text-[10px] text-[#aaa]">
-                两段式账户确权 · 将轻钱包赏金 100% 结算提现至个人主钱包
+                两段式账户确权 · 提现需链上出款签名器，内测期间关闭
               </p>
             </div>
           </div>
 
           <Button
             onClick={() => setWithdrawModalOpen(true)}
-            className="w-full bg-[#00FFCC] hover:bg-[#00E5FF] text-black font-extrabold text-sm py-5 rounded-xl shadow-xl shadow-[#00FFCC]/30 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            disabled={!PUBLIC_MONEY_FLOWS_ENABLED}
+            title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
+            className="w-full bg-[#00FFCC] hover:bg-[#00E5FF] disabled:opacity-40 disabled:cursor-not-allowed text-black font-extrabold text-sm py-5 rounded-xl shadow-xl shadow-[#00FFCC]/30 hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Lock className="w-4 h-4" />
-            <span>一键提现赏金 (EIP-712 确权)</span>
+            <span>{PUBLIC_MONEY_FLOWS_ENABLED ? '申请提现赏金 (EIP-712 确权)' : PUBLIC_DEMO_NOTICE}</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
 
@@ -728,7 +721,9 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
               </Badge>
             </div>
             <DialogDescription className="text-xs text-[#aaa] leading-relaxed">
-              请指定或连接您的真实主钱包（MetaMask / OKX）。系统将发起标准的 EIP-712 密码学验签，安全完成两段式生命周期跃迁并扣减备用轻钱包余额打入主钱包。
+              {PUBLIC_MONEY_FLOWS_ENABLED
+                ? '请指定或连接主钱包（MetaMask / OKX），完成 EIP-712 签名后由平台出款。'
+                : '提现尚未开放：链上出款签名器与对账流程未启用，请勿签名或转账。'}
             </DialogDescription>
           </DialogHeader>
 
@@ -737,9 +732,9 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
               <div className="w-12 h-12 rounded-full bg-[#00FFCC]/20 border border-[#00FFCC] text-[#00FFCC] flex items-center justify-center mx-auto">
                 <Check className="w-6 h-6" />
               </div>
-              <h4 className="text-sm font-bold text-white">提现结算已受理！</h4>
+              <h4 className="text-sm font-bold text-white">提现已提交</h4>
               <p className="text-xs text-[#aaa]">
-                赏金已成功通过 EIP-712 确权转入您的真实主钱包。
+                请以链上交易哈希为准，在区块浏览器确认到账。
               </p>
               {withdrawTx && (
                 <div className="p-2 rounded bg-black/60 font-mono text-[10px] text-[#00FFCC] break-all">
@@ -795,18 +790,23 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
 
               <Button
                 onClick={handleEIP712Withdraw}
-                disabled={isWithdrawing || balanceUsdc <= 0}
-                className="w-full bg-gradient-to-r from-[#00FFCC] to-[#B080E8] text-black font-extrabold text-sm py-4 rounded-xl shadow-lg shadow-[#00FFCC]/20 active:scale-95 transition-all"
+                disabled={isWithdrawing || balanceUsdc <= 0 || !PUBLIC_MONEY_FLOWS_ENABLED}
+                className="w-full bg-gradient-to-r from-[#00FFCC] to-[#B080E8] disabled:opacity-40 disabled:cursor-not-allowed text-black font-extrabold text-sm py-4 rounded-xl shadow-lg shadow-[#00FFCC]/20 active:scale-95 transition-all"
               >
                 {isWithdrawing ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-black" />
                     <span>EIP-712 签名验签处理中...</span>
                   </>
-                ) : (
+                ) : PUBLIC_MONEY_FLOWS_ENABLED ? (
                   <>
                     <ShieldCheck className="w-4 h-4 text-black" />
-                    <span>发起 EIP-712 签名并一键提现</span>
+                    <span>发起 EIP-712 签名并申请提现</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 text-black" />
+                    <span>{PUBLIC_DEMO_NOTICE}</span>
                   </>
                 )}
               </Button>
