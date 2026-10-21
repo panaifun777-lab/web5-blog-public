@@ -10,8 +10,9 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { MatrixRain } from '@/components/web5/effects/matrix-rain';
 import { SplashAwakening } from '@/components/web5/effects/splash-awakening';
-import { getCurrentVesselSession, revokeVesselSession } from '@/lib/web5/vessel-auth';
+import { getCurrentVesselSession, revokeVesselSession, parseSessionResponse, persistVesselSession } from '@/lib/web5/vessel-auth';
 import type { VesselSession } from '@/lib/web5/types';
+import type { VesselAuthPayload } from '@/components/web5/ritual/scan-ritual';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -101,6 +102,7 @@ export default function Home() {
   const [activeModule, setActiveModule] = useState<Module>('tech');
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [vesselWalletAddr, setVesselWalletAddr] = useState<string>('');
+  const [vesselAuth, setVesselAuth] = useState<VesselAuthPayload | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
   const [curveModalOpen, setCurveModalOpen] = useState(false);
@@ -236,7 +238,12 @@ export default function Home() {
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
-    setSession(s); setView('app'); setTab('vessels'); setLoginMethod(null);
+    setSession(s);
+    setView('app');
+    // 观察者会话没有 Vessel 身份，落到分身矩阵只会看到升级提示，直接进博客流
+    setTab(s.vesselDid ? 'vessels' : 'feed');
+    setLoginMethod(null);
+    setVesselAuth(null);
   };
 
   // 容器登录：先连接真实钱包绑定身份，再进入四步握手仪式
@@ -246,6 +253,8 @@ export default function Home() {
       alert('容器唤醒需要先连接真实钱包。请安装 MetaMask / OKX 后重试。');
       return;
     }
+    // 提前预热分身矩阵代码块，仪式结束后立即渲染
+    void import('@/components/web5/dashboard/my-vessels').catch(() => {});
     try {
       // 切换 ARC 主网
       const chainIdHex = '0x13b2';
@@ -269,10 +278,12 @@ export default function Home() {
       }
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       const addr = accounts[0];
-      // personal_sign 绑定身份
-      const signMsg = `Web5.blog Sovereign Identity Binding\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-      await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
+      // 与 /api/auth/wallet-login 校验格式严格一致的签名消息
+      const vessel = getOrCreateVesselWallet();
+      const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+      const signature = await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
       setVesselWalletAddr(addr);
+      setVesselAuth({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg });
       setLoginMethod('vessel');
     } catch (err: any) {
       console.warn('[Web5] Vessel wallet bind error:', err);
@@ -285,7 +296,13 @@ export default function Home() {
   };
 
   const handleLogout = async () => {
-    await revokeVesselSession(); setSession(null); setView('ritual');
+    await revokeVesselSession(); setSession(null); setView('ritual'); setVesselAuth(null); setLoginMethod(null);
+  };
+
+  // 弹窗内的“唤醒容器”入口：先回到登录页再触发钱包签名
+  const openVesselLogin = () => {
+    setView('ritual');
+    void handleVesselLogin();
   };
 
   // ━━ 统一服务端与首屏渲染，防止客户端插件注入引发报错 ━━
@@ -302,6 +319,8 @@ export default function Home() {
           moduleLabels={moduleLabels}
           loginMethod={loginMethod}
           setLoginMethod={setLoginMethod}
+          vesselAuth={vesselAuth}
+          onVesselLogin={handleVesselLogin}
           handleRitualSuccess={handleRitualSuccess}
           setSession={setSession}
           setView={setView}
@@ -782,7 +801,7 @@ export default function Home() {
         open={airdropOpen}
         onOpenChange={setAirdropOpen}
         session={session}
-        onAwaken={() => setLoginMethod('vessel')}
+        onAwaken={openVesselLogin}
         onGoWrite={() => { setView('app'); setTab('write'); }}
       />
 
@@ -795,7 +814,7 @@ export default function Home() {
       <WalletGuideModal
         open={walletGuideOpen}
         onOpenChange={setWalletGuideOpen}
-        onUseVessel={() => setLoginMethod('vessel')}
+        onUseVessel={openVesselLogin}
       />
 
       <SponsorModal
@@ -810,7 +829,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAuth, onVesselLogin, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
       {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
@@ -980,7 +999,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
                     desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
-                    color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
+                    color={COLORS.eidolon} onClick={onVesselLogin}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
@@ -994,7 +1013,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
                     ← {isEn ? 'Back to Login Options' : '返回选择登录方式'}
                   </button>
-                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
+                  <ScanRitual auth={vesselAuth} onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
               ) : null}
             </div>
@@ -1107,10 +1126,11 @@ async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
     const data = await res.json();
 
     if (data.success && data.session) {
-      sessionStorage.setItem('web5_vessel_session', JSON.stringify(data.session));
-      s(data.session);
+      const session = parseSessionResponse(data.session);
+      persistVesselSession(session);
+      s(session);
       v('app');
-      t('feed');
+      t('vessels');
     } else {
       alert(data.error || '钱包登录失败');
     }

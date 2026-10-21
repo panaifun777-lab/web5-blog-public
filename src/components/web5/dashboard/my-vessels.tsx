@@ -24,6 +24,7 @@ import { Brain } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { verifyPasskeyBiometric, isPasskeySupported } from '@/lib/web5/auth/passkey-soul';
 import { getOrCreateVesselWallet, getVesselWalletBalance, deriveVesselWalletFromSignature } from '@/lib/web5/vessel-wallet';
+import { revokeVesselSession } from '@/lib/web5/vessel-auth';
 import { PUBLIC_MONEY_FLOWS_ENABLED, PUBLIC_DEMO_NOTICE, PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE } from '@/lib/launch/public';
 
 function toBigInt(v: any): bigint {
@@ -37,6 +38,7 @@ function toBigInt(v: any): bigint {
 export function MyVessels({ session }: { session: VesselSession | null }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<{ unreadCount: number; alerts: any[] }>({ unreadCount: 0, alerts: [] });
   const [distroStats, setDistroStats] = useState<any>(null);
   const [refStats, setRefStats] = useState<any>(null);
@@ -170,61 +172,77 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       return;
     }
     setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
     try {
       const res = await fetch('/api/dashboard', {
         headers: { 'x-vessel-did': session.vesselDid },
+        signal: controller.signal,
       });
-      if (res.ok) {
-        const d = await res.json();
-        setData(d);
-        // 同步真实链上收益与已花金额到显示（消除硬编码假数据）
-        // 兼容 18 位精度与 6 位精度（统一折算为人类可读 USDC）
-        if (d.totalYield !== undefined) {
-          const rawYield = Number(toBigInt(d.totalYield));
-          const formattedUsdc = rawYield > 1e12 ? rawYield / 1e18 : rawYield / 1e6;
-          setEarnedHarvestUsdc(formattedUsdc);
-        }
-        if (d.treasury?.spentToday !== undefined) {
-          const rawSpent = Number(toBigInt(d.treasury.spentToday));
-          const formattedSpent = rawSpent > 1e12 ? rawSpent / 1e18 : rawSpent / 1e6;
-          setSpentTodayUsdc(formattedSpent.toFixed(2));
-        }
-        if (d.treasury?.dailyLimit !== undefined) {
-          const rawLimit = Number(toBigInt(d.treasury.dailyLimit));
-          const formattedLimit = rawLimit > 1e12 ? rawLimit / 1e18 : rawLimit / 1e6;
-          setDailyLimitUsdc(formattedLimit.toFixed(1));
-        }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Dashboard request failed: ${res.status}`);
+      }
+      const d = await res.json();
+      setData(d);
+      // 同步真实链上收益与已花金额到显示（消除硬编码假数据）
+      // 兼容 18 位精度与 6 位精度（统一折算为人类可读 USDC）
+      if (d.totalYield !== undefined) {
+        const rawYield = Number(toBigInt(d.totalYield));
+        const formattedUsdc = rawYield > 1e12 ? rawYield / 1e18 : rawYield / 1e6;
+        setEarnedHarvestUsdc(formattedUsdc);
+      }
+      if (d.treasury?.spentToday !== undefined) {
+        const rawSpent = Number(toBigInt(d.treasury.spentToday));
+        const formattedSpent = rawSpent > 1e12 ? rawSpent / 1e18 : rawSpent / 1e6;
+        setSpentTodayUsdc(formattedSpent.toFixed(2));
+      }
+      if (d.treasury?.dailyLimit !== undefined) {
+        const rawLimit = Number(toBigInt(d.treasury.dailyLimit));
+        const formattedLimit = rawLimit > 1e12 ? rawLimit / 1e18 : rawLimit / 1e6;
+        setDailyLimitUsdc(formattedLimit.toFixed(1));
       }
     } catch (err) {
+      const e = err as Error;
+      setError(e.name === 'AbortError' ? '请求超时（12s），请检查网络后重试。' : e.message);
       console.error('MyVessels load failed:', err);
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
-    // Load alerts
-    try {
-      const alertRes = await fetch('/api/alerts?did=' + encodeURIComponent(session.vesselDid));
-      if (alertRes.ok) setAlerts(await alertRes.json());
-    } catch (_) {}
-    // Load distribution stats
-    try {
-      const distRes = await fetch('/api/distribution/farcaster?did=' + encodeURIComponent(session.vesselDid));
-      if (distRes.ok) setDistroStats(await distRes.json());
-    } catch (_) {}
-    // Load referral stats
-    try {
-      const refRes = await fetch('/api/arp/referral?did=' + encodeURIComponent(session.vesselDid));
-      if (refRes.ok) setRefStats(await refRes.json());
-    } catch (_) {}
-    // Load Farcaster profile
-    try {
-      const fcRes = await fetch('/api/distribution/farcaster?action=profile');
-      if (fcRes.ok) setFcProfile(await fcRes.json());
-    } catch (_) {}
+
+    // 辅助数据并行加载，任一失败不影响主面板
+    const did = encodeURIComponent(session.vesselDid);
+    const [alertRes, distRes, refRes, fcRes] = await Promise.allSettled([
+      fetch(`/api/alerts?did=${did}`),
+      fetch(`/api/distribution/farcaster?did=${did}`),
+      fetch(`/api/arp/referral?did=${did}`),
+      fetch('/api/distribution/farcaster?action=profile'),
+    ]);
+    if (alertRes.status === 'fulfilled' && alertRes.value.ok) {
+      setAlerts(await alertRes.value.json().catch(() => ({ unreadCount: 0, alerts: [] })));
+    }
+    if (distRes.status === 'fulfilled' && distRes.value.ok) {
+      setDistroStats(await distRes.value.json().catch(() => null));
+    }
+    if (refRes.status === 'fulfilled' && refRes.value.ok) {
+      setRefStats(await refRes.value.json().catch(() => null));
+    }
+    if (fcRes.status === 'fulfilled' && fcRes.value.ok) {
+      setFcProfile(await fcRes.value.json().catch(() => null));
+    }
   }, [session?.vesselDid]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleRelogin = async () => {
+    await revokeVesselSession();
+    if (typeof window !== 'undefined') window.location.reload();
+  };
 
   if (!session) {
     return (
@@ -240,7 +258,47 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
     );
   }
 
-  if (loading || !data) {
+  // Observer 会话没有 Vessel DID，不能渲染矩阵（也不能无限骨架屏）
+  if (!session.vesselDid || session.accessMode === 'observer') {
+    return (
+      <Card className="cyber-panel">
+        <CardContent className="p-8 text-center">
+          <Lock className="w-12 h-12 mx-auto mb-4 text-[#B080E8]" />
+          <h3 className="text-xl font-bold mb-2">{isEn ? 'Observer Mode' : '当前为只读观察模式'}</h3>
+          <p className="text-[#999] mb-4 max-w-md mx-auto text-sm leading-relaxed">
+            {isEn
+              ? 'This session has no Vessel DID, so the avatar matrix cannot load. Sign in again with your wallet to create a full Vessel identity.'
+              : '当前会话没有 Vessel 容器身份（Vessel DID），无法加载分身矩阵。请返回登录页，使用「容器登录」或「钱包登录」完成主钱包签名后重试。'}
+          </p>
+          <Button onClick={handleRelogin} className="bg-[#B080E8]/15 text-[#B080E8] border border-[#B080E8]/30 hover:bg-[#B080E8]/25">
+            {isEn ? 'Sign in again' : '重新登录'}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <Card className="cyber-panel border-[#FF4444]/30">
+        <CardContent className="p-8 text-center">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-[#FF66AA]" />
+          <h3 className="text-xl font-bold mb-2">{isEn ? 'Failed to load dashboard' : '分身矩阵加载失败'}</h3>
+          <p className="text-[#999] mb-4 text-sm break-all">{error}</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={load} className="cyber-mono text-xs">
+              <RefreshCw className="w-3 h-3 mr-1" /> {isEn ? 'Retry' : '重试'}
+            </Button>
+            <Button onClick={handleRelogin} variant="ghost" className="cyber-mono text-xs text-[#999]">
+              {isEn ? 'Sign in again' : '重新登录'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading && !data) {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
@@ -249,6 +307,8 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       </div>
     );
   }
+
+  if (!data) return null;
 
   const treasury = data.treasury;
   const vesselStatus = data.vesselStatus;
