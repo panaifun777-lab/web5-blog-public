@@ -1,0 +1,53 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+/build
+
+# production
+.vercel
+
+# database (business data is never published)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# env files (keep the example)
+.env*
+!.env.example
+
+# logs and debug output
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+
+# contracts artifacts and local dependencies
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+
+# local tooling
+.DS_Store
+.claude
+.z-ai-config

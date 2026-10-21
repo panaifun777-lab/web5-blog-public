@@ -1,0 +1,372 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ════════════════════════════════════════════════════════════════
+ * Web5.blog Cyberpunk Sovereign Design System
+ * 移植自 PLVTVS.Network + 融合 AP2-Protocol-Explorer 五色语义
+ * 三主色：cyan #00FFCC (primary) / blue #0066FF (accent) / gold #FFCC00 (highlight)
+ * ════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  /* PLVTVS 品牌色 */
+  --color-plvtvs-bg: #000000;
+  --color-plvtvs-blue: #0066FF;
+  --color-plvtvs-cyan: #00FFCC;
+  --color-plvtvs-gold: #FFCC00;
+  --color-plvtvs-grid: #0A0A0A;
+
+  /* Web5.blog 扩展色 — 协议族标识 */
+  --color-web5-vessel: #B080E8;       /* Vessel 紫 */
+  --color-web5-eidolon: #00FFCC;      /* Eidolon 青 */
+  --color-web5-prime: #FFCC00;        /* Prime 金 */
+  --color-web5-ap2: #0066FF;          /* AP2 蓝 */
+  --color-web5-arp: #FF66AA;          /* ARP 粉 */
+
+  /* 语义色（融合 AP2-Protocol-Explorer） */
+  --color-sem-success: #10B981;
+  --color-sem-warning: #F59E0B;
+  --color-sem-danger: #EF4444;
+  --color-sem-info: #00FFCC;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-mono: "Geist Mono", "Sarasa Mono SC", ui-monospace, monospace;
+  --font-sans: "Geist", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", ui-serif, Georgia, serif;
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #050505;
+  --card-foreground: #ffffff;
+  --popover: #050505;
+  --popover-foreground: #ffffff;
+  --primary: #00FFCC;
+  --primary-foreground: #000000;
+  --secondary: #0A0A0A;
+  --secondary-foreground: #ffffff;
+  --muted: #0A0A0A;
+  --muted-foreground: #666666;
+  --accent: #0066FF;
+  --accent-foreground: #ffffff;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: #1a1a1a;
+  --input: #1a1a1a;
+  --ring: #00FFCC;
+  --chart-1: #00FFCC;
+  --chart-2: #0066FF;
+  --chart-3: #FFCC00;
+  --chart-4: #B080E8;
+  --chart-5: #FF66AA;
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00FFCC;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #0A0A0A;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1a1a1a;
+  --sidebar-ring: #00FFCC;
+}
+
+/* 强制清除所有可能由外部环境或脚本注入的水印与调试指示器 */
+[id*="z-ai"], [class*="z-ai"], [id*="zai"], [class*="zai"], a[href*="z.ai"], [data-zai],
+div[style*="z.ai"], img[src*="z.ai"], iframe[src*="z.ai"], div[class*="watermark"],
+nextjs-portal, #nextjs-portal, [data-nextjs-toast], [data-nextjs-dialog-overlay] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #050505;
+  --card-foreground: #ffffff;
+  --popover: #050505;
+  --popover-foreground: #ffffff;
+  --primary: #00FFCC;
+  --primary-foreground: #000000;
+  --secondary: #0A0A0A;
+  --secondary-foreground: #ffffff;
+  --muted: #0A0A0A;
+  --muted-foreground: #666666;
+  --accent: #0066FF;
+  --accent-foreground: #ffffff;
+  --destructive: #ff4444;
+  --destructive-foreground: #ffffff;
+  --border: #1a1a1a;
+  --input: #1a1a1a;
+  --ring: #00FFCC;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+ * Cyberpunk Utility Classes（移植自 PLVTVS globals.css）
+ * ════════════════════════════════════════════════════════════════ */
+
+/* 背景网格 */
+.cyber-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 255, 204, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 204, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* 文字辉光 */
+.cyber-text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 255, 204, 0.6), 0 0 16px rgba(0, 255, 204, 0.3);
+}
+.cyber-text-glow-blue {
+  text-shadow: 0 0 8px rgba(0, 102, 255, 0.6), 0 0 16px rgba(0, 102, 255, 0.3);
+}
+.cyber-text-glow-gold {
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.6), 0 0 16px rgba(255, 204, 0, 0.3);
+}
+
+/* 边框 */
+.cyber-border-cyan {
+  border: 1px solid rgba(0, 255, 204, 0.3);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.1), inset 0 0 12px rgba(0, 255, 204, 0.05);
+}
+
+/* 按钮 */
+.cyber-btn {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.1), rgba(0, 102, 255, 0.1));
+  border: 1px solid rgba(0, 255, 204, 0.4);
+  color: #00FFCC;
+  padding: 0.625rem 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cyber-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.3), transparent);
+  transition: left 0.6s ease;
+}
+.cyber-btn:hover::before { left: 100%; }
+.cyber-btn:hover {
+  border-color: #00FFCC;
+  box-shadow: 0 0 16px rgba(0, 255, 204, 0.4), inset 0 0 16px rgba(0, 255, 204, 0.1);
+  color: #ffffff;
+}
+
+.cyber-btn-gold {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.1), rgba(255, 204, 0, 0.05));
+  border: 1px solid rgba(255, 204, 0, 0.4);
+  color: #FFCC00;
+}
+.cyber-btn-gold::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 204, 0, 0.3), transparent);
+}
+.cyber-btn-gold:hover {
+  border-color: #FFCC00;
+  box-shadow: 0 0 16px rgba(255, 204, 0, 0.4);
+  color: #ffffff;
+}
+
+.cyber-btn-blue {
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.1), rgba(0, 102, 255, 0.05));
+  border: 1px solid rgba(0, 102, 255, 0.4);
+  color: #0066FF;
+}
+.cyber-btn-blue::before {
+  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.3), transparent);
+}
+.cyber-btn-blue:hover {
+  border-color: #0066FF;
+  box-shadow: 0 0 16px rgba(0, 102, 255, 0.4);
+  color: #ffffff;
+}
+
+/* 面板 */
+.cyber-panel {
+  position: relative;
+  background: rgba(5, 5, 5, 0.8);
+  border: 1px solid rgba(0, 255, 204, 0.2);
+  backdrop-filter: blur(10px);
+  padding: 1.5rem;
+}
+.cyber-panel::before,
+.cyber-panel::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 2px solid #00FFCC;
+}
+.cyber-panel::before {
+  top: -1px; left: -1px;
+  border-right: none; border-bottom: none;
+}
+.cyber-panel::after {
+  bottom: -1px; right: -1px;
+  border-left: none; border-top: none;
+}
+
+/* HUD 四角 */
+.cyber-hud-corner {
+  position: relative;
+}
+.cyber-hud-corner-tl,
+.cyber-hud-corner-tr,
+.cyber-hud-corner-bl,
+.cyber-hud-corner-br {
+  position: absolute;
+  width: 16px; height: 16px;
+  border: 2px solid #00FFCC;
+  pointer-events: none;
+}
+.cyber-hud-corner-tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+.cyber-hud-corner-tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+.cyber-hud-corner-bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+.cyber-hud-corner-br { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* 等宽字体 */
+.cyber-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+/* 分隔线 */
+.cyber-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00FFCC, transparent);
+  margin: 1.5rem 0;
+}
+
+/* 动画 */
+@keyframes cyber-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.cyber-blink { animation: cyber-blink 1s ease-in-out infinite; }
+
+@keyframes cyber-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+.cyber-pulse { animation: cyber-pulse 2s ease-in-out infinite; }
+
+@keyframes cyber-scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+.cyber-scan-line {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00FFCC, transparent);
+  animation: cyber-scan-line 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cyber-glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+.cyber-glitch { animation: cyber-glitch 0.3s ease-in-out infinite; }
+
+@keyframes cyber-flicker {
+  0%, 100% { opacity: 1; }
+  41% { opacity: 1; }
+  42% { opacity: 0.8; }
+  43% { opacity: 1; }
+  45% { opacity: 0.3; }
+  46% { opacity: 1; }
+}
+.cyber-flicker { animation: cyber-flicker 4s linear infinite; }
+
+@keyframes cyber-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cyber-fade-in { animation: cyber-fade-in 0.6s ease-out forwards; }
+
+@keyframes cyber-pulse-ring {
+  0% { transform: scale(0.95); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+.cyber-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid #00FFCC;
+  border-radius: 50%;
+  animation: cyber-pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes cyber-loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.cyber-loading-bar {
+  position: relative;
+  overflow: hidden;
+  background: rgba(0, 255, 204, 0.1);
+}
+.cyber-loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, #00FFCC, transparent);
+  animation: cyber-loading-bar 1.5s ease-in-out infinite;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #050505; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00FFCC; }
+
+/* Selection */
+::selection {
+  background: rgba(0, 255, 204, 0.3);
+  color: #ffffff;
+}
+
+/* Tailwind animate-in utility */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}

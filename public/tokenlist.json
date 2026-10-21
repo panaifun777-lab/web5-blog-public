@@ -1,0 +1,52 @@
+{
+  "name": "Web5.blog Official Token List",
+  "timestamp": "2026-10-17T00:00:00.000Z",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "logoURI": "https://web5.blog/tokens/wbog.png",
+  "keywords": [
+    "web5",
+    "wbog",
+    "arc",
+    "avatar",
+    "ai-agent",
+    "vessel",
+    "ontology"
+  ],
+  "tokens": [
+    {
+      "chainId": 5042,
+      "address": "0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
+      "name": "Web5 Blog Ontology Gateway",
+      "symbol": "WBOG",
+      "decimals": 18,
+      "logoURI": "https://web5.blog/tokens/wbog.png",
+      "extensions": {
+        "website": "https://web5.blog",
+        "whitepaper": "https://web5.blog/founder",
+        "telegram": "https://t.me/Web5blog_bot",
+        "uniswapV4Position": "https://app.uniswap.org/positions/v4/arc/247118",
+        "uniswapV4Swap": "https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
+        "totalSupplyApi": "https://web5.blog/api/token/total-supply",
+        "circulatingSupplyApi": "https://web5.blog/api/token/circulating-supply",
+        "ogDeployer": "0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1"
+      }
+    },
+    {
+      "chainId": 5042002,
+      "address": "0xb3f174ae34b4273ae6dfd4488327c1d1784d35eb",
+      "name": "Web5 Blog Ontology Gateway",
+      "symbol": "WBOG",
+      "decimals": 18,
+      "logoURI": "https://web5.blog/tokens/wbog.png",
+      "extensions": {
+        "website": "https://web5.blog",
+        "whitepaper": "https://web5.blog/founder",
+        "telegram": "https://t.me/Web5blog_bot"
+      }
+    }
+  ]
+}

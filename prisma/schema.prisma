@@ -1,0 +1,374 @@
+// ════════════════════════════════════════════════════════════════
+// Web5.blog Prisma Schema — 三层生命架构 + 内容确权 + AP2 微支付
+// 基于 PLVTVS schema 扩展 + AP2-Protocol-Explorer BigInt 6-decimal USDC 模型
+// ════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ━━ RBAC 三级权限（复用 PLVTVS 模式，扩展容器算力维度） ━━
+enum UserRole {
+  USER
+  OPERATOR
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum VesselStatus {
+  ACTIVE
+  INACTIVE
+  REVOKED
+  FROZEN
+}
+
+enum InteractionType {
+  READ
+  COMMENT
+  TIP
+  SUBSCRIBE
+  CITE
+  PUBLISH
+  ROYALTY
+}
+
+enum ContentLicense {
+  CC_BY
+  CC_BY_NC
+  COMMERCIAL
+  CUSTOM
+}
+
+// ━━ 两段式账户生命周期 ━━
+enum AccountStage {
+  STAGE_1_CONTAINER_ACTIVE // 阶段1：仅容器/轻钱包激活
+  STAGE_2_MASTER_VERIFIED   // 阶段2：EIP-712 签名绑定真实主钱包完成确权
+}
+
+// ━━ Prime（本体）层：真人意识根身份 ━━
+model Prime {
+  id            String    @id @default(cuid())
+  did           String    @unique // did:plvtvs:0x... 或 did:ion:...
+  walletAddress String    @unique // EVM 地址
+  role          UserRole  @default(USER)
+  status        UserStatus @default(ACTIVE)
+  accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
+  displayName   String?
+  bio           String?
+  avatarSeed    String? // 用于生成 PixelAvatar
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastActiveAt  DateTime? @default(now())
+
+  eidolons      Eidolon[]
+  vessels       Vessel[]
+  contents      Content[]
+  sessions      VesselSession[]
+  interactions  Interaction[]
+  ap2Budgets    AP2Budget[]
+  adminLogs     AdminLog[]
+  backupWallet  BackupWallet?
+  authNonces    AuthNonce[]
+
+  @@index([walletAddress])
+  @@index([role, status])
+}
+
+// ━━ Eidolon（真身）层：AI 代理人格 ━━
+model Eidolon {
+  id           String   @id @default(cuid())
+  did          String   @unique // did:eidolon:...
+  name         String   // 分身名称（如"学术分身"）
+  primeId      String
+  prime        Prime    @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  styleProfile String?  // JSON: RAG 风格画像（tone/vocabulary/sentenceLength）
+  ragCollection String? // 向量库 collection name
+  status       VesselStatus @default(ACTIVE)
+  lastActiveAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vessels      Vessel[]
+
+  @@index([primeId])
+  @@index([status])
+}
+
+// ━━ Vessel（容器）层：链上执行环境（ERC-4337 Smart Account） ━━
+model Vessel {
+  id            String   @id @default(cuid())
+  did           String   @unique // did:vessel:...
+  eidolonId     String
+  eidolon       Eidolon  @relation(fields: [eidolonId], references: [id], onDelete: Cascade)
+  smartAccountAddress String @unique // ERC-4337 智能账户地址
+  sessionKeyConfig String? // JSON: ERC-4337 Session Key 配置
+  status        VesselStatus @default(INACTIVE)
+  accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
+  lastActiveAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  prime         Prime?   @relation(fields: [primeId], references: [id])
+  primeId       String?
+  sessions      VesselSession[]
+  interactions  Interaction[]
+  ap2Budgets    AP2Budget[]
+  autonomousLogs AutonomousLog[]
+  backupWallet  BackupWallet?
+
+  @@index([eidolonId])
+  @@index([status])
+  @@index([smartAccountAddress])
+}
+
+// ━━ VesselSession：容器登录会话 ━━
+model VesselSession {
+  id            String   @id @default(cuid())
+  vesselId      String
+  vessel        Vessel   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  primeId       String
+  prime         Prime    @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  tokenHash     String   @unique // Vessel Session Token 的 sha256
+  aa2pClaimId   String   // AA2P 灵魂凭证 ID
+  permissions   String   // JSON: ['read','comment','publish','micropay']
+  ap2Budget     String?  // JSON: BudgetFence 配置快照
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  revokedAt     DateTime?
+
+  @@index([vesselId, expiresAt])
+  @@index([primeId])
+  @@index([tokenHash])
+}
+
+// ━━ Content：博客内容（Arweave 永久存储 + NFT 确权） ━━
+model Content {
+  id            String   @id @default(cuid())
+  arweaveHash   String   @unique // Arweave TX ID
+  tokenId       BigInt?  @unique // Content NFT tokenId
+  authorDid     String   // = Prime.did
+  prime         Prime?   @relation(fields: [primeId], references: [id])
+  primeId       String?
+  title         String
+  bodyMd        String   // Markdown 全文
+  excerpt       String?  // 摘要
+  coverImageHash String? // IPFS/Arweave 哈希
+  license       ContentLicense @default(CC_BY)
+  royaltyRate   Int      @default(100) // basis points, 100 = 1%
+  splits        String?  // JSON: [{recipient, share}]
+  arpVcId       String?  // ARP 确权 VC ID
+  publishedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  interactions  Interaction[]
+
+  @@index([authorDid])
+  @@index([publishedAt])
+  @@index([arweaveHash])
+}
+
+// ━━ Interaction：分身间交互记录（阅读/评论/打赏/引用） ━━
+model Interaction {
+  id            String   @id @default(cuid())
+  contentId     String
+  content       Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  vesselDid     String   // 发起交互的 Vessel DID
+  vessel        Vessel?  @relation(fields: [vesselId], references: [id])
+  vesselId      String?
+  primeId       String?  // 发起方 Prime
+  prime         Prime?   @relation(fields: [primeId], references: [id])
+  type          InteractionType
+  amount        BigInt?  // 6-decimal USDC（最小单位 wei）
+  ap2TxHash     String?  // AP2 链上结算 tx hash
+  arpRef        String?  // ARP 确权引用 ID
+  comment       String?  // 评论内容
+  aiScore       Float?   // AI 分身对内容的语义评分 0-1
+  createdAt     DateTime @default(now())
+
+  @@index([contentId, createdAt])
+  @@index([vesselDid, createdAt])
+  @@index([type, createdAt])
+}
+
+// ━━ AP2Budget：BudgetFence 预算配置（每个 Vessel 一份） ━━
+model AP2Budget {
+  id            String   @id @default(cuid())
+  vesselId      String
+  vessel        Vessel   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  primeId       String
+  prime         Prime    @relation(fields: [primeId], references: [id])
+  dailyLimit    BigInt   // 6-decimal USDC，每日总上限
+  perTxLimit    BigInt   // 单笔上限
+  rateLimitPerMin Int    @default(5)
+  whitelist     String   // JSON: ['0x...', 'did:...']
+  categoryLimit String?  // JSON: {read: ..., tip: ..., subscribe: ...}
+  spentToday    BigInt   @default(0)
+  lastResetAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([vesselId])
+  @@index([primeId])
+}
+
+// ━━ AutonomousLog：分身自治日志（躺赚证据） ━━
+model AutonomousLog {
+  id            String   @id @default(cuid())
+  vesselId      String
+  vessel        Vessel   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  action        String   // harvest|read|comment|tip|distribute
+  targetDid     String?  // 目标 DID
+  targetContent String?  // 目标内容哈希
+  yieldAmount   BigInt?  // 收益金额（6-decimal USDC）
+  spentAmount   BigInt?  // 支出金额
+  metadata      String?  // JSON: 任意元数据
+  createdAt     DateTime @default(now())
+
+  @@index([vesselId, createdAt])
+  @@index([action, createdAt])
+}
+
+// ━━ AdminLog：管理员操作审计 ━━
+model AdminLog {
+  id            String   @id @default(cuid())
+  adminPrimeId  String
+  adminPrime    Prime    @relation(fields: [adminPrimeId], references: [id])
+  action        String   // revoke_vessel|freeze_session|update_budget...
+  targetId      String?  // 目标对象 ID
+  targetDid     String?
+  metadata      String?  // JSON
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([adminPrimeId, createdAt])
+  @@index([action])
+}
+
+// ━━ SystemConfig：系统配置 ━━
+model SystemConfig {
+  id            String   @id @default(cuid())
+  key           String   @unique
+  value         String   // JSON
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?  // admin prime id
+}
+
+// ━━ TaskOrder：AP2 众包与悬赏任务订单模型 ━━
+model TaskOrder {
+  id                 String    @id @default(cuid())
+  orderId            String    @unique
+  creatorDid         String
+  title              String
+  description        String
+  bountyUsdc         String
+  status             String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, SETTLED, REFUNDED
+  escrowContract     String
+  escrowTxHash       String?   // 真实链上托管转账哈希
+  assignedAgentDid   String?
+  deliverableHash    String?   // 交付成果哈希
+  deliverableContent String?   // 交付报告文本
+  createdAt          DateTime  @default(now())
+  settledAt          DateTime?
+
+  @@index([creatorDid])
+  @@index([status])
+  @@index([assignedAgentDid])
+}
+
+// ━━ BackupWallet：站内备用轻钱包资产模型（Circle ARC 主网原生 18-decimal USDC） ━━
+model BackupWallet {
+  id              String           @id @default(cuid())
+  address         String           @unique // 站内备用轻钱包地址 (0x...)
+  primeId         String?          @unique
+  prime           Prime?           @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  vesselId        String?          @unique
+  vessel          Vessel?          @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  balanceWei      String           @default("0") // 18 位精度原生 USDC (Wei 字符串，展示时除以 1e18)
+  asset           String           @default("USDC") // 资产符号 (默认 Circle ARC 主网原生 USDC)
+  nonce           BigInt           @default(0) // 签名递增序号
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  transactions    BackupWalletTx[]
+
+  @@index([address])
+  @@index([primeId])
+  @@index([vesselId])
+}
+
+// ━━ BackupWalletTx：备用轻钱包流水记录（充值、提现结算、打赏消费等） ━━
+model BackupWalletTx {
+  id              String        @id @default(cuid())
+  backupWalletId  String
+  backupWallet    BackupWallet  @relation(fields: [backupWalletId], references: [id], onDelete: Cascade)
+  type            String        // DEPOSIT | WITHDRAW_SETTLEMENT | TRANSFER | CONSUME
+  amountWei       String        // 18 位精度变动量 (Wei)
+  balanceAfterWei String        // 变动后余额 (Wei)
+  txHash          String?       // 链上交易哈希或内部凭证
+  targetAddress   String?       // 提现目的主钱包地址
+  status          String        @default("SUCCESS") // PENDING | SUCCESS | FAILED
+  signature       String?       // EIP-712 签名
+  metadata        String?       // JSON 扩展数据
+  createdAt       DateTime      @default(now())
+
+  @@index([backupWalletId, createdAt])
+  @@index([type])
+}
+
+// ━━ AuthNonce：EIP-712 防重放与签名验签记录 ━━
+model AuthNonce {
+  id          String   @id @default(cuid())
+  address     String   // 签名主钱包地址 (小写)
+  primeId     String?
+  prime       Prime?   @relation(fields: [primeId], references: [id], onDelete: Cascade)
+  purpose     String   // BIND_MASTER_WALLET | WITHDRAW_SETTLEMENT
+  nonce       BigInt   // 消费的 nonce
+  signature   String   @unique // 签名 hex，保证全局唯一不可复用
+  messageHash String?  // EIP-712 结构体哈希
+  deadline    BigInt   // 过期时间戳 (秒)
+  consumedAt  DateTime @default(now())
+
+  @@unique([address, purpose, nonce])
+  @@index([address, purpose])
+}
+
+
+
+// ════════════════════════════════════════════════════════════════
+// 外部劳务机会（自动抓取 + 推荐打分）
+// ════════════════════════════════════════════════════════════════
+model ExternalOpportunity {
+  id             String   @id @default(cuid())
+  source         String   // github | remotive | arbeitnow | remoteok
+  externalId     String   // 源站唯一 ID
+  title          String
+  organization   String?
+  url            String
+  description    String?
+  rewardText     String?  // 原始赏金/薪资文本
+  rewardUsdc     Float?   // 折算后的 USDC 参考值
+  tags           String?  // JSON 数组字符串
+  remote         Boolean  @default(true)
+  publishedAt    DateTime?
+  fetchedAt      DateTime @default(now())
+  matchScore     Float    @default(0) // 推荐分 0~100
+  matchReasons   String?  // JSON 数组字符串
+  status         String   @default("OPEN") // OPEN | IMPORTED | DISMISSED
+  importedTaskId String?
+
+  @@unique([source, externalId])
+  @@index([matchScore])
+  @@index([status])
+  @@index([source])
+}

@@ -1,0 +1,26 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /api/explore
+Allow: /api/content/list
+Sitemap: https://web5.blog/sitemap.xml
+
+# AI Agent discovery
+User-agent: GPTBot
+Allow: /
+Allow: /api/admin/agent
+Allow: /api/explore
+
+User-agent: Claude-Web
+Allow: /
+Allow: /api/admin/agent
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Disallow admin internals
+Disallow: /admin/api
+Disallow: /api/auth

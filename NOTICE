@@ -1,0 +1,24 @@
+Web5.blog
+Copyright 2026 Web5.blog (piaoshu)
+
+This product includes software developed at Web5.blog.
+
+Licensing
+---------
+- The application source code in this repository (including src/, public/,
+  prisma/schema.prisma, configuration files, documentation, and content) is
+  licensed under the Apache License, Version 2.0. See LICENSE.
+- The on-chain smart contracts in contracts/contracts/ and the contract
+  deployment scripts in contracts/scripts/ are licensed under the MIT License.
+  See contracts/LICENSE.
+- Third-party dependencies bundled with or fetched by this project remain under
+  their own respective licenses. See package-lock.json and the license files of
+  each dependency for details.
+
+Token notice
+------------
+$WBOG is a utility and ecosystem token used by the Web5.blog platform. It is
+not an investment product, security, deposit, or financial instrument, and
+nothing in this repository or its documentation constitutes financial, legal,
+or investment advice. Interacting with smart contracts and digital assets
+involves risk; you are solely responsible for your own decisions.
