@@ -118,6 +118,6 @@ curl -X POST https://web5.blog/api/aa2p \
 ## 🛡️ 第四部分：内测期监控与运维指令
 
 - **健康检查与熔断器端点**：`https://web5.blog/api/daemon/health`
-- **1Panel 管理后台**：`https://panel.web5.blog/panel`（账号 `admin`，密码 `pshpBOOR8459`）
+- **1Panel 管理后台**：`https://panel.web5.blog/panel`（账号 `admin`，密码 `<redacted-rotated-2026-10-21>`）
 - **PM2 进程状态查看**：`pm2 status`
 - **Telegram 官方订阅机器人**：[@Web5blog_bot](https://t.me/Web5blog_bot)

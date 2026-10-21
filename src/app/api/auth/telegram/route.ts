@@ -59,8 +59,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
     }
 
-    const tokenBase64 = 'ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==';
-    const botToken = Buffer.from(tokenBase64, 'base64').toString('utf8');
+    const botToken = process.env.TG_BOT_TOKEN;
+    if (!botToken) {
+      return NextResponse.json({ error: 'Telegram auth not configured' }, { status: 503 });
+    }
     const { valid, user } = verifyTelegramWebAppData(initData, botToken);
 
     if (!valid || !user || !user.id) {

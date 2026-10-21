@@ -91,3 +91,15 @@ normalize-env.js
 /*_report*.md
 /RunOcr.cs
 /do_ocr.ps1
+# production data and deploy secrets (never commit)
+/db/*.db
+/prisma/db/*.db
+/contracts/.env
+/_vps_*.py
+/cmp_*.py
+/mk-deploy.mjs
+/gen-sync.mjs
+/finalize-deploy.mjs
+/deploy-prebuilt.mjs
+/sync-vps.ps1
+/scripts/update_settled_tasks.py

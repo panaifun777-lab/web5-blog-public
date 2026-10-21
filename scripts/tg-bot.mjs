@@ -1,6 +1,11 @@
+import 'dotenv/config';
 import https from 'https';
 
-const token = Buffer.from('ODkxMDkzNTUzOTpBQUdTUXBEQzRVcGRqVkQzZURUaVR6TktjdlVwMDhfX09Ndw==', 'base64').toString('utf8');
+const token = process.env.TG_BOT_TOKEN;
+if (!token) {
+  console.error('TG_BOT_TOKEN is required');
+  process.exit(1);
+}
 const BASE = `https://api.telegram.org/bot${token}`;
 const SITE = 'https://web5.blog';
 const BOUNTY_URL = `${SITE}/?tab=feed&module=bounties`;
