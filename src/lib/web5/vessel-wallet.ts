@@ -43,6 +43,13 @@ export function getOrCreateVesselWallet(): VesselWallet {
   return { address: account.address, privateKey: pk, isNew };
 }
 
+/** 用本地专用钱包签名登录消息（免插件容器登录） */
+export async function signVesselLoginMessage(message: string): Promise<string> {
+  const { privateKey } = getOrCreateVesselWallet();
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
+  return account.signMessage({ message });
+}
+
 /** 专用钱包签名转账（免主钱包，受 BudgetFence 限额约束） */
 export async function vesselWalletTransfer(to: string, amountUsdc: string): Promise<string> {
   const { privateKey } = getOrCreateVesselWallet();

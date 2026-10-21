@@ -183,6 +183,14 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', aut
     }
   }, [phase, audio, appendLogs, onSuccess, onError, auth]);
 
+  // 已持有签名凭据时（容器登录卡片刚点击）直接开启动效，避免二次点击
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!auth || autoStarted.current) return;
+    autoStarted.current = true;
+    void startRitual();
+  }, [auth, startRitual]);
+
   return (
     <div className="relative w-full max-w-md mx-auto">
       {/* 主视觉 */}

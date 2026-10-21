@@ -19,11 +19,11 @@ import { Progress } from '@/components/ui/progress';
 import {
   Cpu, BookOpen, Users, Globe, Target, Bot, Sparkles, Eye, Wallet, Twitter,
   ChevronRight, TrendingUp, Radio, FileText, MessageCircle, Heart, Share2,
-  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket,
+  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket, Loader2,
 } from 'lucide-react';
 
 import { useTma } from '@/components/web5/telegram/tma-provider';
-import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
+import { getOrCreateVesselWallet, signVesselLoginMessage } from '@/lib/web5/vessel-wallet';
 import { useI18n } from '@/lib/i18n/index';
 
 const PanelLoading = ({ label }: { label: string }) => (
@@ -103,6 +103,8 @@ export default function Home() {
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [vesselWalletAddr, setVesselWalletAddr] = useState<string>('');
   const [vesselAuth, setVesselAuth] = useState<VesselAuthPayload | null>(null);
+  const [loginBusy, setLoginBusy] = useState<'vessel' | 'wallet' | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
   const [curveModalOpen, setCurveModalOpen] = useState(false);
@@ -244,63 +246,55 @@ export default function Home() {
     setTab(s.vesselDid ? 'vessels' : 'feed');
     setLoginMethod(null);
     setVesselAuth(null);
+    setLoginError(null);
   };
 
-  // 容器登录：先连接真实钱包绑定身份，再进入四步握手仪式
+  // 容器登录：用本机持久化 Vessel 密钥直接签名，免钱包插件，也不会被 WebView 吞掉弹窗
   const handleVesselLogin = async () => {
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) {
-      alert('容器唤醒需要先连接真实钱包。请安装 MetaMask / OKX 后重试。');
-      return;
-    }
+    if (loginBusy) return;
+    setLoginError(null);
+    setLoginBusy('vessel');
     // 提前预热分身矩阵代码块，仪式结束后立即渲染
     void import('@/components/web5/dashboard/my-vessels').catch(() => {});
     try {
-      // 切换 ARC 主网
-      const chainIdHex = '0x13b2';
-      try {
-        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: chainIdHex,
-              chainName: 'Arc Mainnet',
-              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-              rpcUrls: ['https://rpc.mainnet.arc.io'],
-              blockExplorerUrls: ['https://explorer.arc.io'],
-            }],
-          });
-        } else {
-          throw switchError;
-        }
-      }
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-      const addr = accounts[0];
-      // 与 /api/auth/wallet-login 校验格式严格一致的签名消息
       const vessel = getOrCreateVesselWallet();
-      const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-      const signature = await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
-      setVesselWalletAddr(addr);
-      setVesselAuth({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg });
+      const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${vessel.address}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+      const signature = await signVesselLoginMessage(signMsg);
+      setVesselWalletAddr(vessel.address);
+      setVesselAuth({ walletAddress: vessel.address, vesselAddress: vessel.address, signature, message: signMsg });
       setLoginMethod('vessel');
     } catch (err: any) {
-      console.warn('[Web5] Vessel wallet bind error:', err);
-      if (err?.code === 4001) {
-        alert('已取消签名');
-      } else {
-        alert('钱包绑定失败：' + (err?.message || '请确认钱包已连接'));
-      }
+      console.warn('[Web5] Vessel awakening error:', err);
+      setLoginError(isEn
+        ? 'Vessel awakening failed: ' + (err?.message || 'please retry')
+        : '容器唤醒失败：' + (err?.message || '请重试'));
+    } finally {
+      setLoginBusy(null);
     }
+  };
+
+  const handleWalletLogin = async () => {
+    if (loginBusy) return;
+    setLoginError(null);
+    await connectWallet(
+      setSession,
+      setView,
+      setTab,
+      () => setWalletGuideOpen(true),
+      (busy: boolean) => setLoginBusy(busy ? 'wallet' : null),
+      (msg: string | null) => setLoginError(msg),
+    );
   };
 
   const handleLogout = async () => {
     await revokeVesselSession(); setSession(null); setView('ritual'); setVesselAuth(null); setLoginMethod(null);
+    setLoginBusy(null); setLoginError(null);
   };
 
-  // 弹窗内的“唤醒容器”入口：先回到登录页再触发钱包签名
+  // 弹窗内的“唤醒容器”入口：关掉遮挡的弹窗，回到登录页立即唤醒
   const openVesselLogin = () => {
+    setWalletGuideOpen(false);
+    setAirdropOpen(false);
     setView('ritual');
     void handleVesselLogin();
   };
@@ -321,6 +315,9 @@ export default function Home() {
           setLoginMethod={setLoginMethod}
           vesselAuth={vesselAuth}
           onVesselLogin={handleVesselLogin}
+          onWalletLogin={handleWalletLogin}
+          loginBusy={loginBusy}
+          loginError={loginError}
           handleRitualSuccess={handleRitualSuccess}
           setSession={setSession}
           setView={setView}
@@ -829,7 +826,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAuth, onVesselLogin, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAuth, onVesselLogin, onWalletLogin, loginBusy, loginError, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
       {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
@@ -995,17 +992,22 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
               {/* Login Cards — 仅保留容器与钱包两种主权登录 */}
               {!loginMethod ? (
                 <div className="space-y-3">
+                  {loginError && (
+                    <div role="alert" className="rounded-lg border border-[#FF66AA]/40 bg-[#FF66AA]/10 px-3 py-2 text-[12px] leading-relaxed text-[#FF9AC4]">
+                      {loginError}
+                    </div>
+                  )}
                   <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
                     desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
-                    color={COLORS.eidolon} onClick={onVesselLogin}
+                    color={COLORS.eidolon} onClick={onVesselLogin} busy={loginBusy === 'vessel'}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
                     title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
                     desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding & signing" : "MetaMask / OKX / Web3 钱包 — 链上签名绑定容器，直接开启完整创作权限"}
-                    color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab, onOpenWalletGuide)}
+                    color={COLORS.prime} onClick={onWalletLogin} busy={loginBusy === 'wallet'}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
@@ -1055,74 +1057,110 @@ function ModuleDesc({ module }: { module: string }) {
   );
 }
 
-function LoginBtn({ icon, title, desc, color, onClick }: any) {
+function LoginBtn({ icon, title, desc, color, onClick, busy }: any) {
   return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all group hover:scale-[1.02] hover:border-opacity-50"
+    <button onClick={onClick} disabled={busy}
+      aria-busy={busy || undefined}
+      className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all group hover:scale-[1.02] hover:border-opacity-50 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100"
       style={{ borderColor: `${color}20`, backgroundColor: `${color}05` }}>
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
+        style={{ backgroundColor: `${color}15`, color }}>
+        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : icon}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{title}</div>
-        <div className="text-[11px] text-[#555] mt-0.5">{desc}</div>
+        <div className="text-[11px] text-[#555] mt-0.5">
+          {busy ? '处理中，请在弹出的钱包窗口确认…' : desc}
+        </div>
       </div>
-      <ChevronRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors" />
+      {busy
+        ? <span className="text-[10px] font-mono" style={{ color }}>…</span>
+        : <ChevronRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors" />}
     </button>
   );
 }
 
 // ━━ Auth helpers ━━
-async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} 超时（${Math.round(ms / 1000)}s），请检查钱包插件或网络后重试`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+async function connectWallet(
+  s: any, v: any, t: any,
+  openGuide?: () => void,
+  onBusy?: (busy: boolean) => void,
+  onError?: (msg: string | null) => void,
+) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) {
-    if (openGuide) {
-      openGuide();
-    } else {
-      alert('未检测到 MetaMask / OKX Web3 钱包扩展，请安装钱包插件后重试。');
-    }
+    onError?.('未检测到浏览器钱包。请安装 MetaMask / OKX Web3 插件（或在内置浏览器中打开），也可以先用「Vessel 容器登录」免插件进入。');
+    openGuide?.();
     return;
   }
 
+  onError?.(null);
+  onBusy?.(true);
   try {
-    // ━━ 1. 切换 Circle ARC 主网 (5042 = 0x13b2) ━━
+    // ━━ 1. 切换 Circle ARC 主网 (5042 = 0x13b2)，失败不阻塞登录 ━━
     const chainIdHex = '0x13b2';
     try {
-      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
-        await ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: chainIdHex,
-            chainName: 'Arc Mainnet',
-            nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-            rpcUrls: ['https://rpc.mainnet.arc.io'],
-            blockExplorerUrls: ['https://explorer.arc.io'],
-          }],
-        });
-      } else {
-        throw switchError;
+      const current: string = await withTimeout(
+        ethereum.request({ method: 'eth_chainId' }), 8000, '读取钱包网络',
+      );
+      if (current?.toLowerCase() !== chainIdHex) {
+        try {
+          await withTimeout(
+            ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }),
+            12000, '切换 Arc 网络',
+          );
+        } catch (switchError: any) {
+          if (switchError?.code === 4902) {
+            await withTimeout(ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: chainIdHex,
+                chainName: 'Arc Mainnet',
+                nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                rpcUrls: ['https://rpc.mainnet.arc.io'],
+                blockExplorerUrls: ['https://explorer.arc.io'],
+              }],
+            }), 12000, '添加 Arc 网络');
+          } else if (switchError?.code !== 4001) {
+            console.warn('[Web5] Chain switch skipped:', switchError);
+          }
+        }
       }
+    } catch (chainErr) {
+      console.warn('[Web5] Chain preparation skipped:', chainErr);
     }
 
     // ━━ 2. 获取钱包地址 ━━
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    const addr = accounts[0];
+    const accounts = await withTimeout(
+      ethereum.request({ method: 'eth_requestAccounts' }), 60000, '等待钱包授权',
+    );
+    const addr = accounts?.[0];
+    if (!addr) throw new Error('钱包未返回账户地址');
 
     // ━━ 3. 个人签名（证明钱包所有权，弹窗确认） ━━
     const vessel = getOrCreateVesselWallet();
     const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-    const signature = await ethereum.request({
-      method: 'personal_sign',
-      params: [signMsg, addr],
-    });
+    const signature = await withTimeout(
+      ethereum.request({ method: 'personal_sign', params: [signMsg, addr] }),
+      180000, '等待钱包签名',
+    );
 
     // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读；主钱包身份 + 专用钱包容器） ━━
-    const res = await fetch('/api/auth/wallet-login', {
+    const res = await withTimeout(fetch('/api/auth/wallet-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg }),
-    });
+    }), 30000, '服务器验证签名');
     const data = await res.json();
 
     if (data.success && data.session) {
@@ -1132,15 +1170,17 @@ async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
       v('app');
       t('vessels');
     } else {
-      alert(data.error || '钱包登录失败');
+      onError?.(data.error || '钱包登录失败，请重试');
     }
   } catch (err: any) {
     console.warn('[Web5] Wallet login error:', err);
     if (err?.code === 4001) {
-      alert('已取消签名');
+      onError?.('已取消签名，登录未完成。');
     } else {
-      alert('钱包登录失败：' + (err?.message || '请在钱包中确认签名'));
+      onError?.('钱包登录失败：' + (err?.message || '请在钱包中确认签名后重试'));
     }
+  } finally {
+    onBusy?.(false);
   }
 }
 async function connectTwitter(s: any, v: any, t: any) {
