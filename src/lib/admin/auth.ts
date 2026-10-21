@@ -24,7 +24,7 @@ export async function verifyWalletSignature(
       signature: signature as `0x${string}`,
     });
   } catch {
-    return isInAdminList(address);
+    return false;
   }
 }
 

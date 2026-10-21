@@ -1075,18 +1075,18 @@ async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
     const addr = accounts[0];
 
     // ━━ 3. 个人签名（证明钱包所有权，弹窗确认） ━━
-    const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+    const vessel = getOrCreateVesselWallet();
+    const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
     const signature = await ethereum.request({
       method: 'personal_sign',
       params: [signMsg, addr],
     });
 
     // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读；主钱包身份 + 专用钱包容器） ━━
-    const vessel = getOrCreateVesselWallet();
     const res = await fetch('/api/auth/wallet-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature }),
+      body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg }),
     });
     const data = await res.json();
 

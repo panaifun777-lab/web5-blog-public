@@ -5,6 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getVesselTokenSecret } from '@/lib/web5/token-secret';
 import { db } from '@/lib/db';
 import { createHash, randomBytes } from 'crypto';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
@@ -12,14 +13,43 @@ import { serializeForJson, RFC_CONSTANTS } from '@/lib/web5/types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, vesselAddress, signature } = await req.json();
+    const { walletAddress, vesselAddress, signature, message } = await req.json();
     if (!walletAddress || !walletAddress.startsWith('0x')) {
       return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
     }
+    if (!signature || !message) {
+      return NextResponse.json({ error: 'Wallet signature required' }, { status: 401 });
+    }
 
     const addr = walletAddress.toLowerCase();
-    // 网站专用钱包地址（Vessel 容器），与主钱包地址区分开
     const vesselAddr = (vesselAddress && vesselAddress.startsWith('0x') ? vesselAddress : addr).toLowerCase();
+    const walletMatch = /Wallet: (0x[0-9a-fA-F]{40})/.exec(message);
+    const vesselMatch = /Vessel: (0x[0-9a-fA-F]{40})/.exec(message);
+    const tsMatch = /Timestamp: (\d+)/.exec(message);
+    if (
+      !message.startsWith('Web5.blog Sovereign Login') ||
+      !walletMatch || walletMatch[1].toLowerCase() !== addr ||
+      !vesselMatch || vesselMatch[1].toLowerCase() !== vesselAddr ||
+      !tsMatch || Math.abs(Date.now() - Number(tsMatch[1])) > 5 * 60 * 1000
+    ) {
+      return NextResponse.json({ error: 'Login signature expired or mismatched' }, { status: 401 });
+    }
+
+    try {
+      const { verifyMessage } = await import('viem');
+      const valid = await verifyMessage({
+        address: walletAddress as `0x${string}`,
+        message,
+        signature: signature as `0x${string}`,
+      });
+      if (!valid) {
+        return NextResponse.json({ error: 'Invalid wallet signature' }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid wallet signature' }, { status: 401 });
+    }
+
+    // 网站专用钱包地址（Vessel 容器），与主钱包地址区分开
     const primeDid = `did:plvtvs:${addr}`;
     const vesselDid = `did:vessel:${vesselAddr}`;
     const eidolonDid = `did:eidolon:${vesselAddr.slice(-16)}`;
@@ -66,7 +96,7 @@ export async function POST(req: NextRequest) {
     const nonce = randomBytes(16).toString('hex');
     const expiresAt = Date.now() + RFC_CONSTANTS.SESSION_TTL_HOURS * 3600 * 1000;
     const payload = `wallet:${prime.did}:${vesselDid}:${expiresAt}:${nonce}`;
-    const secret = process.env.VESSEL_TOKEN_SECRET || 'web5-blog-mvp-secret-dev-only';
+    const secret = getVesselTokenSecret();
     const sig = createHash('sha256').update(payload + secret).digest('hex');
     const sessionToken = `${payload}.${sig}`;
 

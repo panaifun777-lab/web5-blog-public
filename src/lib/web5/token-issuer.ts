@@ -8,6 +8,7 @@ import { createHash, randomBytes } from 'crypto';
 import type {
   VesselSession, BudgetFence, VesselPermission,
 } from './types';
+import { getVesselTokenSecret } from './token-secret';
 import { db } from '@/lib/db';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
 
@@ -30,7 +31,7 @@ export async function issueVesselToken(
 ): Promise<VesselSession> {
   const nonce = randomBytes(16).toString('hex');
   const payload = `${params.vesselDid}:${params.primeDid}:${params.expiresAt}:${nonce}`;
-  const secret = process.env.VESSEL_TOKEN_SECRET || 'web5-blog-mvp-secret-dev-only';
+  const secret = getVesselTokenSecret();
 
   const signature = createHash('sha256')
     .update(payload + secret)
@@ -66,7 +67,7 @@ export async function verifyVesselToken(
       return { valid: false };
     }
 
-    const secret = process.env.VESSEL_TOKEN_SECRET || 'web5-blog-mvp-secret-dev-only';
+    const secret = getVesselTokenSecret();
     const expectedSig = createHash('sha256')
       .update(payload + secret)
       .digest('hex');
@@ -93,7 +94,7 @@ export async function resolveVesselSessionFromToken(
     const [payload, signature] = token.split('.');
     if (!payload || !signature) return null;
 
-    const secret = process.env.VESSEL_TOKEN_SECRET || 'web5-blog-mvp-secret-dev-only';
+    const secret = getVesselTokenSecret();
     const expectedSig = createHash('sha256')
       .update(payload + secret)
       .digest('hex');

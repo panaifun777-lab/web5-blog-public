@@ -126,21 +126,19 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([
         '> Querying Prime delegation...',
         '> Session Key authorized',
-        '> Issuing Vessel Session Token...',
+        '> Issuing Observer Session Token...',
       ]);
       setExplode(1);
       setProgress(80);
 
-      // 用真实地址（或降级随机地址）登录，动画一定完成进入内页
+      // 动画内不弹签名框：无签名一律走只读 Observer 会话，
+      // 完整权限需用户主动点击钱包登录并签署消息。
       const vessel = getOrCreateVesselWallet();
-      const walletAddress = addr || ('0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''));
-      const res = await fetch('/api/auth/wallet-login', {
+      const walletAddress = addr || vessel.address;
+      const res = await fetch('/api/auth/observer-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          walletAddress,
-          vesselAddress: vessel.address,
-        }),
+        body: JSON.stringify({ walletAddress }),
       });
 
       if (!res.ok) {

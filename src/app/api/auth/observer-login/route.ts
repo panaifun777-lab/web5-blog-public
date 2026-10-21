@@ -4,6 +4,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getVesselTokenSecret } from '@/lib/web5/token-secret';
 import { db } from '@/lib/db';
 import { createHash, randomBytes } from 'crypto';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     const nonce = randomBytes(16).toString('hex');
     const expiresAt = Date.now() + RFC_CONSTANTS.SESSION_TTL_HOURS * 3600 * 1000;
     const payload = `observer:${prime.did}:${expiresAt}:${nonce}`;
-    const secret = process.env.VESSEL_TOKEN_SECRET || 'web5-blog-mvp-secret-dev-only';
+    const secret = getVesselTokenSecret();
     const signature = createHash('sha256').update(payload + secret).digest('hex');
     const sessionToken = `${payload}.${signature}`;
 
