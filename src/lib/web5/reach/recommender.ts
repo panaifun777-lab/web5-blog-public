@@ -79,8 +79,9 @@ export function scoreOpportunity(
   }
   score += Math.min(skillHits * 12, 24);
 
-  // 赏金规模（非货币报酬已在抓取层清洗，不会进入此分支）
-  if (op.rewardUsdc && op.rewardUsdc > 0) {
+  // 赏金规模（非货币报酬与未确认提案已在抓取层清洗，不会进入此分支）
+  const proposed = (op.tags || []).includes('proposed');
+  if (op.rewardUsdc && op.rewardUsdc > 0 && !proposed) {
     score += 8;
     reasons.push(`明确报酬：${op.rewardUsdc} USDC 参考`);
     if (op.rewardUsdc >= 500) score += 4;
@@ -91,6 +92,11 @@ export function scoreOpportunity(
   if ((op.tags || []).includes('non-monetary')) {
     score -= 12;
     reasons.push('非货币报酬（象征性积分）');
+  }
+
+  // 提案金额未确认：保留曝光但不给予赏金加分
+  if (proposed) {
+    reasons.push('提案金额（未确认）');
   }
 
   // 高价值信号

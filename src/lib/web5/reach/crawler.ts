@@ -214,22 +214,58 @@ const NON_MONETARY_HINTS = [
   'no cryptocurrency',
 ];
 
+/** 提案金额特征：尚未确认的报价，不能当作真实赏金展示或托管 */
+const PROPOSED_HINTS = [
+  'bounty proposal',
+  'proposed bounty',
+  'proposed amount',
+  'proposed reward',
+  'proposed prize',
+  'proposed payment',
+  'not an existing award',
+  'amount to be confirmed',
+  'payment to be confirmed',
+];
+const PROPOSED_AMOUNT_RE = /\$\s?\d[\d,.]*\s*(?:usd|usdc|eur)?\s*(?:is\s+)?proposed\b/i;
+const PROPOSAL_TITLE_RE = /\b(?:bounty|reward|prize)\s+proposal\b/i;
+
 /** 判定一条机会的报酬是否为真实货币 */
 export function isMonetaryReward(op: RawOpportunity): boolean {
   const hay = `${op.title} ${op.description || ''} ${op.rewardText || ''}`.toLowerCase();
   return !NON_MONETARY_HINTS.some((h) => hay.includes(h));
 }
 
-/** 清洗：非货币报酬一律置空 rewardUsdc，保留原始文本供人判断 */
+/** 判定报酬金额是否只是“提案金额”（未确认） */
+export function isProposedReward(
+  op: { title: string; description?: string | null; rewardText?: string | null; tags?: string[] }
+): boolean {
+  if ((op.tags || []).includes('proposed')) return true;
+  const hay = `${op.title} ${op.description || ''} ${op.rewardText || ''}`;
+  return (
+    PROPOSED_AMOUNT_RE.test(hay) ||
+    PROPOSAL_TITLE_RE.test(hay) ||
+    PROPOSED_HINTS.some((h) => hay.toLowerCase().includes(h))
+  );
+}
+
+/** 清洗：非货币 / 未确认提案一律置空 rewardUsdc，保留原始文本供人判断 */
 export function sanitizeReward(op: RawOpportunity): RawOpportunity {
+  const tags = [...(op.tags || [])];
+  let rewardUsdc = op.rewardUsdc;
+
   if (!isMonetaryReward(op)) {
-    return {
-      ...op,
-      rewardUsdc: undefined,
-      tags: [...(op.tags || []), 'non-monetary'].slice(0, 10),
-    };
+    rewardUsdc = undefined;
+    if (!tags.includes('non-monetary')) tags.push('non-monetary');
   }
-  return op;
+  if (isProposedReward(op)) {
+    rewardUsdc = undefined;
+    if (!tags.includes('proposed')) tags.push('proposed');
+  }
+
+  if (rewardUsdc === op.rewardUsdc && tags.length === (op.tags || []).length) {
+    return op;
+  }
+  return { ...op, rewardUsdc, tags: tags.slice(0, 10) };
 }
 
 /** 并发抓取全部源，任一失败不影响其他 */

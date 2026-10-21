@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { createCommerceOrder } from '@/lib/web5/ap2/commerce';
+import { isProposedReward } from '@/lib/web5/reach/crawler';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,22 +35,32 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       total,
-      items: rows.map((r) => ({
-        id: r.id,
-        source: r.source,
-        title: r.title,
-        organization: r.organization,
-        url: r.url,
-        description: r.description,
-        rewardText: r.rewardText,
-        rewardUsdc: r.rewardUsdc,
-        tags: safeJson(r.tags, []),
-        matchScore: r.matchScore,
-        matchReasons: safeJson(r.matchReasons, []),
-        publishedAt: r.publishedAt,
-        fetchedAt: r.fetchedAt,
-        status: r.status,
-      })),
+      items: rows.map((r) => {
+        const tags = safeJson<string[]>(r.tags, []);
+        // 兼容历史数据：未打标的提案金额在此兜底，避免按真实报酬展示
+        const proposed = isProposedReward({
+          title: r.title,
+          description: r.description,
+          rewardText: r.rewardText,
+          tags,
+        });
+        return {
+          id: r.id,
+          source: r.source,
+          title: r.title,
+          organization: r.organization,
+          url: r.url,
+          description: r.description,
+          rewardText: r.rewardText,
+          rewardUsdc: proposed ? null : r.rewardUsdc,
+          tags: proposed && !tags.includes('proposed') ? [...tags, 'proposed'] : tags,
+          matchScore: r.matchScore,
+          matchReasons: safeJson(r.matchReasons, []),
+          publishedAt: r.publishedAt,
+          fetchedAt: r.fetchedAt,
+          status: r.status,
+        };
+      }),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || '读取失败' }, { status: 500 });
@@ -65,6 +76,19 @@ export async function POST(req: NextRequest) {
     if (!op) return NextResponse.json({ error: '机会不存在' }, { status: 404 });
     if (op.status === 'IMPORTED') {
       return NextResponse.json({ error: '该机会已导入' }, { status: 409 });
+    }
+    if (
+      isProposedReward({
+        title: op.title,
+        description: op.description,
+        rewardText: op.rewardText,
+        tags: safeJson<string[]>(op.tags, []),
+      })
+    ) {
+      return NextResponse.json(
+        { error: '该机会的金额仍为提案（未确认），请确认后再创建悬赏' },
+        { status: 409 }
+      );
     }
 
     const bounty = op.rewardUsdc && op.rewardUsdc > 0

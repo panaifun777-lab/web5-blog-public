@@ -185,7 +185,15 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
                         {SOURCE_LABEL[op.source] || op.source}
                       </span>
                       {op.organization && <span className="truncate max-w-[110px]">{op.organization}</span>}
-                      {op.rewardUsdc ? (
+                      {op.tags.includes('proposed') ? (
+                        <span
+                          className="text-[#F59E0B] flex items-center gap-0.5"
+                          title={op.rewardText || undefined}
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          {isEn ? 'Proposed amount (unconfirmed)' : '提案金额（未确认）'}
+                        </span>
+                      ) : op.rewardUsdc ? (
                         <span className="text-[#FFCC00] flex items-center gap-0.5">
                           <Flame className="w-2.5 h-2.5" /> {op.rewardUsdc} USDC
                         </span>
@@ -222,7 +230,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
                       >
                         <ExternalLink className="w-3 h-3" />
                       </a>
-                      {op.source === 'github' && op.status === 'OPEN' && (
+                      {op.source === 'github' && op.status === 'OPEN' && !op.tags.includes('proposed') && (
                         <button
                           onClick={() => importToBounty(op.id)}
                           disabled={importingId === op.id}

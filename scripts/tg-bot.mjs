@@ -137,7 +137,16 @@ function buildRadarMessage(data) {
   }
 
   const lines = items.map((it, idx) => {
-    const pay = it.rewardText || (it.rewardUsdc ? `$${it.rewardUsdc}` : '面议');
+    const isProposed = (it.tags || []).includes('proposed');
+    const rawPay = String(it.rewardText || (it.rewardUsdc ? `$${it.rewardUsdc}` : ''))
+      .replace(/\bproposed?\b|\bproposal\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const pay = isProposed
+      ? /\d/.test(rawPay)
+        ? `提案 ${rawPay}（未确认）`
+        : '提案金额（未确认）'
+      : rawPay || '面议';
     const why = (it.matchReasons || []).slice(0, 2).join(' · ');
     return [
       `${idx + 1}. ${truncate(it.title, 68)}`,
