@@ -124,47 +124,51 @@ const keyboard = {
   ],
 };
 
+function buildRadarMessage(data) {
+  const items = (data.items || [])
+    .filter(it => !(it.tags || []).includes('non-monetary'))
+    .slice(0, 5);
+
+  if (!items.length) {
+    return {
+      text: '🌐 机会雷达当前暂无达标机会，后台每 6 小时自动抓取一轮，请稍后再来。',
+      buttons: [[{ text: '🎯 打开站内机会雷达', web_app: { url: BOUNTY_URL } }]],
+    };
+  }
+
+  const lines = items.map((it, idx) => {
+    const pay = it.rewardText || (it.rewardUsdc ? `$${it.rewardUsdc}` : '面议');
+    const why = (it.matchReasons || []).slice(0, 2).join(' · ');
+    return [
+      `${idx + 1}. ${truncate(it.title, 68)}`,
+      `   ${SOURCE_LABEL[it.source] || it.source} · 报酬 ${pay} · 匹配 ${it.matchScore}`,
+      why ? `   ${why}` : null,
+      `   ${it.url}`,
+    ].filter(Boolean).join('\n');
+  });
+
+  const text = [
+    '🌐 全球劳务机会雷达 · 实时',
+    '数据源：GitHub Bounty / Remotive / Jobicy / RemoteOK',
+    `当前开放 ${data.total || items.length} 条（评分 ≥ 50），推荐 Top ${items.length}：`,
+    '',
+    ...lines,
+    '',
+    '点击下方按钮进入站内雷达，可一键导入为悬赏并结算。',
+  ].join('\n');
+
+  const buttons = items.slice(0, 3).map((it, i) => [
+    { text: `#${i + 1} ${truncate(it.title, 32)}`, url: it.url },
+  ]);
+  buttons.push([{ text: '🎯 打开站内机会雷达', web_app: { url: BOUNTY_URL } }]);
+
+  return { text, buttons };
+}
+
 async function sendRadar(chatId) {
   try {
     const data = await getRadar();
-    const items = (data.items || [])
-      .filter(it => !(it.tags || []).includes('non-monetary'))
-      .slice(0, 5);
-
-    if (!items.length) {
-      await request('sendMessage', {
-        chat_id: chatId,
-        text: '🌐 机会雷达当前暂无达标机会，后台每 6 小时自动抓取一轮，请稍后再来。',
-        reply_markup: { inline_keyboard: [[{ text: '🎯 打开站内机会雷达', web_app: { url: BOUNTY_URL } }]] },
-      });
-      return;
-    }
-
-    const lines = items.map((it, idx) => {
-      const pay = it.rewardText || (it.rewardUsdc ? `$${it.rewardUsdc}` : '面议');
-      const why = (it.matchReasons || []).slice(0, 2).join(' · ');
-      return [
-        `${idx + 1}. ${truncate(it.title, 68)}`,
-        `   ${SOURCE_LABEL[it.source] || it.source} · 报酬 ${pay} · 匹配 ${it.matchScore}`,
-        why ? `   ${why}` : null,
-        `   ${it.url}`,
-      ].filter(Boolean).join('\n');
-    });
-
-    const text = [
-      '🌐 全球劳务机会雷达 · 实时',
-      '数据源：GitHub Bounty / Remotive / Jobicy / RemoteOK',
-      `当前开放 ${data.total || items.length} 条（评分 ≥ 50），推荐 Top ${items.length}：`,
-      '',
-      ...lines,
-      '',
-      '点击下方按钮进入站内雷达，可一键导入为悬赏并结算。',
-    ].join('\n');
-
-    const buttons = items.slice(0, 3).map((it, i) => [
-      { text: `#${i + 1} ${truncate(it.title, 32)}`, url: it.url },
-    ]);
-    buttons.push([{ text: '🎯 打开站内机会雷达', web_app: { url: BOUNTY_URL } }]);
+    const { text, buttons } = buildRadarMessage(data);
 
     await request('sendMessage', {
       chat_id: chatId,
@@ -245,4 +249,17 @@ async function main() {
   poll();
 }
 
-main().catch(console.error);
+if (process.argv.includes('--selftest')) {
+  getRadar()
+    .then((data) => {
+      const { text, buttons } = buildRadarMessage(data);
+      console.log(text);
+      console.log(`\n[inline buttons] ${buttons.length} rows`);
+    })
+    .catch((err) => {
+      console.error('selftest failed:', err);
+      process.exit(1);
+    });
+} else {
+  main().catch(console.error);
+}
