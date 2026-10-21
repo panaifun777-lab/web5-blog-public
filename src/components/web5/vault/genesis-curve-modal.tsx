@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Rocket, ShieldCheck, Coins, Sparkles, Lock, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { PUBLIC_MONEY_FLOWS_ENABLED, PUBLIC_DEMO_NOTICE, PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE } from '@/lib/launch/public';
 
 interface GenesisCurveModalProps {
   open: boolean;
@@ -53,6 +54,10 @@ export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: Ge
   const estimatedWbog = Math.floor(amountNum / currentPrice);
 
   const handleContribute = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/curve/vault', {
@@ -104,6 +109,12 @@ export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: Ge
               : '社区驱动的创世蓄水池。累积达到 3,000 USDC 时自动毕业，全部资金 100% 打入 Uniswap v4 底池并永久打入黑洞销毁 LP，团队彻底放弃权限！'}
           </DialogDescription>
         </DialogHeader>
+
+        {!PUBLIC_MONEY_FLOWS_ENABLED && (
+          <div className="rounded-lg border border-[#FFCC00]/40 bg-[#FFCC00]/10 px-3 py-2 text-[11px] text-[#FFE58A]">
+            <b>{PUBLIC_DEMO_NOTICE}</b>。认购、代币发放与毕业机制尚未上线，本弹窗不接收任何资金。
+          </div>
+        )}
 
         {/* 蓄水进度条 */}
         <div className="p-4 rounded-xl bg-gradient-to-br from-[#FFCC00]/10 via-[#050508] to-transparent border border-[#FFCC00]/30 space-y-2.5 my-2">
@@ -178,11 +189,12 @@ export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: Ge
         <div className="pt-2">
           <Button
             onClick={handleContribute}
-            disabled={submitting}
-            className="w-full bg-gradient-to-r from-[#FFCC00] via-[#00FFCC] to-[#0066FF] text-black font-black text-xs h-10 shadow-xl shadow-[#FFCC00]/25 hover:opacity-90"
+            disabled={submitting || !PUBLIC_MONEY_FLOWS_ENABLED}
+            title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
+            className="w-full bg-gradient-to-r from-[#FFCC00] via-[#00FFCC] to-[#0066FF] text-black font-black text-xs h-10 shadow-xl shadow-[#FFCC00]/25 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Rocket className="w-4 h-4 mr-1.5" />
-            {submitting ? '正在注资并派发天使代币...' : `⚡ 立即注资 ${amountNum} USDC 认购 $WBOG (锁定天使席位)`}
+            {submitting ? '正在注资并派发天使代币...' : PUBLIC_MONEY_FLOWS_ENABLED ? `⚡ 立即注资 ${amountNum} USDC 认购 $WBOG` : PUBLIC_DEMO_NOTICE}
           </Button>
         </div>
       </DialogContent>

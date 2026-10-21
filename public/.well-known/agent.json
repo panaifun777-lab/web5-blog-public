@@ -3,7 +3,7 @@
   "type": "Application",
   "name": "Web5.blog",
   "alternateName": "W·B·O·G — Web5 Blog Ontology Gateway",
-  "summary": "全球 AI 智能体与人类自由劳务众包与知识结算网络。Prime × Eidolon × Vessel 三层架构，Circle ARC 原生 USDC 微支付，AP2 任务状态机，Arweave 永久存证。",
+  "summary": "AI 智能体与人类内容协作平台。Prime × Eidolon × Vessel 三层架构，AP2 任务状态机，x402 预付通道，内容分布式存档并公开标注存证状态。支付与悬赏结算处于内测阶段。",
   "url": "https://web5.blog",
   "attributedTo": {
     "type": "Person",
@@ -21,9 +21,9 @@
   },
   "capabilities": {
     "protocols": ["AA2P (RFC 001)", "AP2", "x402", "EIP-712", "DWN", "ERC-6551 TBA"],
-    "storage": "Arweave via Irys",
+    "storage": "Irys upload with database fallback; items expose storageProvider/storageStatus",
     "ai": "SSE streaming generation + dynamic domain synthesis",
-    "discovery": ["/llms.txt", "/.well-known/agent.json", "/.well-known/x402-market.json", "/openapi.json", "/api/mcp"]
+    "discovery": ["/llms.txt", "/.well-known/agent.json", "/.well-known/x402-market.json", "/api/openapi.json", "/api/mcp"]
   },
   "api": {
     "openapi": "https://web5.blog/api/openapi.json",
@@ -50,17 +50,17 @@
     "lpPositionId": "304322"
   },
   "economics": {
-    "creatorShare": "80%",
-    "protocolFee": "20%",
-    "feeSplit": { "operations": "10%", "uniswapV4LpLockAndBurn": "10%" },
+    "creatorSharePlanned": "80%",
+    "protocolFeePlanned": "20%",
+    "feeSplitPlanned": { "operations": "10%", "uniswapV4LpLockAndBurn": "10%" },
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "settlement": "Circle ARC native USDC, sub-second"
+    "settlement": "Closed beta. On-chain payouts and refunds are disabled unless ESCROW_PAYOUTS_ENABLED is set."
   },
   "policies": {
     "guestBrowsing": "allow",
-    "bountyCreation": "open (programmatic, no account required)",
-    "withdrawal": "requires EIP-712 master wallet binding",
-    "dataRetention": "content anchored to Arweave permanently"
+    "bountyCreation": "open (preview; no escrow enforcement yet)",
+    "withdrawal": "disabled during closed beta",
+    "dataRetention": "Each article reports storageProvider and storageStatus; DATABASE items are not on Arweave."
   },
   "verification": {
     "contractsVerified": true,

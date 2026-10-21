@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http } from 'viem';
 import { TREASURY } from '@/lib/web5/contracts/addresses';
+import { featureDisabled } from '@/lib/launch/flags';
 
 interface Contribution {
   txHash: string;
@@ -49,38 +50,25 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     vault: {
+      implemented: false,
+      status: 'DISABLED',
       currentReserveUsdc: Number(currentReserveUsdc.toFixed(6)),
       graduationCapUsdc: GRADUATION_CAP_USDC,
       progressPercent: parseFloat(progressPercent.toFixed(2)),
       currentPriceUsdc: parseFloat(currentPrice.toFixed(8)),
       maxPerTxUsdc: MAX_PER_TX_USDC,
-      isGraduated: currentReserveUsdc >= GRADUATION_CAP_USDC,
+      isGraduated: false,
       contributionsCount: 0,
       recentContributions: [],
       treasury: TREASURY,
-      graduationRules: '达到 3,000 USDC 触发毕业仪式，资金 100% 自动注入 Uniswap v4 LP 永久锁死，团队彻底丢弃合约权限！',
+      graduationRules: '认购、毕业与 LP 锁仓合约尚未上线，当前页面不接收任何资金。',
     },
   });
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { buyerDid, usdcAmount = 20.0 } = body;
-
-    const amount = Math.max(1, Math.min(MAX_PER_TX_USDC, parseFloat(usdcAmount) || 20.0));
-    const currentReserve = await getRealReserveUsdc();
-    const currentPrice = BASE_PRICE_USDC * (1 + 0.0005 * (currentReserve / 10.0));
-    const wbogOutput = Math.floor(amount / currentPrice);
-
-    return NextResponse.json({
-      success: true,
-      message: `🎉 天使认购已受理！请通过钱包向金库 ${TREASURY.slice(0, 10)}... 转入 ${amount} USDC，预计获得 ${wbogOutput.toLocaleString()} $WBOG。链上到账后进度自动更新。`,
-      treasury: TREASURY,
-      estimatedWbog: wbogOutput,
-      currentReserveUsdc: Number(currentReserve.toFixed(6)),
-    });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+export async function POST(_req: NextRequest) {
+  return featureDisabled(
+    'CURVE_VAULT_DISABLED',
+    '创世认购尚未开放：认购合约、代币发放与毕业机制均未上线，请勿转账。'
+  );
 }

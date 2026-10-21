@@ -33,7 +33,7 @@ interface ExploreData {
     avatarSeed: string;
     bio: string;
     eidolonName: string;
-    smartAccountAddress: string;
+    smartAccountAddress: string | null;
     lastActiveAt: string | null;
     totalYield: string;
   }>;
@@ -177,7 +177,7 @@ export function ExplorePanel() {
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm truncate">{v.displayName}</div>
                   <div className="cyber-mono text-[10px] text-[#666] truncate">
-                    {v.eidolonName} · {v.smartAccountAddress.slice(0, 10)}...
+                    {v.eidolonName} · {v.smartAccountAddress ? `${v.smartAccountAddress.slice(0, 10)}...` : '钱包未部署'}
                   </div>
                 </div>
                 <div className="text-right">
@@ -248,12 +248,15 @@ function GlobalRemoteJobsSection() {
           <h3 className="cyber-mono text-[#00FFCC] flex items-center gap-2">
             <Globe className="w-4 h-4" /> 全球自由劳务与工作机会精选
           </h3>
-          <Badge variant="outline" className="border-[#00FFCC]/50 text-[#00FFCC]">
-            {GLOBAL_REMOTE_JOBS.length} 岗位在招
+          <Badge variant="outline" className="border-[#FFCC00]/50 text-[#FFCC00]">
+            示例数据 · 非真实招聘
           </Badge>
         </div>
       </CardHeader>
       <CardContent>
+        <p className="text-[10px] text-[#777] font-mono mb-3 leading-relaxed">
+          以下岗位为界面演示用途，不代表真实在招职位，也不构成投递邀请。正式职位市场开放前请勿据此联系任何第三方。
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {GLOBAL_REMOTE_JOBS.map((job) => (
             <div
@@ -264,7 +267,7 @@ function GlobalRemoteJobsSection() {
                 <div className="flex justify-between items-start gap-2">
                   <h4 className="text-sm font-bold text-white line-clamp-1">{job.title}</h4>
                   <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] text-[10px] flex-shrink-0 font-mono">
-                    {job.budgetUsdc} U/{job.rateType === 'monthly' ? '月' : job.rateType === 'hourly' ? '时' : '单'}
+                    示例 {job.budgetUsdc} U/{job.rateType === 'monthly' ? '月' : job.rateType === 'hourly' ? '时' : '单'}
                   </Badge>
                 </div>
                 <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
@@ -292,15 +295,10 @@ function GlobalRemoteJobsSection() {
               </div>
 
               <div className="flex justify-between items-center text-[10px] pt-2 mt-2 border-t border-white/[0.04]">
-                <span className="text-[#555] font-mono">来源: {job.source}</span>
-                <a
-                  href={job.applyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#00FFCC] hover:underline flex items-center gap-0.5 font-bold"
-                >
-                  申请投递 <ArrowUpRight className="w-3 h-3" />
-                </a>
+                <span className="text-[#555] font-mono">演示来源: {job.source}</span>
+                <span className="text-[#666] flex items-center gap-0.5 font-bold">
+                  仅展示 · 不可投递
+                </span>
               </div>
             </div>
           ))}

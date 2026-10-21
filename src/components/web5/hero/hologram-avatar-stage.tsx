@@ -31,18 +31,11 @@ export function HologramAvatarStage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [blockHeight, setBlockHeight] = useState('5042');
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
   useEffect(() => {
     setMounted(true);
-    // 模拟区块高度动态微动
-    const baseBlock = 284910;
-    const interval = setInterval(() => {
-      setBlockHeight(String(baseBlock + Math.floor(Date.now() / 2000) % 10000));
-    }, 2000);
-    return () => clearInterval(interval);
   }, []);
 
   // ━━ 3D 量子粒子场与鼠标磁场微动引擎 ━━
@@ -241,8 +234,8 @@ export function HologramAvatarStage() {
           <span className="text-[#00FFCC] font-bold">SYSTEM: OPERATIONAL</span>
         </div>
         <div className="hidden sm:flex items-center gap-3">
-          <span className="text-[#666]">BLOCK: #{blockHeight}</span>
-          <span className="text-[#FFCC00]">SYNC: 99.8%</span>
+          <span className="text-[#666]">CHAIN: ARC-5042</span>
+          <span className="text-[#FFCC00]">MODE: PREVIEW</span>
         </div>
       </div>
 
@@ -267,7 +260,7 @@ export function HologramAvatarStage() {
       {/* 灵魂宣言 (来自 plvtvs.one 核心文案) */}
       <div className="relative z-10 text-center space-y-2 mt-2 pt-3 border-t border-white/[0.04]">
         <div className="text-[10px] font-mono tracking-[0.3em] text-[#FFCC00] uppercase cyber-flicker">
-          QUANTUM MONETIZATION CORE · V: 2.0.26
+          QUANTUM IDENTITY CORE · V: 2.0.26
         </div>
         <h3 className="text-base sm:text-lg font-black tracking-wider text-white font-mono leading-tight">
           YOUR SOUL IN
@@ -278,8 +271,8 @@ export function HologramAvatarStage() {
         </h3>
         <p className="text-[11px] text-[#888] leading-relaxed max-w-xs mx-auto">
           {isEn
-            ? 'The sovereign avatar engineered to intercept, adapt and monetize network value streams autonomously.'
-            : '自主拦截、适应并变现全网价值流的高维数字分身，赋予碳基生命永久主权。'}
+            ? 'A sovereign avatar that reads, writes and publishes on your behalf — every action auditable.'
+            : '代为阅读、写作与发布的高维数字分身，每一次行动都可回溯审计。'}
         </p>
         <div className="pt-1">
           <Badge className="bg-[#00FFCC]/10 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] font-mono py-0.5 tracking-widest">
@@ -288,26 +281,29 @@ export function HologramAvatarStage() {
         </div>
       </div>
 
-      {/* 底部真实公信力与经济指标 (Real Yield & Proof of Value) */}
+      {/* 协议状态（内测展示，非收益承诺） */}
       <div className="relative z-10 mt-5 pt-3.5 border-t border-white/[0.06] space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-            <div className="text-sm font-bold text-[#00FFCC]">200 年</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Permaweb' : 'Arweave永久'}</div>
+            <div className="text-sm font-bold text-[#00FFCC]">PROV</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Provenance' : '存证可查'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#FFCC00]">x402</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Micro-pay' : '纳秒微支付'}</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Beta' : '内测'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-            <div className="text-sm font-bold text-[#10B981]">80%</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Net Share' : '创作者实得'}</div>
+            <div className="text-sm font-bold text-[#10B981]">80%*</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Planned' : '规划分成'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
-            <div className="text-sm font-bold text-[#B080E8]">100%</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'USDC Gas' : '原生USDC'}</div>
+            <div className="text-sm font-bold text-[#B080E8]">USDC</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Gas Token' : '原生 Gas'}</div>
           </div>
         </div>
+        <p className="text-[9px] text-[#555] font-mono text-center">
+          {isEn ? '*Planned split, not yet enforced on-chain.' : '*规划中的分成比例，尚未在链上执行。'}
+        </p>
 
         {/* 协议与发现链接 */}
         <div className="flex items-center justify-between text-[10px] text-[#666] font-mono px-1">

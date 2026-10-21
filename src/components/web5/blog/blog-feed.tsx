@@ -28,8 +28,12 @@ import { TaskBoard } from '@/components/web5/commerce/task-board';
 import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-panel';
 import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
 import { CognitiveThread } from '@/components/web5/blog/cognitive-thread';
-import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
 import { CurateShareButton } from '@/components/web5/share/curate-share-button';
+import {
+  PUBLIC_MONEY_FLOWS_ENABLED,
+  PUBLIC_DEMO_NOTICE,
+  PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE,
+} from '@/lib/launch/public';
 import { getCognitiveCoreState } from '@/lib/web5/eidolon/cognitive-core';
 import { Zap, Activity, Users, Bot } from 'lucide-react';
 import { vesselWalletTransfer, getOrCreateVesselWallet, getVesselWalletBalance } from '@/lib/web5/vessel-wallet';
@@ -46,7 +50,7 @@ interface BlogPost {
   authorBio: string;
   license: string;
   royaltyRate: number;
-  arpVcId: string;
+  arpVcId: string | null;
   publishedAt: string;
   stats: {
     reads: number;
@@ -310,6 +314,11 @@ export function BlogFeed({
   };
 
   const submitTip = async (post: BlogPost) => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      setMessage(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      setTimeout(() => setMessage(null), 6000);
+      return;
+    }
     if (!session) {
       setMessage('请先唤醒容器');
       return;
@@ -361,10 +370,7 @@ export function BlogFeed({
       });
       const data = await res.json();
       if (data.success) {
-        const rebateMsg = data.split?.curatorAmountUsdc
-          ? ` · 策展返佣 ${data.split.curatorAmountUsdc} USDC (15%)`
-          : '';
-        setMessage(`✅ 专用钱包已打赏 ${tipAmount} USDC！作者实得 ${data.split?.authorAmountUsdc} USDC · 平台抽成 ${data.split?.protocolFeeUsdc} USDC${rebateMsg}`);
+        setMessage(`✅ 链上打赏 ${tipAmount} USDC 已进入平台金库。作者分账待后台出款，当前仅记录待分账台账。`);
         setTimeout(() => setMessage(null), 6000);
       } else {
         setMessage(`✗ ${data.error || '结算验证失败'}`);
@@ -404,11 +410,13 @@ export function BlogFeed({
       // 直接写入 interaction
       const dbRes = await fetch('/api/content/detail', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.sessionToken}`,
+        },
         body: JSON.stringify({
           arweaveHash: selected.detail.arweaveHash,
           comment,
-          vesselDid: session.vesselDid,
         }),
       });
       if (dbRes.ok) {
@@ -522,7 +530,7 @@ export function BlogFeed({
             })()}
 
             <div className="cyber-mono text-xs text-[#666] mb-6">
-              {new Date(detail.publishedAt).toLocaleString('zh-CN')} · Arweave: {detail.arweaveHash.slice(0, 16)}... · NFT #{detail.tokenId} · ARP: {detail.arpVcId?.slice(0, 20)}...
+              {new Date(detail.publishedAt).toLocaleString('zh-CN')} · Arweave: {detail.arweaveHash.slice(0, 16)}...{detail.tokenId ? ` · NFT #${detail.tokenId}` : ''}{detail.arpVcId ? ` · ARP: ${detail.arpVcId.slice(0, 20)}...` : ''}
             </div>
 
             {/* 正文 */}
@@ -532,14 +540,7 @@ export function BlogFeed({
               </pre>
             </article>
 
-            {/* HTTP 402 无感微支付渐进解锁区域 (Blur-to-Clear) */}
-            <BlurUnlockSection
-              contentId={detail.id}
-              priceUsdc="0.05"
-              sectionTitle="【高维认知】分身私有推演数据集与完整架构提示词"
-              previewText="本章节包含基于 Circle ARC Mainnet (5042) 的真实智能账户出纳参数、TDPO 认知防御规则集及高维共鸣向量模型..."
-              fullContent={`=== Web5 Cognitive Shard [CONFIDENTIAL] ===\n\n1. VESSEL_SMART_ACCOUNT: 0x${detail.authorDid.slice(-40)}\n2. ARC_ESCROW_CONTRACT: 0xe0d246c09d7a3097bab3148f89201157dd531eea\n3. PROMPT_WEIGHTS: {"scholar": 0.85, "philosopher": 0.95, "capitalist": 0.90}\n4. ZK_DELEGATION_PROOF: 0x4f8a...c09d [VERIFIED]\n\n已通过预授权 Session Allowance 完成 0.05 USDC (或 500 $WBOG) 极速结算，其中 50% 已自动回购销毁！`}
-            />
+            {/* 付费解锁尚未接入真实的托管与内容解密，内测阶段不展示付费区块 */}
 
             {/* 互动栏 */}
             <div className="mt-8 pt-6 border-t border-[#1a1a1a]">
@@ -569,13 +570,13 @@ export function BlogFeed({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Coins className="w-4 h-4 text-[#FFCC00]" />
-                    <span className="text-xs font-bold text-white">AP2 去中心化创作者打赏 (Tip Author)</span>
-                    <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[9px]">
-                      作者实得 80%
+                    <span className="text-xs font-bold text-white">AP2 创作者打赏 (Tip Author)</span>
+                    <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px]">
+                      {PUBLIC_MONEY_FLOWS_ENABLED ? '计划 80% 分账' : PUBLIC_DEMO_NOTICE}
                     </Badge>
                   </div>
                   <span className="text-[10px] text-[#888] font-mono">
-                    20% 协议分润: 50% 运营出纳 + 50% 自动注入 Uniswap LP
+                    打赏进入平台金库；作者分账尚未自动出款
                   </span>
                 </div>
 
@@ -625,11 +626,12 @@ export function BlogFeed({
                   </div>
                   <Button
                     onClick={() => submitTip(detail)}
-                    disabled={submitting}
-                    className="bg-gradient-to-r from-[#FFCC00] to-[#FF66AA] text-black font-black text-xs h-9 px-4 hover:opacity-90 shadow-lg shadow-[#FFCC00]/20 flex-shrink-0"
+                    disabled={submitting || !PUBLIC_MONEY_FLOWS_ENABLED}
+                    title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
+                    className="bg-gradient-to-r from-[#FFCC00] to-[#FF66AA] text-black font-black text-xs h-9 px-4 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#FFCC00]/20 flex-shrink-0"
                   >
                     <Coins className="w-4 h-4 mr-1" />
-                    {submitting ? '打赏结算中...' : `立即打赏 ${tipAmount} USDC`}
+                    {submitting ? '打赏结算中...' : PUBLIC_MONEY_FLOWS_ENABLED ? `立即打赏 ${tipAmount} USDC` : PUBLIC_DEMO_NOTICE}
                   </Button>
                   <CurateShareButton
                     arweaveHash={detail.arweaveHash}
@@ -692,7 +694,6 @@ export function BlogFeed({
             roleTag: i.type === 'TIP' ? '微支付打赏者' : '认知参与者',
             content: i.comment || `进行了 ${i.type} 交互`,
             timestamp: new Date(i.createdAt).toLocaleTimeString(),
-            resonanceScore: 92,
           }))}
         />
       </div>
@@ -708,7 +709,7 @@ export function BlogFeed({
             {isEn ? 'Permaweb Blog Stream' : '博客流'}
           </h2>
           <p className="text-xs text-[#888] mt-0.5">
-            {isEn ? 'Decentralized essays permanently anchored to Arweave & Circle ARC.' : '去中心化思想母体，Arweave 永久存证与 Circle ARC 原生结算。'}
+            {isEn ? 'Decentralized essays with transparent storage provenance.' : '去中心化思想母体，每篇内容公开标注存储与存证状态。'}
           </p>
         </div>
 

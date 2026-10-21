@@ -6,7 +6,7 @@
 
 import { createHash, randomBytes } from 'crypto';
 import type {
-  VesselSession, BudgetFence, VesselPermission,
+  VesselSession, BudgetFence, VesselPermission, AP2Category,
 } from './types';
 import { getVesselTokenSecret } from './token-secret';
 import { db } from '@/lib/db';
@@ -142,9 +142,9 @@ export async function resolveVesselSessionFromToken(
             rateLimitPerMin: parsed.rateLimitPerMin ?? 10,
             whitelist: parsed.whitelist || [],
             categoryLimit: parsed.categoryLimit
-              ? Object.fromEntries(
+              ? (Object.fromEntries(
                   Object.entries(parsed.categoryLimit).map(([k, v]) => [k, BigInt(v as string)])
-                )
+                ) as Record<AP2Category, bigint>)
               : undefined,
           };
         } catch {}

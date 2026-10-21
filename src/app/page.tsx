@@ -7,38 +7,73 @@
 // ════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from 'react';
-import { ScanRitual } from '@/components/web5/ritual/scan-ritual';
+import dynamic from 'next/dynamic';
 import { MatrixRain } from '@/components/web5/effects/matrix-rain';
 import { SplashAwakening } from '@/components/web5/effects/splash-awakening';
-import { getCurrentVesselSession, revokeVesselSession } from '@/lib/web5/vessel-auth';
+import { getCurrentVesselSession, revokeVesselSession, parseSessionResponse, persistVesselSession } from '@/lib/web5/vessel-auth';
 import type { VesselSession } from '@/lib/web5/types';
+import type { VesselAuthPayload } from '@/components/web5/ritual/scan-ritual';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Cpu, BookOpen, Users, Globe, Target, Bot, Sparkles, Eye, Wallet, Twitter,
   ChevronRight, TrendingUp, Radio, FileText, MessageCircle, Heart, Share2,
-  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket,
+  Search, LogOut, Zap, Shield, Activity, ArrowUpRight, ArrowRight, Clock, Hash, Quote, Gift, Rocket, Loader2,
 } from 'lucide-react';
 
-import { BlogFeed } from '@/components/web5/blog/blog-feed';
-import { Writer } from '@/components/web5/write/writer';
-import { ExplorePanel } from '@/components/web5/explore/explore-panel';
-import { MyVessels } from '@/components/web5/dashboard/my-vessels';
-import { SettingsPanel } from '@/components/web5/settings/settings-panel';
-import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
-import { Footer } from '@/components/web5/footer';
-import { GenesisAirdropModal } from '@/components/web5/airdrop/genesis-airdrop-modal';
-import { SponsorModal } from '@/components/web5/trending/sponsor-modal';
-import { GenesisCurveModal } from '@/components/web5/vault/genesis-curve-modal';
-import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
-import { TaskBoard } from '@/components/web5/commerce/task-board';
-import { ExpertChamber } from '@/components/web5/experts/expert-chamber';
-import { CrowdfundingPanel } from '@/components/web5/crowdfunding/crowdfunding-panel';
-import { HologramAvatarStage } from '@/components/web5/hero/hologram-avatar-stage';
 import { useTma } from '@/components/web5/telegram/tma-provider';
-import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
+import { getOrCreateVesselWallet, signVesselLoginMessage } from '@/lib/web5/vessel-wallet';
 import { useI18n } from '@/lib/i18n/index';
+
+const PanelLoading = ({ label }: { label: string }) => (
+  <div className="flex items-center justify-center py-16 text-xs font-mono text-[#555]">{label}</div>
+);
+
+const ScanRitual = dynamic(() => import('@/components/web5/ritual/scan-ritual').then((m) => m.ScanRitual), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING RITUAL…" />,
+});
+const BlogFeed = dynamic(() => import('@/components/web5/blog/blog-feed').then((m) => m.BlogFeed), {
+  loading: () => <PanelLoading label="LOADING FEED…" />,
+});
+const Writer = dynamic(() => import('@/components/web5/write/writer').then((m) => m.Writer), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING EDITOR…" />,
+});
+const ExplorePanel = dynamic(() => import('@/components/web5/explore/explore-panel').then((m) => m.ExplorePanel), {
+  loading: () => <PanelLoading label="LOADING EXPLORE…" />,
+});
+const MyVessels = dynamic(() => import('@/components/web5/dashboard/my-vessels').then((m) => m.MyVessels), {
+  ssr: false,
+  loading: () => <PanelLoading label="LOADING DASHBOARD…" />,
+});
+const SettingsPanel = dynamic(() => import('@/components/web5/settings/settings-panel').then((m) => m.SettingsPanel), {
+  loading: () => <PanelLoading label="LOADING SETTINGS…" />,
+});
+const LanguageSwitcher = dynamic(() => import('@/components/web5/i18n/language-switcher').then((m) => m.LanguageSwitcher));
+const Footer = dynamic(() => import('@/components/web5/footer').then((m) => m.Footer));
+const GenesisAirdropModal = dynamic(() => import('@/components/web5/airdrop/genesis-airdrop-modal').then((m) => m.GenesisAirdropModal), { ssr: false });
+const SponsorModal = dynamic(() => import('@/components/web5/trending/sponsor-modal').then((m) => m.SponsorModal), { ssr: false });
+const GenesisCurveModal = dynamic(() => import('@/components/web5/vault/genesis-curve-modal').then((m) => m.GenesisCurveModal), { ssr: false });
+const WalletGuideModal = dynamic(() => import('@/components/web5/auth/wallet-guide-modal').then((m) => m.WalletGuideModal), { ssr: false });
+const TaskBoard = dynamic(() => import('@/components/web5/commerce/task-board').then((m) => m.TaskBoard), {
+  loading: () => <PanelLoading label="LOADING BOUNTIES…" />,
+});
+const ExpertChamber = dynamic(() => import('@/components/web5/experts/expert-chamber').then((m) => m.ExpertChamber), {
+  loading: () => <PanelLoading label="LOADING EXPERTS…" />,
+});
+const CrowdfundingPanel = dynamic(() => import('@/components/web5/crowdfunding/crowdfunding-panel').then((m) => m.CrowdfundingPanel), {
+  loading: () => <PanelLoading label="LOADING CROWDFUNDING…" />,
+});
+const HologramAvatarStage = dynamic(() => import('@/components/web5/hero/hologram-avatar-stage').then((m) => m.HologramAvatarStage), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[520px] rounded-3xl border border-[#00FFCC]/10 bg-[#070b12] flex items-center justify-center">
+      <span className="text-[10px] font-mono text-[#3a5a55] tracking-[0.3em]">INITIALIZING STAGE…</span>
+    </div>
+  ),
+});
 
 // ━━ 协议色语义映射 ━━
 const COLORS = {
@@ -58,17 +93,6 @@ const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: str
   crowdfunding:  { label: '创意众筹', icon: <Users />,    color: '#B080E8' },
 };
 
-// ━━ 趋势数据 ━━
-const TRENDING = [
-  { rank: 1, title: 'Web5 宣言：从 Web3 到个人解放的范式跃迁', views: 2341, tag: '科技' },
-  { rank: 2, title: 'Vessel 经济模型深度分析：AP2 收益机制', views: 1890, tag: '众筹' },
-  { rank: 3, title: 'AP2 协议实战：三步实现微支付分润', views: 1567, tag: '科技' },
-  { rank: 4, title: 'AI 分身哲学：Eidolon 人格的边界在哪里', views: 1234, tag: '人文' },
-  { rank: 5, title: '从 Observer 到 Vessel：转化率优化指南', views: 987, tag: 'AI专家' },
-  { rank: 6, title: '数字解放：飘叔 的治理哲学', views: 876, tag: '人文' },
-  { rank: 7, title: 'Circle ARC 稳定币公链：10 亿 $WBOG 架构', views: 765, tag: '科技' },
-];
-
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -78,6 +102,9 @@ export default function Home() {
   const [activeModule, setActiveModule] = useState<Module>('tech');
   const [loginMethod, setLoginMethod] = useState<'vessel' | 'wallet' | 'twitter' | null>(null);
   const [vesselWalletAddr, setVesselWalletAddr] = useState<string>('');
+  const [vesselAuth, setVesselAuth] = useState<VesselAuthPayload | null>(null);
+  const [loginBusy, setLoginBusy] = useState<'vessel' | 'wallet' | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [airdropOpen, setAirdropOpen] = useState(false);
   const [curveModalOpen, setCurveModalOpen] = useState(false);
@@ -213,56 +240,63 @@ export default function Home() {
   };
 
   const handleRitualSuccess = (s: VesselSession) => {
-    setSession(s); setView('app'); setTab('vessels'); setLoginMethod(null);
+    setSession(s);
+    setView('app');
+    // 观察者会话没有 Vessel 身份，落到分身矩阵只会看到升级提示，直接进博客流
+    setTab(s.vesselDid ? 'vessels' : 'feed');
+    setLoginMethod(null);
+    setVesselAuth(null);
+    setLoginError(null);
   };
 
-  // 容器登录：先连接真实钱包绑定身份，再进入四步握手仪式
+  // 容器登录：用本机持久化 Vessel 密钥直接签名，免钱包插件，也不会被 WebView 吞掉弹窗
   const handleVesselLogin = async () => {
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) {
-      alert('容器唤醒需要先连接真实钱包。请安装 MetaMask / OKX 后重试。');
-      return;
-    }
+    if (loginBusy) return;
+    setLoginError(null);
+    setLoginBusy('vessel');
+    // 提前预热分身矩阵代码块，仪式结束后立即渲染
+    void import('@/components/web5/dashboard/my-vessels').catch(() => {});
     try {
-      // 切换 ARC 主网
-      const chainIdHex = '0x13b2';
-      try {
-        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-      } catch (switchError: any) {
-        if (switchError.code === 4902) {
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: chainIdHex,
-              chainName: 'Arc Mainnet',
-              nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-              rpcUrls: ['https://rpc.mainnet.arc.io'],
-              blockExplorerUrls: ['https://explorer.arc.io'],
-            }],
-          });
-        } else {
-          throw switchError;
-        }
-      }
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-      const addr = accounts[0];
-      // personal_sign 绑定身份
-      const signMsg = `Web5.blog Sovereign Identity Binding\n\nWallet: ${addr}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-      await ethereum.request({ method: 'personal_sign', params: [signMsg, addr] });
-      setVesselWalletAddr(addr);
+      const vessel = getOrCreateVesselWallet();
+      const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${vessel.address}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
+      const signature = await signVesselLoginMessage(signMsg);
+      setVesselWalletAddr(vessel.address);
+      setVesselAuth({ walletAddress: vessel.address, vesselAddress: vessel.address, signature, message: signMsg });
       setLoginMethod('vessel');
     } catch (err: any) {
-      console.warn('[Web5] Vessel wallet bind error:', err);
-      if (err?.code === 4001) {
-        alert('已取消签名');
-      } else {
-        alert('钱包绑定失败：' + (err?.message || '请确认钱包已连接'));
-      }
+      console.warn('[Web5] Vessel awakening error:', err);
+      setLoginError(isEn
+        ? 'Vessel awakening failed: ' + (err?.message || 'please retry')
+        : '容器唤醒失败：' + (err?.message || '请重试'));
+    } finally {
+      setLoginBusy(null);
     }
+  };
+
+  const handleWalletLogin = async () => {
+    if (loginBusy) return;
+    setLoginError(null);
+    await connectWallet(
+      setSession,
+      setView,
+      setTab,
+      () => setWalletGuideOpen(true),
+      (busy: boolean) => setLoginBusy(busy ? 'wallet' : null),
+      (msg: string | null) => setLoginError(msg),
+    );
   };
 
   const handleLogout = async () => {
-    await revokeVesselSession(); setSession(null); setView('ritual');
+    await revokeVesselSession(); setSession(null); setView('ritual'); setVesselAuth(null); setLoginMethod(null);
+    setLoginBusy(null); setLoginError(null);
+  };
+
+  // 弹窗内的“唤醒容器”入口：关掉遮挡的弹窗，回到登录页立即唤醒
+  const openVesselLogin = () => {
+    setWalletGuideOpen(false);
+    setAirdropOpen(false);
+    setView('ritual');
+    void handleVesselLogin();
   };
 
   // ━━ 统一服务端与首屏渲染，防止客户端插件注入引发报错 ━━
@@ -279,6 +313,11 @@ export default function Home() {
           moduleLabels={moduleLabels}
           loginMethod={loginMethod}
           setLoginMethod={setLoginMethod}
+          vesselAuth={vesselAuth}
+          onVesselLogin={handleVesselLogin}
+          onWalletLogin={handleWalletLogin}
+          loginBusy={loginBusy}
+          loginError={loginError}
           handleRitualSuccess={handleRitualSuccess}
           setSession={setSession}
           setView={setView}
@@ -306,13 +345,12 @@ export default function Home() {
           {/* Brand & 动态唤醒光环 */}
           <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer" onClick={() => setTab('feed')}>
             <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-[#00FFCC]/40 shadow-lg shadow-[#00FFCC]/20 bg-black flex items-center justify-center">
-              <video
-                src="/brand-awakening.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover scale-110"
+              <img
+                src="/brand-awakening-poster.jpg"
+                alt="Web5.blog"
+                width={72}
+                height={72}
+                className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-[#00FFCC]/10 pointer-events-none" />
             </div>
@@ -355,14 +393,6 @@ export default function Home() {
                 }}
               >{m.icon}<span>{moduleLabels[key as Module] || m.label}</span></button>
             ))}
-            {/* Founder link */}
-            <a href="/founder"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap text-[#555] hover:text-[#FFCC00] hover:bg-[#FFCC00]/10"
-              style={{ borderLeft: '2px solid transparent' }}
-            >
-              <Quote className="w-3.5 h-3.5" />
-              <span>{t?.nav?.founder || '分身致辞'}</span>
-            </a>
             {/* Language switcher */}
             <LanguageSwitcher />
           </nav>
@@ -656,19 +686,19 @@ export default function Home() {
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
-                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格信标</span>
+                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格参考</span>
                   </div>
                   <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] py-0 h-4 font-mono">
                     #304322
                   </Badge>
                 </div>
                 <div className="flex items-baseline justify-between font-mono">
-                  <span className="text-[11px] text-[#888]">$WBOG 单价:</span>
+                  <span className="text-[11px] text-[#888]">$WBOG 单价 (示例):</span>
                   <span className="text-base font-bold text-[#00FFCC]">$0.000080 USDC</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[#666] font-mono">
-                  <span>1 USDC = 12,500 WBOG</span>
-                  <span className="text-[#10B981]">● 交易活跃 (已连接真实池)</span>
+                  <span>示例汇率 1 USDC = 12,500 WBOG</span>
+                  <span className="text-[#888]">○ 静态示例价 · 未接入实时报价</span>
                 </div>
                 <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2">
                   <a
@@ -768,7 +798,7 @@ export default function Home() {
         open={airdropOpen}
         onOpenChange={setAirdropOpen}
         session={session}
-        onAwaken={() => setLoginMethod('vessel')}
+        onAwaken={openVesselLogin}
         onGoWrite={() => { setView('app'); setTab('write'); }}
       />
 
@@ -781,7 +811,7 @@ export default function Home() {
       <WalletGuideModal
         open={walletGuideOpen}
         onOpenChange={setWalletGuideOpen}
-        onUseVessel={() => setLoginMethod('vessel')}
+        onUseVessel={openVesselLogin}
       />
 
       <SponsorModal
@@ -796,7 +826,7 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
+function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAuth, onVesselLogin, onWalletLogin, loginBusy, loginError, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
       {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
@@ -832,6 +862,8 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                 <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-[#00FFCC]/50 shadow-2xl shadow-[#00FFCC]/30 bg-black flex items-center justify-center">
                   <video
                     src="/brand-awakening.mp4"
+                    poster="/brand-awakening-poster.jpg"
+                    preload="metadata"
                     autoPlay
                     loop
                     muted
@@ -862,17 +894,17 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   {isEn ? 'Write Once, ' : '写一次，'}
                 </span>
                 <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.3)' }}>
-                  {isEn ? 'Preserved Forever.' : '永久保存。'}
+                  {isEn ? 'Long-term Archive.' : '长期存档。'}
                 </span>
                 <br />
                 <span className="text-white/90 text-2xl sm:text-4xl mt-1.5 block font-bold">
-                  {isEn ? 'Readable by Humans & AI · Tips Direct to Wallet' : 'AI 和人类都能读，打赏直达钱包。'}
+                  {isEn ? 'Readable by Humans & AI · Transparent Provenance' : 'AI 和人类都能读，存证状态透明。'}
                 </span>
               </h1>
               <p className="text-[#888] text-xs sm:text-sm mb-6 leading-relaxed max-w-xl">
                 {isEn
-                  ? 'Built on Arweave permaweb storage & Circle ARC USDC gas settlement. Every essay is permanently archived, syndicated by AI agents, and settled on-chain.'
-                  : '基于 Arweave 全球公链永久存储与 Circle ARC 链上秒级结算。博文存证 200 年不灭，外部 AI 引用检索按次付费，创作收益 80% 秒级直达个人钱包。'}
+                  ? 'Built with distributed storage (Arweave when confirmed) and Circle ARC USDC settlement rails. Every essay publishes its storage and provenance status, is discoverable by AI agents, and follows transparent revenue rules. Real payments and payouts remain in closed beta.'
+                  : '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。真实打赏与结算通道内测中，暂不开放打款。'}
               </p>
 
               {/* 首屏核心行动 CTA 按钮组 (收敛至获客与赚钱主干) */}
@@ -889,7 +921,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#FFCC00] to-[#FF6633] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#FFCC00]/25 hover:scale-[1.02] transition-all"
                 >
                   <Target className="w-4 h-4" />
-                  <span>{isEn ? '🎯 Bounty Plaza (Earn USDC)' : '🎯 悬赏任务大厅 (做任务赚 USDC)'}</span>
+                  <span>{isEn ? '🎯 Bounty Plaza (Preview)' : '🎯 悬赏任务大厅 (内测展示)'}</span>
                 </button>
                 <button
                   onClick={() => { setView('app'); setTab('write'); }}
@@ -920,13 +952,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Live' : '创世先锋 $WBOG 空投进行中'}</span>
+                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Preview' : '创世先锋 $WBOG 空投预告'}</span>
                       <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">
-                        {isEn ? '10k Slots' : '前 10,000 名'}
+                        {isEn ? 'Not Open' : '未开放'}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? '1,000 WBOG per user + Genesis NFT Badge · Click to Claim' : '每人 1,000 WBOG + 创世勋章 · 点击领取'}
+                      {isEn ? 'Planned allocation · Claim not yet open' : '方案展示 · 领取暂未开放，请勿打款'}
                     </div>
                   </div>
                 </div>
@@ -944,13 +976,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis Curve Angel Vault (3,000U Cap)' : 'GenesisCurve 创世金库 3,000U 冲刺认购'}</span>
+                      <span>{isEn ? 'Genesis Curve Angel Vault (Preview)' : 'GenesisCurve 创世金库（内测展示）'}</span>
                       <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 h-4 font-mono">
-                        {curveReserve.toFixed(2)} / 3,000U ({((curveReserve / 3000) * 100).toFixed(1)}%)
+                        {isEn ? 'Not Open' : '未开放'}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? '100% of funds locked into Uniswap v4 on cap · Renounce ownership on graduation' : '单笔限额 20U 防鲸 · 满额 3000U 永久锁池并丢弃权限 · 点击认购 →'}
+                      {isEn ? 'Subscription and custody are not open · Do not send funds' : '认购与资金托管尚未开放 · 请勿打款'}
                     </div>
                   </div>
                 </div>
@@ -960,17 +992,22 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
               {/* Login Cards — 仅保留容器与钱包两种主权登录 */}
               {!loginMethod ? (
                 <div className="space-y-3">
+                  {loginError && (
+                    <div role="alert" className="rounded-lg border border-[#FF66AA]/40 bg-[#FF66AA]/10 px-3 py-2 text-[12px] leading-relaxed text-[#FF9AC4]">
+                      {loginError}
+                    </div>
+                  )}
                   <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
                     title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
                     desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
-                    color={COLORS.eidolon} onClick={() => setLoginMethod('vessel')}
+                    color={COLORS.eidolon} onClick={onVesselLogin} busy={loginBusy === 'vessel'}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
                     title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
                     desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding & signing" : "MetaMask / OKX / Web3 钱包 — 链上签名绑定容器，直接开启完整创作权限"}
-                    color={COLORS.prime} onClick={() => connectWallet(setSession, setView, setTab, onOpenWalletGuide)}
+                    color={COLORS.prime} onClick={onWalletLogin} busy={loginBusy === 'wallet'}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
@@ -978,7 +1015,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, handleRit
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
                     ← {isEn ? 'Back to Login Options' : '返回选择登录方式'}
                   </button>
-                  <ScanRitual onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
+                  <ScanRitual auth={vesselAuth} onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
               ) : null}
             </div>
@@ -1020,91 +1057,130 @@ function ModuleDesc({ module }: { module: string }) {
   );
 }
 
-function LoginBtn({ icon, title, desc, color, onClick }: any) {
+function LoginBtn({ icon, title, desc, color, onClick, busy }: any) {
   return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all group hover:scale-[1.02] hover:border-opacity-50"
+    <button onClick={onClick} disabled={busy}
+      aria-busy={busy || undefined}
+      className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all group hover:scale-[1.02] hover:border-opacity-50 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100"
       style={{ borderColor: `${color}20`, backgroundColor: `${color}05` }}>
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
+        style={{ backgroundColor: `${color}15`, color }}>
+        {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : icon}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{title}</div>
-        <div className="text-[11px] text-[#555] mt-0.5">{desc}</div>
+        <div className="text-[11px] text-[#555] mt-0.5">
+          {busy ? '处理中，请在弹出的钱包窗口确认…' : desc}
+        </div>
       </div>
-      <ChevronRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors" />
+      {busy
+        ? <span className="text-[10px] font-mono" style={{ color }}>…</span>
+        : <ChevronRight className="w-4 h-4 text-[#333] group-hover:text-white transition-colors" />}
     </button>
   );
 }
 
 // ━━ Auth helpers ━━
-async function connectWallet(s: any, v: any, t: any, openGuide?: () => void) {
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} 超时（${Math.round(ms / 1000)}s），请检查钱包插件或网络后重试`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+async function connectWallet(
+  s: any, v: any, t: any,
+  openGuide?: () => void,
+  onBusy?: (busy: boolean) => void,
+  onError?: (msg: string | null) => void,
+) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) {
-    if (openGuide) {
-      openGuide();
-    } else {
-      alert('未检测到 MetaMask / OKX Web3 钱包扩展，请安装钱包插件后重试。');
-    }
+    onError?.('未检测到浏览器钱包。请安装 MetaMask / OKX Web3 插件（或在内置浏览器中打开），也可以先用「Vessel 容器登录」免插件进入。');
+    openGuide?.();
     return;
   }
 
+  onError?.(null);
+  onBusy?.(true);
   try {
-    // ━━ 1. 切换 Circle ARC 主网 (5042 = 0x13b2) ━━
+    // ━━ 1. 切换 Circle ARC 主网 (5042 = 0x13b2)，失败不阻塞登录 ━━
     const chainIdHex = '0x13b2';
     try {
-      await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] });
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
-        await ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: chainIdHex,
-            chainName: 'Arc Mainnet',
-            nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-            rpcUrls: ['https://rpc.mainnet.arc.io'],
-            blockExplorerUrls: ['https://explorer.arc.io'],
-          }],
-        });
-      } else {
-        throw switchError;
+      const current: string = await withTimeout(
+        ethereum.request({ method: 'eth_chainId' }), 8000, '读取钱包网络',
+      );
+      if (current?.toLowerCase() !== chainIdHex) {
+        try {
+          await withTimeout(
+            ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }),
+            12000, '切换 Arc 网络',
+          );
+        } catch (switchError: any) {
+          if (switchError?.code === 4902) {
+            await withTimeout(ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: chainIdHex,
+                chainName: 'Arc Mainnet',
+                nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+                rpcUrls: ['https://rpc.mainnet.arc.io'],
+                blockExplorerUrls: ['https://explorer.arc.io'],
+              }],
+            }), 12000, '添加 Arc 网络');
+          } else if (switchError?.code !== 4001) {
+            console.warn('[Web5] Chain switch skipped:', switchError);
+          }
+        }
       }
+    } catch (chainErr) {
+      console.warn('[Web5] Chain preparation skipped:', chainErr);
     }
 
     // ━━ 2. 获取钱包地址 ━━
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-    const addr = accounts[0];
+    const accounts = await withTimeout(
+      ethereum.request({ method: 'eth_requestAccounts' }), 60000, '等待钱包授权',
+    );
+    const addr = accounts?.[0];
+    if (!addr) throw new Error('钱包未返回账户地址');
 
     // ━━ 3. 个人签名（证明钱包所有权，弹窗确认） ━━
     const vessel = getOrCreateVesselWallet();
     const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
-    const signature = await ethereum.request({
-      method: 'personal_sign',
-      params: [signMsg, addr],
-    });
+    const signature = await withTimeout(
+      ethereum.request({ method: 'personal_sign', params: [signMsg, addr] }),
+      180000, '等待钱包签名',
+    );
 
     // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读；主钱包身份 + 专用钱包容器） ━━
-    const res = await fetch('/api/auth/wallet-login', {
+    const res = await withTimeout(fetch('/api/auth/wallet-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg }),
-    });
+    }), 30000, '服务器验证签名');
     const data = await res.json();
 
     if (data.success && data.session) {
-      sessionStorage.setItem('web5_vessel_session', JSON.stringify(data.session));
-      s(data.session);
+      const session = parseSessionResponse(data.session);
+      persistVesselSession(session);
+      s(session);
       v('app');
-      t('feed');
+      t('vessels');
     } else {
-      alert(data.error || '钱包登录失败');
+      onError?.(data.error || '钱包登录失败，请重试');
     }
   } catch (err: any) {
     console.warn('[Web5] Wallet login error:', err);
     if (err?.code === 4001) {
-      alert('已取消签名');
+      onError?.('已取消签名，登录未完成。');
     } else {
-      alert('钱包登录失败：' + (err?.message || '请在钱包中确认签名'));
+      onError?.('钱包登录失败：' + (err?.message || '请在钱包中确认签名后重试'));
     }
+  } finally {
+    onBusy?.(false);
   }
 }
 async function connectTwitter(s: any, v: any, t: any) {

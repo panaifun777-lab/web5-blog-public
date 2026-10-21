@@ -23,9 +23,7 @@ async function getIrysUploader() {
     const { Uploader } = await import('@irys/upload');
     const { Matic } = await import('@irys/upload-ethereum');
     const privateKey = process.env.IRYS_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('IRYS_PRIVATE_KEY is not configured');
-    }
+    if (!privateKey) throw new Error('IRYS_PRIVATE_KEY is not configured');
     const rpcURL = process.env.IRYS_RPC_URL || 'https://1rpc.io/matic';
 
     return await Uploader(Matic)

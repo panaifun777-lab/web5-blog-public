@@ -8,12 +8,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { crawlAllSources } from '@/lib/web5/reach/crawler';
 import { rankOpportunities } from '@/lib/web5/reach/recommender';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(`reach-crawl:${clientIp(req)}`, 2, 300_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: '抓取请求过于频繁，请稍后再试。' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const skills: string[] = Array.isArray(body?.skills) ? body.skills : [];

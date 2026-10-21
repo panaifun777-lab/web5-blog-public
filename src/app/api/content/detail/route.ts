@@ -6,13 +6,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleX402PaymentGate } from '@/lib/web5/x402/middleware';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
+import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(`content-comment:${clientIp(req)}`, 10, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
-    const { arweaveHash, comment, vesselDid } = await req.json();
-    if (!arweaveHash || !comment || !vesselDid) {
+    const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+    const session = await resolveVesselSessionFromToken(token);
+    if (!session || session.accessMode !== 'vessel') {
+      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+    }
+
+    const { arweaveHash, comment } = await req.json();
+    const text = typeof comment === 'string' ? comment.trim() : '';
+    if (!arweaveHash || !text) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
+    if (text.length > 2000) {
+      return NextResponse.json({ error: 'Comment too long (max 2000)' }, { status: 400 });
+    }
+    const vesselDid = session.vesselDid;
     const content = await db.content.findUnique({ where: { arweaveHash } });
     if (!content) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });
@@ -126,7 +147,10 @@ export async function GET(req: NextRequest) {
         authorBio: content.prime?.bio || '',
         license: content.license,
         royaltyRate: content.royaltyRate,
-        arpVcId: content.arpVcId,
+        arpVcId: content.nftStatus === 'MINTED' ? content.arpVcId : null,
+        nftStatus: content.nftStatus,
+        storageProvider: content.storageProvider,
+        storageStatus: content.storageStatus,
         publishedAt: content.publishedAt.toISOString(),
       },
       interactions: interactions.map((i) => ({

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers";
+import { Rum } from "@/components/web5/observability/rum";
+import { CloudflareAnalytics } from "@/components/web5/observability/cloudflare-analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,17 +16,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sans-sc",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-});
-
-const notoSerifSC = Noto_Serif_SC({
-  variable: "--font-noto-serif-sc",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
+// Static pages are revalidated every 5 minutes so the feed and provenance
+// status do not get pinned in edge caches indefinitely.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://web5.blog'),
@@ -33,7 +27,7 @@ export const metadata: Metadata = {
     template: '%s | Web5.blog',
   },
   description:
-    '全球首个分身原生博客平台 — Prime × Eidolon × Vessel 三层生命架构。AP2/ARP/AA2P 协议族 · ERC-4337 · Arweave 永久确权 · AI 分身流式写作。',
+    '分身原生博客平台 — Prime × Eidolon × Vessel 三层生命架构。AP2/ARP/AA2P 协议族 · ERC-4337 · 分布式存档与内容存证状态透明 · AI 分身流式写作。',
   keywords: [
     'Web5', 'Web5.blog', 'PLVTVS', 'EidolonOS', 'AP2', 'ARP', 'AA2P',
     'Vessel Auth', 'Container Login', 'ERC-4337', 'Account Abstraction',
@@ -106,7 +100,7 @@ export default function RootLayout({
         '@type': 'BlogPosting',
         '@id': 'https://web5.blog/#blogposting',
         headline: 'Web5.blog · Vessel-Native Blog Platform',
-        description: 'Prime × Eidolon × Vessel 三层生命架构 — AP2/ARP/AA2P 协议族 · ERC-4337 · Arweave 永久确权 · AI 分身流式写作',
+        description: 'Prime × Eidolon × Vessel 三层生命架构 — AP2/ARP/AA2P 协议族 · ERC-4337 · 分布式存档与内容存证状态透明 · AI 分身流式写作',
         author: { '@id': 'https://web5.blog/#person' },
         publisher: { '@id': 'https://web5.blog/#person' },
         mainEntityOfPage: 'https://web5.blog',
@@ -117,61 +111,16 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${notoSerifSC.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* 彻底物理级清除页面中任何潜在残留的水印标识并拦截浏览器扩展非致命报错 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                function cleanZaiAndOverlays() {
-                  try {
-                    // 1. 清除水印
-                    const els = document.querySelectorAll('[id*="zai" i], [class*="zai" i], [id*="z-ai" i], [class*="z-ai" i], a[href*="z.ai" i], div[style*="z-index: 99999" i]');
-                    els.forEach(el => {
-                      if (el && el.innerText && el.innerText.toLowerCase().includes('z.ai')) el.remove();
-                      else if (el && el.href && el.href.toLowerCase().includes('z.ai')) el.remove();
-                    });
-
-                    // 2. 隐藏开发模式下的错误弹窗遮罩
-                    const portals = document.querySelectorAll('nextjs-portal, #nextjs-portal, [data-nextjs-toast]');
-                    portals.forEach(p => p.remove());
-                  } catch (e) {}
-                }
-
-                if (typeof window !== 'undefined') {
-                  // 拦截来自浏览器扩展插件（如 MetaMask）的拒绝连接错误，避免触发 Next.js 错误遮罩
-                  window.addEventListener('unhandledrejection', function(event) {
-                    const reason = event.reason;
-                    const msg = (reason && (reason.message || reason.stack || String(reason))) || '';
-                    if (msg.includes('MetaMask') || msg.includes('chrome-extension://') || msg.includes('Failed to connect')) {
-                      event.preventDefault();
-                      event.stopImmediatePropagation();
-                    }
-                  }, true);
-
-                  window.addEventListener('error', function(event) {
-                    const msg = event.message || '';
-                    const src = event.filename || '';
-                    if (src.includes('chrome-extension://') || msg.includes('MetaMask') || msg.includes('Failed to connect')) {
-                      event.preventDefault();
-                      event.stopImmediatePropagation();
-                    }
-                  }, true);
-
-                  window.addEventListener('DOMContentLoaded', cleanZaiAndOverlays);
-                  setInterval(cleanZaiAndOverlays, 300);
-                }
-              })();
-            `,
-          }}
-        />
         <Providers>{children}</Providers>
         <Toaster />
+        <Rum />
+        <CloudflareAnalytics />
       </body>
     </html>
   );

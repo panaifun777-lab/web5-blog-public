@@ -8,7 +8,7 @@
 import { db } from '@/lib/db';
 import {
   type MicropaymentIntent, type BudgetFence, type AP2Category, type VesselSession,
-  RFC_CONSTANTS, toTokenUnits, fromTokenUnits,
+  fromTokenUnits,
 } from '@/lib/web5/types';
 import { getCurrentVesselSession } from '@/lib/web5/vessel-auth';
 
@@ -156,32 +156,8 @@ export async function ap2Pay(
     data: { spentToday: { increment: intent.amount } },
   });
 
-  // 检查是否触发批量结算
-  const pendingAmount = await db.interaction.aggregate({
-    where: { vesselDid: session.vesselDid, ap2TxHash: null },
-    _sum: { amount: true },
-  });
-
-  if ((pendingAmount._sum.amount || 0n) >= RFC_CONSTANTS.SETTLEMENT_BATCH_THRESHOLD) {
-    await batchSettle(session.vesselDid);
-  }
-
+  // 链上批量结算尚未实现：保持 ap2TxHash 为空，不得生成模拟哈希。
   return { accepted: true, ledgerId: ledger.id };
-}
-
-/** 批量结算 — 提交至链上 BudgetFence 合约 */
-async function batchSettle(vesselDid: string): Promise<void> {
-  // MVP：仅生成模拟 tx hash
-  const pending = await db.interaction.findMany({
-    where: { vesselDid, ap2TxHash: null },
-  });
-  if (pending.length === 0) return;
-
-  const mockTxHash = `0x${Math.random().toString(16).slice(2).padStart(64, '0')}`;
-  await db.interaction.updateMany({
-    where: { id: { in: pending.map((p) => p.id) } },
-    data: { ap2TxHash: mockTxHash },
-  });
 }
 
 function mapCategoryToType(category: AP2Category): 'READ' | 'TIP' | 'SUBSCRIBE' | 'ROYALTY' {
@@ -211,8 +187,14 @@ export async function getAp2Treasury(vesselDid: string) {
     _sum: { amount: true },
   });
 
+  // 只有带真实链上哈希的收割记录才计入收益；历史模拟记录一律排除。
   const totalHarvest = await db.autonomousLog.aggregate({
-    where: { vesselId: vessel.id, yieldAmount: { not: null } },
+    where: {
+      vesselId: vessel.id,
+      action: 'harvest',
+      yieldAmount: { not: null },
+      metadata: { contains: '"realTxHash"' },
+    },
     _sum: { yieldAmount: true },
   });
 

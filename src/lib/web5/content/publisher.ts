@@ -23,10 +23,14 @@ export interface PublishParams {
 export interface PublishResult {
   arweaveHash: string;
   tokenId: bigint | null;
-  arpVcId: string;
+  arpVcId: string | null;
   contentId: string;
   uploadFallback: boolean;
   uploadSize: number;
+  storageProvider: 'ARWEAVE' | 'DATABASE';
+  storageStatus: 'CONFIRMED' | 'UNVERIFIED';
+  nftStatus: 'MINTED' | 'NOT_MINTED' | 'FAILED';
+  nftTxHash: string | null;
 }
 
 // 升级版：使用真实 Irys SDK（带本地 fallback）
@@ -75,7 +79,22 @@ const CONTENT_NFT_ABI = [
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'event',
+    name: 'Transfer',
+    inputs: [
+      { name: 'from', type: 'address', indexed: true },
+      { name: 'to', type: 'address', indexed: true },
+      { name: 'tokenId', type: 'uint256', indexed: true },
+    ],
+  },
 ] as const;
+
+type MintResult = {
+  tokenId: bigint | null;
+  txHash: string | null;
+  status: 'MINTED' | 'NOT_MINTED' | 'FAILED';
+};
 
 async function mintContentNFT(params: {
   toAddress: string;
@@ -84,53 +103,59 @@ async function mintContentNFT(params: {
   royaltyRate: number;
   license: string;
   arpVcId: string;
-}): Promise<bigint> {
-  const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`;
-  if (privateKey && privateKey.startsWith('0x')) {
-    try {
-      const account = privateKeyToAccount(privateKey);
-      const walletClient = createWalletClient({
-        account,
-        chain: arcMainnetChain,
-        transport: http(),
-      });
-      const publicClient = createPublicClient({
-        chain: arcMainnetChain,
-        transport: http(),
-      });
-
-      const recipient = (params.toAddress && params.toAddress.startsWith('0x') && params.toAddress.length === 42)
-        ? (params.toAddress as `0x${string}`)
-        : account.address;
-
-      console.log(`[ContentNFT] Initiating real Arc Mainnet mint for ${params.arweaveHash}...`);
-      const txHash = await walletClient.writeContract({
-        address: ARC_MAINNET.addresses.ContentNFT as `0x${string}`,
-        abi: CONTENT_NFT_ABI,
-        functionName: 'mint',
-        args: [
-          recipient,
-          params.arweaveHash,
-          params.authorDid,
-          BigInt(params.royaltyRate),
-          params.license,
-          params.arpVcId,
-        ],
-      });
-
-      console.log(`[ContentNFT] Mint tx submitted: ${txHash}`);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-      console.log(`[ContentNFT] Confirmed in block ${receipt.blockNumber}`);
-      
-      // 返回区块号哈希计算出的 tokenId 或基于时间生成的唯一 ID
-      return BigInt(receipt.blockNumber) * 1000n + BigInt(Date.now() % 1000);
-    } catch (err) {
-      console.warn('[ContentNFT] On-chain mint failed, falling back to deterministic ID:', err);
-    }
+}): Promise<MintResult> {
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+  const contract = ARC_MAINNET.addresses.ContentNFT;
+  if (!privateKey?.startsWith('0x') || !contract?.startsWith('0x')) {
+    return { tokenId: null, txHash: null, status: 'NOT_MINTED' };
   }
 
-  // Fallback: 确定性 tokenId
-  return BigInt(Math.floor(Math.random() * 1_000_000_000) + 1);
+  try {
+    const account = privateKeyToAccount(privateKey);
+    const walletClient = createWalletClient({
+      account,
+      chain: arcMainnetChain,
+      transport: http(),
+    });
+    const publicClient = createPublicClient({
+      chain: arcMainnetChain,
+      transport: http(),
+    });
+
+    const recipient = (params.toAddress && params.toAddress.startsWith('0x') && params.toAddress.length === 42)
+      ? (params.toAddress as `0x${string}`)
+      : account.address;
+
+    console.log(`[ContentNFT] Initiating Arc Mainnet mint for ${params.arweaveHash}...`);
+    const txHash = await walletClient.writeContract({
+      address: contract as `0x${string}`,
+      abi: CONTENT_NFT_ABI,
+      functionName: 'mint',
+      args: [
+        recipient,
+        params.arweaveHash,
+        params.authorDid,
+        BigInt(params.royaltyRate),
+        params.license,
+        params.arpVcId,
+      ],
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== 'success') {
+      return { tokenId: null, txHash, status: 'FAILED' };
+    }
+
+    const transferLog = receipt.logs.find(
+      (log) =>
+        log.address.toLowerCase() === contract.toLowerCase() && log.topics.length >= 4
+    );
+    const tokenId = transferLog?.topics?.[3] ? BigInt(transferLog.topics[3]) : null;
+    return { tokenId, txHash, status: tokenId ? 'MINTED' : 'FAILED' };
+  } catch (err) {
+    console.warn('[ContentNFT] On-chain mint failed:', err);
+    return { tokenId: null, txHash: null, status: 'FAILED' };
+  }
 }
 
 async function createArpVc(params: {
@@ -153,9 +178,20 @@ export async function publishContent(
     throw new Error('请先连接钱包或唤醒 Vessel 容器后再发布文章。');
   }
 
-  // 确保具备发布权限，自动补齐
   if (!session.permissions.includes('publish')) {
-    session.permissions.push('publish');
+    throw new Error('当前 Vessel 会话没有 publish 权限，请在唤醒容器时申请发布权限。');
+  }
+
+  const title = (params.title || '').trim();
+  const bodyMd = params.bodyMd || '';
+  if (title.length < 4 || title.length > 160) {
+    throw new Error('标题长度需在 4-160 字符之间。');
+  }
+  if (!bodyMd.trim()) {
+    throw new Error('正文不能为空。');
+  }
+  if (bodyMd.length > 200_000) {
+    throw new Error('正文超出 200,000 字符上限。');
   }
 
   const license = params.license || 'CC_BY';
@@ -168,27 +204,32 @@ export async function publishContent(
     timestamp: Date.now(),
     coverImageHash: params.coverImageHash,
   });
-  const arweaveHash = uploadResult.arweaveHash || (uploadResult as any).hash;
+  const arweaveHash = uploadResult.hash;
   const uploadFallback = uploadResult.fallback;
   const uploadSize = uploadResult.size;
 
-  const tokenId = await mintContentNFT({
-    toAddress: session.vesselDid.startsWith('0x') ? session.vesselDid : '',
-    arweaveHash,
-    authorDid: session.primeDid,
-    royaltyRate,
-    license,
-    arpVcId: '',
-  });
-
-  const arpVcId = await createArpVc({
+  const arpVcCandidate = await createArpVc({
     contentHash: arweaveHash,
-    tokenId,
+    tokenId: null,
     authorDid: session.primeDid,
     license,
     royaltyRate,
     splits: params.splits,
   });
+
+  const mint = await mintContentNFT({
+    toAddress: session.vesselDid.startsWith('0x') ? session.vesselDid : '',
+    arweaveHash,
+    authorDid: session.primeDid,
+    royaltyRate,
+    license,
+    arpVcId: arpVcCandidate,
+  });
+  const tokenId = mint.tokenId;
+  const arpVcId = mint.status === 'MINTED' ? arpVcCandidate : null;
+
+  const storageProvider: 'ARWEAVE' | 'DATABASE' = uploadFallback ? 'DATABASE' : 'ARWEAVE';
+  const storageStatus: 'CONFIRMED' | 'UNVERIFIED' = uploadFallback ? 'UNVERIFIED' : 'CONFIRMED';
 
   let prime = await db.prime.findUnique({ where: { did: session.primeDid } });
   if (!prime) {
@@ -220,11 +261,26 @@ export async function publishContent(
       royaltyRate,
       splits: params.splits ? JSON.stringify(params.splits) : null,
       arpVcId,
+      storageProvider,
+      storageStatus,
+      nftStatus: mint.status,
+      nftTxHash: mint.txHash,
       publishedAt: new Date(),
     },
   });
 
-  return { arweaveHash, tokenId, arpVcId, contentId: content.id, uploadFallback, uploadSize };
+  return {
+    arweaveHash,
+    tokenId,
+    arpVcId,
+    contentId: content.id,
+    uploadFallback,
+    uploadSize,
+    storageProvider,
+    storageStatus,
+    nftStatus: mint.status,
+    nftTxHash: mint.txHash,
+  };
 }
 
 export async function listContents(opts: { limit?: number; offset?: number } = {}) {

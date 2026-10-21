@@ -1,19 +1,19 @@
 // ════════════════════════════════════════════════════════════════
 // src/lib/web5/autonomous/scheduler.ts
-// 24/7 自治调度引擎 — AI 分身自动交互
+// 24/7 自治调度引擎 — 仅生成非资金动作，所有记录标记 simulated
 // ════════════════════════════════════════════════════════════════
 
 import { db } from '@/lib/db';
 
 export interface TickResult {
-  actions: { action: string; target: string; yieldAmount?: string; spentAmount?: string }[];
+  actions: { action: string; target: string }[];
   totalYield: string;
   totalSpent: string;
 }
 
 /**
- * 对所有活跃 Vessel 执行一次自治 tick
- * 模拟 AI 分身 24/7 的自动交互行为
+ * 对所有活跃 Vessel 执行一次自治 tick。
+ * 资金动作（tip/harvest）已移除：在真实托管、收益与分账上线前不得生成账本金额。
  */
 export async function autonomousTick(): Promise<TickResult[]> {
   const activeVessels = await db.vessel.findMany({
@@ -28,15 +28,13 @@ export async function autonomousTick(): Promise<TickResult[]> {
 }
 
 async function generateActions(vessel: any): Promise<TickResult> {
-  const actions: any[] = [];
-  let totalYield = 0n;
-  let totalSpent = 0n;
-  const count = Math.floor(Math.random() * 4) + 1; // 1-4 次动作/每 tick
+  const actions: { action: string; target: string }[] = [];
+  const count = Math.floor(Math.random() * 3) + 1;
 
   for (let i = 0; i < count; i++) {
     const actionType = pickWeighted(
-      ['read', 'tip', 'comment', 'harvest', 'distribute'],
-      [0.3, 0.15, 0.2, 0.25, 0.1],
+      ['read', 'comment', 'distribute'],
+      [0.4, 0.3, 0.3],
     );
 
     if (actionType === 'read') {
@@ -47,35 +45,10 @@ async function generateActions(vessel: any): Promise<TickResult> {
             vesselId: vessel.id,
             action: 'read',
             targetContent: content.arweaveHash,
-            metadata: JSON.stringify({ title: content.title, aiScore: 0.5 + Math.random() * 0.5 }),
+            metadata: JSON.stringify({ simulated: true, title: content.title }),
           },
         });
         actions.push({ action: 'read', target: content.title });
-      }
-    } else if (actionType === 'tip') {
-      const budget = vessel.ap2Budgets[0];
-      if (budget && budget.spentToday < budget.dailyLimit) {
-        const amount = BigInt(Math.floor(Math.random() * 500) + 100);
-        const content = await getRandomContent();
-        if (content) {
-          const existing = vessel;
-          await db.autonomousLog.create({
-            data: {
-              vesselId: vessel.id,
-              action: 'tip',
-              targetContent: content.arweaveHash,
-              spentAmount: amount,
-              metadata: JSON.stringify({ title: content.title, reason: 'quality_content' }),
-            },
-          });
-          // 更新已花费
-          await db.aP2Budget.update({
-            where: { id: budget.id },
-            data: { spentToday: { increment: amount } },
-          });
-          actions.push({ action: 'tip', target: content.title, spentAmount: amount.toString() });
-          totalSpent += amount;
-        }
       }
     } else if (actionType === 'comment') {
       const content = await getRandomContent();
@@ -93,7 +66,7 @@ async function generateActions(vessel: any): Promise<TickResult> {
             vesselId: vessel.id,
             type: 'COMMENT',
             comment,
-            aiScore: 0.7 + Math.random() * 0.3,
+            aiScore: null,
           },
         });
         await db.autonomousLog.create({
@@ -101,23 +74,11 @@ async function generateActions(vessel: any): Promise<TickResult> {
             vesselId: vessel.id,
             action: 'comment',
             targetContent: content.arweaveHash,
-            metadata: JSON.stringify({ comment }),
+            metadata: JSON.stringify({ simulated: true, comment }),
           },
         });
         actions.push({ action: 'comment', target: content.title });
       }
-    } else if (actionType === 'harvest') {
-      const yieldAmount = BigInt(Math.floor(Math.random() * 2000) + 500);
-      await db.autonomousLog.create({
-        data: {
-          vesselId: vessel.id,
-          action: 'harvest',
-          yieldAmount,
-          metadata: JSON.stringify({ source: 'DeFi Yield', pool: 'Aave USDC', apy: (3 + Math.random() * 5).toFixed(2) + '%' }),
-        },
-      });
-      actions.push({ action: 'harvest', target: 'DeFi Yield', yieldAmount: yieldAmount.toString() });
-      totalYield += yieldAmount;
     } else if (actionType === 'distribute') {
       const content = await getRandomContent();
       if (content) {
@@ -126,14 +87,14 @@ async function generateActions(vessel: any): Promise<TickResult> {
             vesselId: vessel.id,
             action: 'distribute',
             targetContent: content.arweaveHash,
-            metadata: JSON.stringify({ platform: 'Farcaster', channel: 'web5', impressions: Math.floor(Math.random() * 100) + 10 }),
+            metadata: JSON.stringify({ simulated: true, platform: 'Farcaster' }),
           },
         });
         actions.push({ action: 'distribute', target: 'Farcaster: ' + content.title });
       }
     }
   }
-  return { actions, totalYield: totalYield.toString(), totalSpent: totalSpent.toString() };
+  return { actions, totalYield: '0', totalSpent: '0' };
 }
 
 async function getRandomContent() {

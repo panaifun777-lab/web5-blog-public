@@ -8,6 +8,10 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  if (process.env.AGENT_DAEMON_ENABLED !== 'true') {
+    console.log('[instrumentation] Agent daemon disabled (AGENT_DAEMON_ENABLED != true)');
+    return;
+  }
   if (process.env.DISABLE_AGENT_DAEMON === 'true') {
     console.log('[instrumentation] Agent daemon disabled via env');
     return;

@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Share2, Check, Sparkles, Copy, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getCurrentVesselSession } from '@/lib/web5/vessel-auth';
+import { useI18n } from '@/lib/i18n';
 import type { VesselSession } from '@/lib/web5/types';
 
 interface CurateShareButtonProps {
@@ -34,6 +35,8 @@ export function CurateShareButton({
 }: CurateShareButtonProps) {
   const [copied, setCopied] = useState(false);
   const [curatorId, setCuratorId] = useState<string>('');
+  const { locale } = useI18n();
+  const isEn = locale !== 'zh-CN';
 
   useEffect(() => {
     // 优先使用传入的 session，其次从本地读取
@@ -65,9 +68,11 @@ export function CurateShareButton({
       ? `${origin}/p/${arweaveHash}?ref=${encodeURIComponent(curRef)}`
       : `${origin}/p/${arweaveHash}`;
 
-    // 分享文案具备极客吸引力
+    // 分享文案：不承诺永久存证与返佣
     const cleanTitle = title.replace(/\n+/g, ' ').trim();
-    const shareText = `📖 我在 Web5.blog 发现了一篇深度思想长文《${cleanTitle}》，永久存证于 Arweave。通过我的链接阅读，享 15% 策展返佣！`;
+    const shareText = isEn
+      ? `📖 I found a long-form essay on Web5.blog: "${cleanTitle}". Storage and provenance status is as marked on the article. Curator rebates are in closed beta and not yet available.`
+      : `📖 我在 Web5.blog 发现了一篇深度思想长文《${cleanTitle}》。存储与确权状态以文章标注为准。策展返佣规则内测中，暂未开放。`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
@@ -114,7 +119,7 @@ export function CurateShareButton({
         onClick={handleShare}
         size={size}
         className={`bg-gradient-to-r from-[#00FFCC] via-[#0066FF] to-[#B080E8] text-black font-bold hover:opacity-90 shadow-lg shadow-[#00FFCC]/20 transition-all ${className}`}
-        title="生成专属策展链接，享 15% 裂变返佣"
+        title={isEn ? 'Generate your curator link (rebate rules in closed beta)' : '生成专属策展链接（返佣规则内测中）'}
       >
         {copied ? (
           <span className="flex items-center gap-1.5 text-black">
@@ -124,10 +129,10 @@ export function CurateShareButton({
         ) : (
           <span className="flex items-center gap-1.5">
             <Share2 className="w-3.5 h-3.5" />
-            <span>一键分享 · 享 15% 返佣</span>
+            <span>{isEn ? 'Share · rebates in beta' : '一键分享 · 返佣内测中'}</span>
             {showBadge && (
               <span className="bg-black/80 text-[#00FFCC] text-[9px] px-1.5 py-0.2 rounded font-mono ml-1">
-                Curate2Earn
+                Preview
               </span>
             )}
           </span>
@@ -142,7 +147,7 @@ export function CurateShareButton({
       variant={variant}
       size={size}
       className={`border-[#00FFCC]/30 hover:border-[#00FFCC] bg-[#00FFCC]/05 hover:bg-[#00FFCC]/15 text-[#00FFCC] text-xs font-mono transition-all ${className}`}
-      title="生成专属策展邀请链接，享有 15% 裂变返佣"
+      title={isEn ? 'Generate a curator invite link (rebate rules in closed beta)' : '生成专属策展邀请链接（返佣规则内测中）'}
     >
       {copied ? (
         <span className="flex items-center gap-1.5 text-[#10B981]">
@@ -155,7 +160,7 @@ export function CurateShareButton({
           <span>策展分享</span>
           {showBadge && (
             <span className="text-[9px] px-1 rounded bg-[#00FFCC]/20 text-[#00FFCC] font-bold">
-              15% 返佣
+              {isEn ? 'Beta' : '返佣内测'}
             </span>
           )}
         </span>

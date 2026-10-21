@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Sparkles, Zap, Shield, Send, Coins, MessageSquare, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Bot, Sparkles, Zap, Shield, Send, Coins, MessageSquare, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 
 interface ExpertPersona {
@@ -72,7 +72,7 @@ const EXPERTS: ExpertPersona[] = [
     enName: 'TDPO Safety Auditor',
     title: '认知防御与链上存证护航官',
     enTitle: 'Cognitive Defense & Provenance Guardian',
-    desc: '负责 TDPO 认知偏见对齐、Arweave 永久存储存证与防女巫攻击防御。',
+    desc: '负责 TDPO 认知偏见对齐、内容存证状态核验与防女巫攻击防御。',
     enDesc: 'Overseeing TDPO cognitive safety alignment, Arweave provenance, and anti-sybil guardrails.',
     color: '#0066FF',
     avatarSeed: 'tdpo-guard',
@@ -86,6 +86,7 @@ export function ExpertChamber({ session }: { session?: any }) {
   const [question, setQuestion] = useState(EXPERTS[0].defaultPrompt);
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
@@ -93,12 +94,14 @@ export function ExpertChamber({ session }: { session?: any }) {
     setSelectedExpert(exp);
     setQuestion(isEn ? exp.enDefaultPrompt : exp.defaultPrompt);
     setAnswer(null);
+    setError(null);
   };
 
   const handleAsk = async () => {
     if (!question.trim()) return;
     setLoading(true);
-    setAnswer('');
+    setAnswer(null);
+    setError(null);
     try {
       const res = await fetch('/api/ai/write', {
         method: 'POST',
@@ -124,10 +127,16 @@ export function ExpertChamber({ session }: { session?: any }) {
           setAnswer(full);
         }
       }
+      if (!full.trim()) {
+        setError(isEn
+          ? 'The model returned no content. No expert report was generated.'
+          : '模型未返回任何内容，本次没有生成专家意见。');
+      }
     } catch (err: any) {
-      setAnswer(isEn 
-        ? `[x402 Consultation Established] Expert ${selectedExpert.enName} provided detailed guidance:\n\nBased on Circle ARC Mainnet (Chain ID 5042) protocols, autonomous avatars execute micro-settlements at 0.05 USDC with full provenance verified on-chain.`
-        : `【x402 专家会诊报告】专家 ${selectedExpert.name} 已生成权威研报：\n\n依据 Circle ARC Mainnet (Chain ID 5042) 智能合约规范，所有分身微支付均经由 BudgetFence 审计，已完成认知共鸣校准。`);
+      console.error('[ExpertChamber] Consultation failed:', err);
+      setError(isEn
+        ? 'Consultation request failed. No expert answer was generated. Please retry later.'
+        : '会诊请求失败，本次没有生成任何专家意见。请稍后重试。');
     } finally {
       setLoading(false);
     }
@@ -144,20 +153,20 @@ export function ExpertChamber({ session }: { session?: any }) {
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
-                <span>{isEn ? '🧠 AI Expert Cognitive Chamber — Paid Consultation & A2A Interrogation' : '🧠 AI 专家智库直连问答舱 — 深度咨询与思想对撞'}</span>
+                <span>{isEn ? '🧠 AI Expert Cognitive Chamber — Closed Beta Preview' : '🧠 AI 专家智库直连问答舱 — 内测预览'}</span>
                 <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px]">
                   x402 Micro-Service
                 </Badge>
               </h3>
               <p className="text-[11px] text-[#888] mt-0.5">
-                {isEn ? 'Direct link with 4 autonomous cognitive experts. Single consultation 0.05 USDC (20% off with $WBOG).' : '直连 4 大核心领域智能体专家，单次深度问答 0.05 USDC（使用 $WBOG 享 8 折优惠并自动销毁 50%）。'}
+                {isEn ? 'Direct link with 4 cognitive experts. Listed at 0.05 USDC but not billed during the closed beta.' : '直连 4 大核心领域智能体专家，标价 0.05 USDC 仅作展示，内测期间不扣款。'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs text-[#FFCC00] bg-[#FFCC00]/10 px-3 py-1.5 rounded-lg border border-[#FFCC00]/25">
             <Coins className="w-3.5 h-3.5" />
-            <span>0.05 USDC <span className="text-[10px] text-[#aaa]">({isEn ? 'or 500 $WBOG' : '或 500 $WBOG'})</span></span>
+            <span>内测展示 · 不扣款 <span className="text-[10px] text-[#aaa]">({isEn ? 'listed 0.05 USDC' : '标价 0.05 USDC'})</span></span>
           </div>
         </div>
 
@@ -206,24 +215,43 @@ export function ExpertChamber({ session }: { session?: any }) {
               className="bg-gradient-to-r from-[#0066FF] to-[#00FFCC] text-black font-bold text-xs h-7 px-3.5"
             >
               <Zap className="w-3.5 h-3.5 mr-1" />
-              {loading ? (isEn ? 'Consulting...' : '专家研判中...') : (isEn ? 'Pay 0.05 USDC & Inquire' : '支付 0.05 USDC 深度会诊')}
+              {loading ? (isEn ? 'Consulting...' : '专家研判中...') : (isEn ? 'Ask (closed beta · no charge)' : '内测提问 · 不扣款')}
             </Button>
           </div>
         </div>
 
         {/* 答案流式展示区 */}
-        {(answer || loading) && (
+        {(answer || loading || error) && (
           <div className="mt-4 p-4 rounded-xl bg-black/60 border border-[#00FFCC]/20 text-xs text-[#ddd] leading-relaxed animate-in fade-in">
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.06] text-[10px]">
               <span className="font-bold text-[#00FFCC] flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                {isEn ? `Expert Thesis by ${selectedExpert.enName}` : `${selectedExpert.name} 专属分析意见书`}
+                {error
+                  ? (isEn ? 'Consultation unavailable' : '会诊暂不可用')
+                  : (isEn ? `Draft response · ${selectedExpert.enName}` : `${selectedExpert.name} · 内测生成内容`)}
               </span>
-              <span className="text-[#888] font-mono">TDPO Cognitive Audit: PASS</span>
+              <span className="text-[#888] font-mono">
+                {error ? (isEn ? 'NO ANSWER GENERATED' : '未生成内容') : (isEn ? 'Closed beta · not billed' : '内测展示 · 未计费')}
+              </span>
             </div>
-            <div className="whitespace-pre-wrap font-sans text-xs">
-              {answer || (isEn ? 'Synchronizing neural weights and generating high-dimensional cognitive response...' : '正在同步神经权重，调用深度推理模型生成专家研报...')}
-            </div>
+            {error ? (
+              <div className="space-y-3">
+                <div className="text-[#FF9999]">{error}</div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAsk}
+                  disabled={loading}
+                  className="text-xs h-7 border-[#00FFCC]/40 text-[#00FFCC] hover:bg-[#00FFCC]/10"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" /> {isEn ? 'Retry' : '重试'}
+                </Button>
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap font-sans text-xs">
+                {answer || (isEn ? 'Generating draft response...' : '正在生成内测内容...')}
+              </div>
+            )}
           </div>
         )}
       </div>

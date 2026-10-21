@@ -178,7 +178,7 @@ export async function distributeToFarcaster(
   let engagements = 0;
 
   // 尝试真实发布
-  if (neynarApiKey && signerUuid && vessel.vesselDid) {
+  if (neynarApiKey && signerUuid && vessel.did) {
     try {
       const text = `📝 ${content.title}\n\n${(content.bodyMd || content.excerpt || '').slice(0, 280)}\n\n🔗 web5.blog\n\n#Web5 #Eidolon #Vessel`;
 
@@ -200,21 +200,13 @@ export async function distributeToFarcaster(
         const castData = await castRes.json();
         castHash = castData?.cast?.hash;
         real = true;
-        impressions = 50 + Math.floor(Math.random() * 50); // 初始估算
-        engagements = Math.floor(impressions * 0.05);
       }
     } catch {
-      // 真实发布失败，回退到仿真
+      // 真实发布失败：保留 real=false，不编造曝光数据
     }
   }
 
-  // 仿真模式
-  if (!real) {
-    impressions = Math.floor(Math.random() * 150) + 20;
-    engagements = Math.floor(impressions * (0.02 + Math.random() * 0.08));
-  }
-
-  // 记录分发日志
+  // 记录分发日志（未真实发布时明确标记，不生成曝光/互动数据）
   await db.autonomousLog.create({
     data: {
       vesselId,
@@ -225,10 +217,9 @@ export async function distributeToFarcaster(
         username: `@${PIAOSHU_FC.username}`,
         castHash,
         real,
+        simulated: !real,
         impressions,
         engagements,
-        likes: Math.floor(engagements * 0.3),
-        recasts: Math.floor(engagements * 0.1),
         title: content.title,
       }),
     },

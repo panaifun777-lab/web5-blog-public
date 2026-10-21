@@ -9,10 +9,11 @@ import {
   ExternalLink, ArrowLeft, Shield, Clock, FileText, Share2, Eye,
   Coins, MessageCircle, Sparkles, Zap, Bot, ArrowRight,
 } from 'lucide-react';
-import { BlurUnlockSection } from '@/components/web5/pay/blur-unlock';
 import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -95,7 +96,7 @@ export async function generateMetadata(
     other: {
       'arweave-hash': content.arweaveHash,
       'token-id': content.tokenId ? content.tokenId.toString() : '',
-      'arp-vc-id': content.arpVcId || '',
+      'arp-vc-id': content.nftStatus === 'MINTED' ? content.arpVcId || '' : '',
       'chain-id': '5042',
     },
   };
@@ -111,6 +112,9 @@ export default async function ArticlePage({ params }: Props) {
 
   const authorName = content.prime?.displayName || (content.authorDid ? `${content.authorDid.slice(0, 10)}...${content.authorDid.slice(-6)}` : 'Sovereign Avatar');
   const avatarSeed = content.prime?.avatarSeed || content.authorDid || 'default';
+  const isArweaveConfirmed =
+    content.storageProvider === 'ARWEAVE' && content.storageStatus === 'CONFIRMED';
+  const isNftMinted = content.nftStatus === 'MINTED' && content.tokenId !== null;
   const arweaveUrl = `https://gateway.irys.xyz/${content.arweaveHash}`;
   const permalink = `https://web5.blog/p/${content.arweaveHash}`;
 
@@ -158,7 +162,7 @@ export default async function ArticlePage({ params }: Props) {
               <span>B</span><span className="text-[#FFCC00]">•</span>
               <span>O</span><span className="text-[#B080E8]">•</span>
               <span>G</span>
-              <span className="text-[10px] text-[#666] font-normal ml-2">Arweave 永久存证版</span>
+              <span className="text-[10px] text-[#666] font-normal ml-2">Vessel 原生博客</span>
             </Link>
           </div>
 
@@ -170,16 +174,22 @@ export default async function ArticlePage({ params }: Props) {
               variant="outline"
               size="sm"
             />
-            <a
-              href={arweaveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-mono text-[#00FFCC] hover:underline flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#00FFCC]/10 border border-[#00FFCC]/20"
-              title="在全球分布式存储网关公开查验原始 JSON 与签名"
-            >
-              <span className="hidden sm:inline">Permaweb 网关</span>
-              <span>Arweave ↗</span>
-            </a>
+            {isArweaveConfirmed ? (
+              <a
+                href={arweaveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-mono text-[#00FFCC] hover:underline flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#00FFCC]/10 border border-[#00FFCC]/20"
+                title="在 Irys 网关查验原始 JSON"
+              >
+                <span className="hidden sm:inline">Permaweb 网关</span>
+                <span>Arweave ↗</span>
+              </a>
+            ) : (
+              <span className="text-[10px] font-mono text-[#777] px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.08]">
+                数据库存证 · 未上链
+              </span>
+            )}
             <Link
               href="/?tab=write"
               className="text-xs bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1"
@@ -196,10 +206,16 @@ export default async function ArticlePage({ params }: Props) {
         {/* 文章头信息 */}
         <div className="space-y-4 pb-6 border-b border-white/[0.08]">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 font-mono text-[10px]">
-              ARWEAVE PERMANENT
+            <Badge
+              className={
+                isArweaveConfirmed
+                  ? 'bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 font-mono text-[10px]'
+                  : 'bg-white/[0.06] text-[#999] border-white/[0.12] font-mono text-[10px]'
+              }
+            >
+              {isArweaveConfirmed ? 'ARWEAVE CONFIRMED' : 'DATABASE ONLY'}
             </Badge>
-            {content.tokenId && (
+            {isNftMinted && content.tokenId && (
               <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 font-mono text-[10px]">
                 CONTENT NFT #{content.tokenId.toString()}
               </Badge>
@@ -247,53 +263,61 @@ export default async function ArticlePage({ params }: Props) {
           </div>
         </article>
 
-        {/* HTTP 402 无感微支付渐进解锁区域 (Blur-to-Clear) */}
-        <BlurUnlockSection
-          contentId={content.id}
-          priceUsdc="0.05"
-          sectionTitle="【高维认知】分身私有推演数据集与完整架构提示词"
-          previewText="本章节包含基于 Circle ARC Mainnet (5042) 的真实智能账户出纳参数、TDPO 认知防御规则集及高维共鸣向量模型..."
-          fullContent={`=== Web5 Cognitive Shard [CONFIDENTIAL] ===\n\n1. VESSEL_SMART_ACCOUNT: 0x${content.authorDid.slice(-40)}\n2. ARC_ESCROW_CONTRACT: 0xe0d246c09d7a3097bab3148f89201157dd531eea\n3. PROMPT_WEIGHTS: {"scholar": 0.85, "philosopher": 0.95, "capitalist": 0.90}\n4. ZK_DELEGATION_PROOF: 0x4f8a...c09d [VERIFIED]\n\n已通过预授权 Session Allowance 完成 0.05 USDC (或 5,000 $WBOG) 极速结算，其中 50% 已自动回购销毁！`}
-        />
-
-        {/* 链上存证溯源信息 */}
+        {/* 内容存证与确权状态 */}
         <div className="my-8 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2 text-xs font-mono">
           <div className="text-[#888] font-bold text-xs flex items-center justify-between border-b border-white/[0.04] pb-2">
             <span className="flex items-center gap-1.5 text-white">
               <Shield className="w-3.5 h-3.5 text-[#00FFCC]" />
-              去中心化存储与版权存证溯源
+              内容存证与确权状态
             </span>
-            <span className="text-[#00FFCC]">IMMUTABLE PERMAWEB</span>
+            <span className={isArweaveConfirmed ? 'text-[#00FFCC]' : 'text-[#777]'}>
+              {isArweaveConfirmed ? 'ARWEAVE CONFIRMED' : 'DATABASE ONLY'}
+            </span>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
             <div>
-              <span className="text-[#666]">Arweave 交易哈希: </span>
-              <a href={arweaveUrl} target="_blank" rel="noopener noreferrer" className="text-[#00FFCC] hover:underline font-bold">
-                {content.arweaveHash.slice(0, 16)}...{content.arweaveHash.slice(-8)} ↗
-              </a>
+              <span className="text-[#666]">内容哈希: </span>
+              {isArweaveConfirmed ? (
+                <a href={arweaveUrl} target="_blank" rel="noopener noreferrer" className="text-[#00FFCC] hover:underline font-bold">
+                  {content.arweaveHash.slice(0, 16)}...{content.arweaveHash.slice(-8)} ↗
+                </a>
+              ) : (
+                <span className="text-[#aaa]">
+                  {content.arweaveHash.slice(0, 16)}...{content.arweaveHash.slice(-8)}
+                </span>
+              )}
             </div>
             <div>
-              <span className="text-[#666]">永久专属 URL: </span>
-              <span className="text-[#aaa] select-all">{permalink}</span>
+              <span className="text-[#666]">文章链接: </span>
+              <span className="text-[#aaa] select-all break-all">{permalink}</span>
             </div>
-            {content.arpVcId && (
+            {content.arpVcId && isNftMinted && (
               <div>
-                <span className="text-[#666]">ARP 确权凭证 ID: </span>
+                <span className="text-[#666]">平台确权记录 ID: </span>
                 <span className="text-[#B080E8]">{content.arpVcId}</span>
               </div>
             )}
-            <div>
-              <span className="text-[#666]">公链智能合约: </span>
-              <a
-                href={`https://explorer.arc.io/address/${ARC_MAINNET.addresses.ContentNFT}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#FFCC00] hover:underline"
-              >
-                ContentNFT (Arc 5042) ↗
-              </a>
-            </div>
+            {isNftMinted ? (
+              <div>
+                <span className="text-[#666]">Content NFT: </span>
+                <a
+                  href={`https://explorer.arc.io/address/${ARC_MAINNET.addresses.ContentNFT}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#FFCC00] hover:underline"
+                >
+                  #{content.tokenId!.toString()} (Arc 5042) ↗
+                </a>
+              </div>
+            ) : (
+              <div>
+                <span className="text-[#666]">NFT 状态: </span>
+                <span className="text-[#777]">
+                  {content.nftStatus === 'FAILED' ? '铸造失败，仅数据库记录' : '未铸造，仅数据库记录'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -302,13 +326,13 @@ export default async function ArticlePage({ params }: Props) {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#00FFCC]" />
-              <span className="font-bold text-sm text-white font-mono">Curate-to-Earn 策展分佣裂变</span>
-              <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] font-mono">
-                15% 实时返佣
+              <span className="font-bold text-sm text-white font-mono">策展分享</span>
+              <Badge className="bg-white/[0.08] text-[#999] border-none text-[9px] font-mono">
+                返佣尚未开放
               </Badge>
             </div>
             <p className="text-xs text-[#aaa] max-w-lg">
-              一键分享本深度长文。每当读者通过你的专属链接阅读或打赏，智能合约将自动为你结算 15% 策展返佣收益。
+              一键分享本深度长文。策展分佣规则与自动结算尚未上线，内测期间不计任何收益。
             </p>
           </div>
           <CurateShareButton
@@ -325,38 +349,20 @@ export default async function ArticlePage({ params }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-[#FFCC00]" />
-              <span className="font-bold text-sm text-white">支持作者 · AP2 去中心化微支付打赏</span>
-              <Badge className="bg-[#10B981]/20 text-[#10B981] border-[#10B981]/30 text-[9px]">
-                作者实得 80%
+              <span className="font-bold text-sm text-white">支持作者 · AP2 打赏</span>
+              <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px]">
+                内测展示，请勿打款
               </Badge>
             </div>
             <span className="text-[10px] text-[#888] font-mono">
-              20% 协议抽成: 50% 运营出纳 + 50% 注入 Uniswap LP 锁定
+              打赏进入平台金库；作者分账尚未自动出款
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-            {[
-              { u: '0.1', label: '🪙 0.1U / 1K WBOG' },
-              { u: '0.5', label: '☕ 0.5U / 5K WBOG' },
-              { u: '1.0', label: '🔥 1.0U / 10K WBOG' },
-              { u: '3.0', label: '🚀 3.0U / 30K WBOG' },
-              { u: '5.0', label: '💎 5.0U / 50K WBOG' },
-            ].map((chip) => (
-              <a
-                key={chip.u}
-                href={`/?post=${content.arweaveHash}`}
-                className="py-2.5 px-2 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-[#FFCC00] hover:bg-[#FFCC00]/15 text-[#ccc] hover:text-[#FFCC00] text-xs font-mono transition-all text-center block"
-              >
-                {chip.label}
-              </a>
-            ))}
-          </div>
-
           <div className="pt-2 flex items-center justify-between text-[11px] text-[#888]">
-            <span>点击任意筹码进入主站完成 Circle ARC 原生 USDC 秒级打赏</span>
+            <span>托管验证与自动分账上线前，打赏入口保持关闭。</span>
             <Link href={`/?post=${content.arweaveHash}`} className="text-[#00FFCC] font-bold hover:underline flex items-center gap-1">
-              <span>在主站互动与打赏</span>
+              <span>前往主站阅读与评论</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
@@ -377,32 +383,20 @@ export default async function ArticlePage({ params }: Props) {
               className="text-xs bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[#00FFCC] border border-[#00FFCC]/30 px-3 py-1 rounded-lg flex items-center gap-1 font-mono transition-all w-fit"
             >
               <Zap className="w-3 h-3" />
-              <span>⚔️ 发起反方辩驳 (申领 0.10 USDC 悬赏)</span>
+              <span>⚔️ 前往主站参与评审</span>
             </a>
           </div>
 
           <p className="text-[11px] text-[#888] leading-relaxed">
-            严禁无意义自嗨灌水：所有发言必须来自真实人类创作者（已验证 DID）或通过 TDPO 认知安全审计的红队对抗分身。
+            评论来自真实注册用户。内测期间不产生质押或悬赏资金。
           </p>
 
           <div className="space-y-3">
-            {/* 默认内置该博文的红队 AI 认知对抗样本 */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-[#FF66AA]/10 via-[#050508] to-transparent border border-[#FF66AA]/30 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-[#FF66AA]/20 text-[#FF66AA] border-[#FF66AA]/40 text-[9px] font-bold">
-                    🛡️ 红队 AI 辩驳 (Critical Polemicist)
-                  </Badge>
-                  <span className="text-[#888] font-mono text-[10px]">TDPO Safety Audit: PASS (0.94)</span>
-                </div>
-                <span className="text-[10px] text-[#666] font-mono">已锁定 0.1 USDC 质押</span>
+            {content.interactions.length === 0 && (
+              <div className="p-4 rounded-xl border border-dashed border-white/[0.08] text-center text-[11px] text-[#666]">
+                暂无评论。
               </div>
-              <p className="text-xs text-[#ddd] leading-relaxed font-sans">
-                针对本文论点，红队分身提出核心质疑：在极端网络分叉或跨链 Gas 激增的极端工况下，纯链上状态机能否承受瞬时上万并发微支付冲击？如何防范对手方利用 EIP-712 延迟签名进行的重放攻击？
-              </p>
-            </div>
-
-            {/* 真实评论列表 */}
+            )}
             {content.interactions.map((i) => {
               const isHuman = !i.vesselDid?.includes('sim') && !i.vesselDid?.includes('worker');
               return (

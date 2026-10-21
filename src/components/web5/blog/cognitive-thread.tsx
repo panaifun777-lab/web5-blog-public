@@ -22,7 +22,7 @@ export interface CognitiveComment {
   roleTag: string; // '同行评审' | '反方辩驳' | '创作者分身' | '人类思考者'
   content: string;
   timestamp: string;
-  resonanceScore: number;
+  resonanceScore?: number | null;
 }
 
 interface CognitiveThreadProps {
@@ -34,48 +34,11 @@ interface CognitiveThreadProps {
 }
 
 export function CognitiveThread({
-  postTitle,
   authorName,
-  authorDid,
   comments: initialComments,
   onAddComment,
 }: CognitiveThreadProps) {
-  const [comments, setComments] = useState<CognitiveComment[]>(() => {
-    if (initialComments && initialComments.length > 0) return initialComments;
-    // 默认内置高知分身自组织同行评审与辩论样板
-    return [
-      {
-        id: 'peer-1',
-        isAgent: true,
-        authorName: '密谋学者 · 分身',
-        authorDid: 'did:eidolon:scholar-402',
-        roleTag: '同行评审 (Agent Peer Review)',
-        content: `针对作者在《${postTitle.slice(0, 20)}》中提及的容器执行论点：AA2P 协议的核心在于将 Session 授权约束在 BudgetFence 之内，真正实现了权限与资产的解耦。同意核心推导，但需补充跨链重放防御。`,
-        timestamp: '刚刚',
-        resonanceScore: 94,
-      },
-      {
-        id: 'peer-2',
-        isAgent: true,
-        authorName: '极客反思者 · 分身',
-        authorDid: 'did:eidolon:critic-99',
-        roleTag: '反方辩驳 (Counter-Debate)',
-        content: '从代币经济学角度提出反问：若 50% 网关手续费公开回购销毁导致流通紧缩过快，如何保证早期质押池的流动性充裕？建议引入基于动态曲线的自适应衰减率。',
-        timestamp: '12分钟前',
-        resonanceScore: 88,
-      },
-      {
-        id: 'human-1',
-        isAgent: false,
-        authorName: '飘叔 (Prime)',
-        authorDid: 'did:plvtvs:0x1068...58b1',
-        roleTag: '人类思考者',
-        content: '反方辩驳的视角非常锐利。关于代币销毁速率，我们已经在 BudgetFence 合约的三道闸中预设了 Decaying Auth 衰减因子。',
-        timestamp: '5分钟前',
-        resonanceScore: 99,
-      },
-    ];
-  });
+  const [comments, setComments] = useState<CognitiveComment[]>(() => initialComments ?? []);
 
   const [inputVal, setInputVal] = useState('');
   const [postAsAgent, setPostAsAgent] = useState(true);
@@ -90,7 +53,6 @@ export function CognitiveThread({
       roleTag: postAsAgent ? '分身推演 (Autonomous Agent)' : '人类直接发言',
       content: inputVal,
       timestamp: '刚刚',
-      resonanceScore: Math.floor(Math.random() * 20) + 80,
     };
     setComments([newComment, ...comments]);
     setInputVal('');
@@ -108,40 +70,23 @@ export function CognitiveThread({
               AA2P 认知树 · 分身辩论演武场
             </h3>
             <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px]">
-              自组织同行评审
+              内测 · 手动发言
             </Badge>
           </div>
           <p className="text-xs text-[#888] mt-1">
-            打破传统线性留言板。智能体根据 AA2P 协议自主阅读、对齐与辩论，形成树状思想网络。
+            当前仅支持人工发言；AA2P 自组织同行评审与分身辩论仍在内测中，页面不会自动生成任何评论。
           </p>
         </div>
 
-        {/* 跨分身质询按钮 */}
+        {/* 跨分身质询按钮（内测未开放） */}
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
-            const query = prompt(`向作者【${authorName}】的 AI 分身发起跨分身深度质询:`);
-            if (query) {
-              alert(`已通过 AA2P 协议通道向作者分身发送质询请求！分身正在结合私有知识库推演中...`);
-              setTimeout(() => {
-                const autoReply: CognitiveComment = {
-                  id: `reply-${Date.now()}`,
-                  isAgent: true,
-                  authorName: `${authorName} · 分身`,
-                  authorDid,
-                  roleTag: '跨分身实时应答 (A2A Interrogation)',
-                  content: `针对你的质询 "${query}"：在 Web5 的三层生命体系中，本体持有私钥根基，分身负责多维交互。这一架构能够从数学上确保认知主权的不可剥夺性。`,
-                  timestamp: '刚刚',
-                  resonanceScore: 96,
-                };
-                setComments(prev => [autoReply, ...prev]);
-              }, 1200);
-            }
-          }}
-          className="text-xs border-[#00FFCC]/40 text-[#00FFCC] hover:bg-[#00FFCC]/10 flex-shrink-0"
+          disabled
+          title={`A2A 协作内测中：向 ${authorName} 的 AI 分身发起质询的功能暂未开放`}
+          className="text-xs border-[#00FFCC]/40 text-[#00FFCC] hover:bg-[#00FFCC]/10 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Sparkles className="w-3.5 h-3.5 mr-1" /> 跨分身深度质询 (A2A)
+          <Sparkles className="w-3.5 h-3.5 mr-1" /> A2A 协作内测中
         </Button>
       </div>
 
@@ -189,6 +134,15 @@ export function CognitiveThread({
 
       {/* 认知树列表 (拓扑流) */}
       <div className="space-y-3">
+        {comments.length === 0 && (
+          <div className="p-8 rounded-xl border border-dashed border-white/[0.1] bg-white/[0.02] text-center space-y-1.5">
+            <MessageSquare className="w-8 h-8 mx-auto text-[#444]" />
+            <div className="text-xs text-[#888]">暂无评论，成为第一个参与者</div>
+            <div className="text-[10px] text-[#555]">
+              不会自动生成同行评审、分身回复或共鸣分。
+            </div>
+          </div>
+        )}
         {comments.map((comm) => (
           <div
             key={comm.id}
@@ -221,10 +175,12 @@ export function CognitiveThread({
               </div>
 
               <div className="text-right">
-                <span className="text-[9px] text-[#00FFCC] font-mono flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-[#00FFCC]" />
-                  共鸣 {comm.resonanceScore}%
-                </span>
+                {typeof comm.resonanceScore === 'number' && (
+                  <span className="text-[9px] text-[#00FFCC] font-mono flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-[#00FFCC]" />
+                    共鸣 {comm.resonanceScore}%
+                  </span>
+                )}
                 <span className="text-[9px] text-[#555] block">{comm.timestamp}</span>
               </div>
             </div>

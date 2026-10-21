@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, TrendingUp, Coins, ExternalLink, CheckCircle2, Shield } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
+import { PUBLIC_MONEY_FLOWS_ENABLED, PUBLIC_DEMO_NOTICE, PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE } from '@/lib/launch/public';
 
 interface SponsorModalProps {
   open: boolean;
@@ -35,6 +36,10 @@ export function SponsorModal({ open, onOpenChange, onSuccess }: SponsorModalProp
   const wbogAmount = dayNum * 300000;
 
   const handleSubmit = async () => {
+    if (!PUBLIC_MONEY_FLOWS_ENABLED) {
+      alert(PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE);
+      return;
+    }
     if (!title.trim() || !targetUrl.trim()) {
       alert(isEn ? 'Please provide title and target URL.' : '请填写赞助标题与跳转链接。');
       return;
@@ -90,6 +95,11 @@ export function SponsorModal({ open, onOpenChange, onSuccess }: SponsorModalProp
           </DialogDescription>
         </DialogHeader>
 
+        {!PUBLIC_MONEY_FLOWS_ENABLED && (
+          <div className="rounded-lg border border-[#FFCC00]/40 bg-[#FFCC00]/10 px-3 py-2 text-[11px] text-[#FFE58A]">
+            <b>{PUBLIC_DEMO_NOTICE}</b>。支付验证与人工审核尚未上线，当前不接受赞助投放。
+          </div>
+        )}
         <div className="space-y-3.5 my-2">
           <div>
             <label className="text-[11px] text-[#888] font-mono block mb-1">
@@ -199,11 +209,12 @@ export function SponsorModal({ open, onOpenChange, onSuccess }: SponsorModalProp
         <div className="pt-2">
           <Button
             onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full bg-gradient-to-r from-[#FFCC00] to-[#FF66AA] text-black font-black text-xs h-10 shadow-lg shadow-[#FFCC00]/20 hover:opacity-90"
+            disabled={submitting || !PUBLIC_MONEY_FLOWS_ENABLED}
+            title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
+            className="w-full bg-gradient-to-r from-[#FFCC00] to-[#FF66AA] text-black font-black text-xs h-10 shadow-lg shadow-[#FFCC00]/20 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4 mr-1.5" />
-            {submitting ? (isEn ? 'Processing Ad Placement...' : '正在广播上架广告...') : (isEn ? `Pay & Publish Ad (${priceUsdc}U)` : `确认支付并置顶热搜 (${priceUsdc}U)`)}
+            {submitting ? (isEn ? 'Processing Ad Placement...' : '正在广播上架广告...') : PUBLIC_MONEY_FLOWS_ENABLED ? (isEn ? `Pay & Publish Ad (${priceUsdc}U)` : `确认支付并置顶热搜 (${priceUsdc}U)`) : PUBLIC_DEMO_NOTICE}
           </Button>
         </div>
       </DialogContent>

@@ -39,7 +39,8 @@ export const UNISWAP_V4_ARC_POOL: DexPoolInfo = {
 };
 
 /**
- * 获取当前 Uniswap v4 实时参考价格与汇率折算
+ * 返回配置中的静态参考价。当前并未连接任何链上行情源，
+ * 因此 source 标记为 BEACON_ANCHOR，调用方不得宣称“实时价格”。
  */
 export async function getLiveTokenPrice(): Promise<{
   priceUsdc: number;
@@ -47,8 +48,6 @@ export async function getLiveTokenPrice(): Promise<{
   pool: DexPoolInfo;
   source: 'UNISWAP_V4_LIVE' | 'BEACON_ANCHOR';
 }> {
-  // 当前处于价格信标阶段（1 USDC = 12,500 WBOG）
-  // 随着交易量上升，可直连 GeckoTerminal / CoinGecko Onchain 动态接口
   const priceUsdc = UNISWAP_V4_ARC_POOL.initialPriceUsdc;
   const wbogPerUsdc = 1 / priceUsdc;
 
@@ -56,6 +55,6 @@ export async function getLiveTokenPrice(): Promise<{
     priceUsdc,
     wbogPerUsdc,
     pool: UNISWAP_V4_ARC_POOL,
-    source: 'UNISWAP_V4_LIVE',
+    source: 'BEACON_ANCHOR',
   };
 }

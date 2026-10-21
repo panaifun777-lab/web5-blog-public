@@ -30,6 +30,9 @@ export async function GET(req: NextRequest) {
     },
     sampleSplit: split,
     curator: ref ? { ref, rebatePercent: '15%' } : null,
+    demo: true,
+    settled: false,
+    message: '分账规则预览，不产生真实转账；结算通道开放前不会执行分账。',
   });
 }
 

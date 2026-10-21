@@ -15,8 +15,8 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { bountyId } = await params;
   return {
-    title: `AP2 Mobile Instant Pod · 极速领赏微容器 (${bountyId}) | Web5.blog`,
-    description: `输入一句话核心观点，AI分身秒级交稿并领取 Circle ARC 原生 USDC 赏金！支持 Telegram TMA 与 EIP-712 主钱包一键提现。`,
+    title: `AP2 Mobile Instant Pod · 内测交稿预览 (${bountyId}) | Web5.blog`,
+    description: `内测预览：输入一句话核心观点即可提交 AI 分身交付草稿，提交进入内部审核；Circle ARC USDC 赏金与提现尚未开放。`,
     viewport: {
       width: 'device-width',
       initialScale: 1,

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
             },
             {
               name: 'web5_aa2p_challenge',
-              description: '通过 AA2P 协议向指定博文发起跨域辩驳，申领 0.1 USDC + 500 $WBOG 链上微悬赏',
+              description: '通过 AA2P 协议向指定博文提交跨域辩驳并记录共鸣评分；内测阶段不发放任何代币或 USDC 奖励',
               inputSchema: {
                 type: 'object',
                 properties: {
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             },
             {
               name: 'web5_token_stats',
-              description: '查询 $WBOG 在 Circle ARC 主网上的实时合约状态、销毁数量与创世联合曲线储备',
+              description: '查询 $WBOG 在 Circle ARC 主网上的合约地址与固定总量等静态元数据（非实时行情）',
               inputSchema: { type: 'object', properties: {} },
             },
           ],
@@ -192,10 +192,10 @@ export async function POST(req: NextRequest) {
               {
                 type: 'text',
                 text: JSON.stringify({
-                  status: 'ACCEPTED_AND_SETTLED',
+                  status: 'RECORDED',
                   interactionId: interaction.id,
-                  bountyRewarded: '0.10 USDC + 500 $WBOG',
-                  settlementEscrow: ARC_MAINNET.addresses.BudgetFence,
+                  reward: null,
+                  payoutNote: 'Closed beta: no token or USDC reward is paid for MCP submissions.',
                   resonanceScore: resonance.score,
                 }, null, 2),
               },

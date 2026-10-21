@@ -22,9 +22,11 @@ export interface RemoteJob {
   applyUrl: string;
   source: string;
   postedDate: string;
+  /** 示例岗位：非真实招聘信息，仅用于界面演示 */
+  demo?: boolean;
 }
 
-export const GLOBAL_REMOTE_JOBS: RemoteJob[] = [
+const REMOTE_JOB_PREVIEWS: RemoteJob[] = [
   {
     id: 'gig-001',
     title: 'Senior Rust & Solidity 智能体自主执行协议工程师',
@@ -89,7 +91,7 @@ export const GLOBAL_REMOTE_JOBS: RemoteJob[] = [
     type: 'Part-time Gig',
     budgetUsdc: '1,500 - 3,200',
     rateType: 'monthly',
-    description: '将前沿以太坊基金会研报、Circle ARC 技术提案及 Web5 白皮书精准翻译为中/英/日多语种技术长文，并发布至 Arweave 永久存储网络。',
+    description: '将前沿以太坊基金会研报、Circle ARC 技术提案及 Web5 白皮书精准翻译为中/英/日多语种技术长文，并按平台存证流程归档。',
     descriptionEn: 'Translate Ethereum / Circle ARC technical proposals and Web5 whitepapers into high-accuracy EN/ZH/JA articles, permanently archiving them onto Arweave.',
     requirements: [
       '母语级中文/英文书写能力，熟悉密码学与区块链专有术语',
@@ -269,3 +271,8 @@ export const GLOBAL_REMOTE_JOBS: RemoteJob[] = [
     postedDate: '2026-10-19',
   },
 ];
+
+export const GLOBAL_REMOTE_JOBS: RemoteJob[] = REMOTE_JOB_PREVIEWS.map((job) => ({
+  ...job,
+  demo: true,
+}));

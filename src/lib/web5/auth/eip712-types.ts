@@ -6,6 +6,7 @@
 import { verifyTypedData, isAddress, getAddress, type Address, type Hex } from 'viem';
 import { db } from '@/lib/db';
 import { AccountStage } from '@prisma/client';
+import { sendNativeUsdc } from '@/lib/web5/payments/arc';
 
 /** Circle ARC Mainnet Chain ID */
 export const ARC_MAINNET_CHAIN_ID = 5042;
@@ -360,9 +361,8 @@ export async function processBindMasterWallet(params: {
   }
 
   const masterAddr = getAddress(message.masterWalletAddress).toLowerCase();
-  const realPrimeDid = message.onchainDid?.startsWith('did:')
-    ? message.onchainDid
-    : `did:plvtvs:${masterAddr}`;
+  // DID 由签名地址派生，禁止用任意字符串伪造链上身份
+  const realPrimeDid = `did:plvtvs:${masterAddr}`;
 
   // 2. 数据库事务：消费防重放 Nonce + 账户生命周期跃迁至 STAGE_2_MASTER_VERIFIED
   return await db.$transaction(async (tx) => {
@@ -398,9 +398,14 @@ export async function processBindMasterWallet(params: {
       where: {
         OR: [{ id: message.containerId }, { did: message.containerId }],
       },
+      include: { prime: { select: { walletAddress: true } } },
     });
 
     if (vessel) {
+      const owner = vessel.prime?.walletAddress?.toLowerCase();
+      if (owner && owner !== masterAddr) {
+        throw new Error('该 Vessel 已绑定其他主钱包，无法重复绑定');
+      }
       await tx.vessel.update({
         where: { id: vessel.id },
         data: {
@@ -477,9 +482,8 @@ export interface WithdrawSettlementResult {
 export async function processWithdrawSettlement(params: {
   message: WithdrawSettlementMessage;
   signature: `0x${string}`;
-  txHash?: string;
-}): Promise<WithdrawSettlementResult> {
-  const { message, signature, txHash } = params;
+}): Promise<WithdrawSettlementResult & { txHash: string }> {
+  const { message, signature } = params;
 
   // 1. 严格验签、超期校验、防重放与余额校验
   const verifyRes = await verifyWithdrawSettlementSignature(message, signature, {
@@ -491,77 +495,137 @@ export async function processWithdrawSettlement(params: {
     throw new Error(`[WithdrawSettlement] 提现验签失败: ${verifyRes.error} (${verifyRes.code})`);
   }
 
+  if (message.asset !== 'USDC') {
+    throw new Error('Only USDC withdrawals are supported');
+  }
+
   const masterAddr = getAddress(message.masterWalletAddress).toLowerCase();
   const backupAddr = getAddress(message.backupWalletAddress).toLowerCase();
   const amountAtomic = BigInt(message.amountAtomic);
 
-  // 2. 数据库事务原子扣减与流水记录
-  return await db.$transaction(async (tx) => {
-    // 锁定并读取当前备用轻钱包
-    const backupWallet = await tx.backupWallet.findUnique({
-      where: { address: backupAddr },
-    });
-    if (!backupWallet) {
-      throw new Error(`备用轻钱包不存在: ${backupAddr}`);
-    }
+  // 2. 归属校验：签名主钱包必须拥有该备用钱包，防止替他人签名提现
+  const backupWallet = await db.backupWallet.findUnique({
+    where: { address: backupAddr },
+    include: {
+      prime: { select: { walletAddress: true } },
+      vessel: { select: { prime: { select: { walletAddress: true } } } },
+    },
+  });
+  if (!backupWallet) {
+    throw new Error(`备用轻钱包不存在: ${backupAddr}`);
+  }
 
-    const currentBalance = BigInt(backupWallet.balanceWei || '0');
-    if (currentBalance < amountAtomic) {
-      throw new Error(`备用钱包余额不足，当前余额: ${formatArcUsdc(currentBalance)} USDC`);
-    }
+  const ownerAddresses = [
+    backupWallet.prime?.walletAddress,
+    backupWallet.vessel?.prime?.walletAddress,
+    backupAddr,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
 
-    const newBalance = currentBalance - amountAtomic;
+  if (!ownerAddresses.includes(masterAddr)) {
+    throw new Error('Master wallet does not own this backup wallet');
+  }
 
-    // 记录 Nonce 防重放
-    await tx.authNonce.create({
+  const currentBalance = BigInt(backupWallet.balanceWei || '0');
+  if (currentBalance < amountAtomic) {
+    throw new Error(
+      `备用钱包余额不足，当前余额: ${formatArcUsdc(currentBalance)} USDC`
+    );
+  }
+  const newBalance = currentBalance - amountAtomic;
+
+  // 3. 先原子扣减并生成 PENDING 流水，防止并发双花
+  const txRecord = await db.$transaction(async (tx) => {
+    const consumed = await tx.authNonce.create({
       data: {
         address: masterAddr,
         purpose: 'WITHDRAW_SETTLEMENT',
         nonce: BigInt(message.nonce),
-        signature: signature,
+        signature,
         deadline: BigInt(message.deadline),
       },
     });
 
-    // 更新备用钱包余额与 Nonce
-    await tx.backupWallet.update({
-      where: { id: backupWallet.id },
+    const updated = await tx.backupWallet.updateMany({
+      where: { id: backupWallet.id, balanceWei: backupWallet.balanceWei },
       data: {
         balanceWei: newBalance.toString(),
-        nonce: { increment: 1n },
+        nonce: { increment: 1 },
       },
     });
+    if (updated.count !== 1) {
+      throw new Error('Concurrent balance change detected; please retry');
+    }
 
-    // 记录备用钱包提现流水
-    const txRecord = await tx.backupWalletTx.create({
+    return tx.backupWalletTx.create({
       data: {
         backupWalletId: backupWallet.id,
         type: 'WITHDRAW_SETTLEMENT',
         amountWei: amountAtomic.toString(),
         balanceAfterWei: newBalance.toString(),
         targetAddress: masterAddr,
-        status: 'SUCCESS',
-        signature: signature,
-        txHash: txHash || null,
+        status: 'PENDING',
+        signature,
         metadata: JSON.stringify({
           asset: message.asset,
           amountFormatted: formatArcUsdc(amountAtomic),
           deadline: message.deadline.toString(),
+          authNonceId: consumed.id,
           timestamp: Date.now(),
         }),
       },
     });
-
-    return {
-      success: true,
-      masterWalletAddress: masterAddr,
-      backupWalletAddress: backupAddr,
-      amountAtomic: amountAtomic.toString(),
-      amountFormatted: formatArcUsdc(amountAtomic),
-      balanceRemainingWei: newBalance.toString(),
-      balanceRemainingFormatted: formatArcUsdc(newBalance),
-      txRecordId: txRecord.id,
-      message: `✅ 提现结算验证通过并成功扣减！提取 ${formatArcUsdc(amountAtomic)} USDC 至主钱包 ${masterAddr}`,
-    };
   });
+
+  // 4. 真实链上出款；失败则退回站内余额并标记失败
+  const payout = await sendNativeUsdc({ to: masterAddr, amountWei: amountAtomic });
+  if (!payout.ok) {
+    await db.$transaction(async (tx) => {
+      const wallet = await tx.backupWallet.findUnique({
+        where: { id: backupWallet.id },
+      });
+      if (wallet) {
+        await tx.backupWallet.update({
+          where: { id: wallet.id },
+          data: {
+            balanceWei: (BigInt(wallet.balanceWei || '0') + amountAtomic).toString(),
+          },
+        });
+      }
+      await tx.backupWalletTx.update({
+        where: { id: txRecord.id },
+        data: {
+          status: 'FAILED',
+          metadata: JSON.stringify({
+            asset: message.asset,
+            error: payout.reason,
+            timestamp: Date.now(),
+          }),
+        },
+      });
+    });
+    throw new Error(`On-chain payout failed: ${payout.reason}`);
+  }
+
+  await db.backupWalletTx.update({
+    where: { id: txRecord.id },
+    data: {
+      status: 'SUCCESS',
+      txHash: payout.txHash,
+    },
+  });
+
+  return {
+    success: true,
+    masterWalletAddress: masterAddr,
+    backupWalletAddress: backupAddr,
+    amountAtomic: amountAtomic.toString(),
+    amountFormatted: formatArcUsdc(amountAtomic),
+    balanceRemainingWei: newBalance.toString(),
+    balanceRemainingFormatted: formatArcUsdc(newBalance),
+    txRecordId: txRecord.id,
+    txHash: payout.txHash,
+    message: `✅ 提现已链上出款：${formatArcUsdc(amountAtomic)} USDC → ${masterAddr}`,
+  };
 }

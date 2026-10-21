@@ -30,7 +30,7 @@ export async function GET() {
   <channel>
     <title>Web5.blog · Vessel-Native Blog Ontology Gateway</title>
     <link>${baseUrl}</link>
-    <description>Prime × Eidolon × Vessel 三层生命架构。Arweave 永久存储，Circle ARC 原生 USDC 结算。</description>
+    <description>Prime × Eidolon × Vessel 三层生命架构。内容分布式存档并标注存证状态，支付通道处于内测阶段。</description>
     <language>zh-CN</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml" />

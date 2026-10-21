@@ -145,37 +145,43 @@ export async function awakenVessel(
   const rawSession = raw.session || raw;
   // 反序列化 BigInt（后端用 serializeForJson 将 bigint 转为 {__bigint: "..."}）
   const session = parseSessionResponse(rawSession);
-  // 持久化会话到 sessionStorage（复用 PLVTVS 模式）
-  if (typeof window !== 'undefined') {
-    sessionStorage.setItem('web5_vessel_session', JSON.stringify({
-      ...session,
-      ap2Budget: {
-        ...session.ap2Budget,
-        dailyLimit: session.ap2Budget.dailyLimit.toString(),
-        perTxLimit: session.ap2Budget.perTxLimit.toString(),
-        categoryLimit: session.ap2Budget.categoryLimit
-          ? Object.fromEntries(
-              Object.entries(session.ap2Budget.categoryLimit).map(
-                ([k, v]) => [k, (v as bigint).toString()]
-              )
-            )
-          : undefined,
-      },
-    }));
-  }
+  persistVesselSession(session);
   return session;
+}
+
+/** 将 bigint 字段统一转为 number/string/bigint 的 bigint */
+export function toBigIntValue(v: any): bigint {
+  if (typeof v === 'bigint') return v;
+  if (v && typeof v === 'object' && v.__bigint !== undefined) return BigInt(v.__bigint);
+  if (typeof v === 'string') return BigInt(v);
+  if (typeof v === 'number') return BigInt(v);
+  return 0n;
+}
+
+/** 持久化容器会话到 sessionStorage（BigInt 统一转为十进制字符串） */
+export function persistVesselSession(session: VesselSession): void {
+  if (typeof window === 'undefined') return;
+  const ap2 = session.ap2Budget;
+  const payload = {
+    ...session,
+    ap2Budget: {
+      ...ap2,
+      dailyLimit: toBigIntValue(ap2?.dailyLimit).toString(),
+      perTxLimit: toBigIntValue(ap2?.perTxLimit).toString(),
+      categoryLimit: ap2?.categoryLimit
+        ? Object.fromEntries(
+            Object.entries(ap2.categoryLimit).map(([k, v]) => [k, toBigIntValue(v).toString()])
+          )
+        : undefined,
+    },
+  };
+  sessionStorage.setItem('web5_vessel_session', JSON.stringify(payload));
 }
 
 /** 解析后端返回的 session（处理 BigInt 序列化） */
 export function parseSessionResponse(raw: any): VesselSession {
   const ap2BudgetRaw = raw.ap2Budget || {};
-  const toBigInt = (v: any): bigint => {
-    if (typeof v === 'bigint') return v;
-    if (v && typeof v === 'object' && v.__bigint) return BigInt(v.__bigint);
-    if (typeof v === 'string') return BigInt(v);
-    if (typeof v === 'number') return BigInt(v);
-    return 0n;
-  };
+  const toBigInt = toBigIntValue;
 
   const categoryLimitRaw = ap2BudgetRaw.categoryLimit;
   let categoryLimit: Record<string, bigint> | undefined;
@@ -219,16 +225,23 @@ export function getCurrentVesselSession(): VesselSession | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
+    // 过期会话直接丢弃，避免用失效 DID 反复请求 404
+    if (parsed.expiresAt && Date.now() > Number(parsed.expiresAt)) {
+      sessionStorage.removeItem('web5_vessel_session');
+      return null;
+    }
+    const ap2 = parsed.ap2Budget || {};
     return {
       ...parsed,
+      accessMode: parsed.accessMode || 'vessel',
       ap2Budget: {
-        ...parsed.ap2Budget,
-        dailyLimit: BigInt(parsed.ap2Budget.dailyLimit),
-        perTxLimit: BigInt(parsed.ap2Budget.perTxLimit),
-        categoryLimit: parsed.ap2Budget.categoryLimit
+        ...ap2,
+        dailyLimit: toBigIntValue(ap2.dailyLimit),
+        perTxLimit: toBigIntValue(ap2.perTxLimit),
+        categoryLimit: ap2.categoryLimit
           ? Object.fromEntries(
-              Object.entries(parsed.ap2Budget.categoryLimit).map(
-                ([k, v]) => [k, BigInt(v as string)]
+              Object.entries(ap2.categoryLimit).map(
+                ([k, v]) => [k, toBigIntValue(v)]
               )
             )
           : undefined,

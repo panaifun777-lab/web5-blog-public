@@ -3,15 +3,24 @@
 // AI 分身流式写作 API（SSE）
 // ════════════════════════════════════════════════════════════════
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { streamWrite } from '@/lib/web5/ai/eidolon-writer';
 import { inspectPromptWithTDPO } from '@/lib/web5/security/tdpo';
 import { buildOutlinePrompt, buildArticleExpansionPrompt } from '@/lib/web5/ai/free-pool';
+import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(`ai-write:${clientIp(req)}`, 6, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: '请求过于频繁，请稍后再试。' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
+    );
+  }
+
   try {
     const {
       prompt,

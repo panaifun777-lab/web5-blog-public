@@ -12,11 +12,19 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { ParticleAvatar } from '@/components/web5/avatar/particle-avatar';
 import { getAudioEngine } from '@/lib/web5/audio-engine';
-import { createVesselChallenge, requestVesselSignature, parseSessionResponse, revokeVesselSession } from '@/lib/web5/vessel-auth';
+import { createVesselChallenge, parseSessionResponse, persistVesselSession, revokeVesselSession } from '@/lib/web5/vessel-auth';
 import { getOrCreateVesselWallet } from '@/lib/web5/vessel-wallet';
 import type { VesselSession } from '@/lib/web5/types';
 
 type RitualPhase = 'idle' | 'void' | 'ritual' | 'revelation' | 'complete' | 'error';
+
+/** 主钱包对容器登录消息的 EIP-191 签名（由登录页在进入仪式前获取） */
+export interface VesselAuthPayload {
+  walletAddress: string;
+  vesselAddress: string;
+  signature: string;
+  message: string;
+}
 
 const PHASE_LOGS: Record<RitualPhase, string[]> = {
   idle: [],
@@ -43,10 +51,11 @@ interface ScanRitualProps {
   onSuccess?: (session: VesselSession) => void;
   onError?: (err: Error) => void;
   seed?: string;
-  walletAddress?: string; // 真实钱包地址（身份统一：容器登录也绑定真实钱包）
+  /** 主钱包签名凭据；存在时创建完整 Vessel 身份，否则降级为只读 Observer */
+  auth?: VesselAuthPayload | null;
 }
 
-export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', walletAddress }: ScanRitualProps) {
+export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', auth }: ScanRitualProps) {
   const [phase, setPhase] = useState<RitualPhase>('idle');
   const [logs, setLogs] = useState<string[]>([]);
   const [progress, setProgress] = useState(0);
@@ -81,10 +90,10 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([
         '> INITIALIZING VESSEL AWAKENING PROTOCOL...',
         `> Generating AP2 challenge nonce: ${challenge.nonce.slice(0, 8)}...`,
-        '> Requesting vessel endpoint at plvtvs.one...',
+        auth ? '> Prime wallet signature verified ✓' : '> No wallet signature — observer mode',
       ]);
       setProgress(20);
-      await sleep(600);
+      await sleep(450);
 
       // Phase 2: ritual — AA2P Handshake（纯动画，不阻塞）
       setPhase('ritual');
@@ -94,7 +103,7 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
         '> Synchronizing sovereign identity...',
       ]);
       setProgress(45);
-      await sleep(700);
+      await sleep(550);
 
       // 静默获取已连接钱包地址（eth_accounts 不弹窗，不阻塞动画）
       let addr = '';
@@ -118,7 +127,7 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
         ]);
       }
       setProgress(65);
-      await sleep(300);
+      await sleep(200);
 
       // Phase 3: revelation — 后端验证并签发身份 Token
       setPhase('revelation');
@@ -126,19 +135,23 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([
         '> Querying Prime delegation...',
         '> Session Key authorized',
-        '> Issuing Observer Session Token...',
+        auth ? '> Issuing Vessel Session Token...' : '> Issuing Observer Session Token...',
       ]);
       setExplode(1);
       setProgress(80);
 
-      // 动画内不弹签名框：无签名一律走只读 Observer 会话，
-      // 完整权限需用户主动点击钱包登录并签署消息。
+      // 已签名：创建完整 Vessel 身份；未签名：只读 Observer 降级
       const vessel = getOrCreateVesselWallet();
-      const walletAddress = addr || vessel.address;
-      const res = await fetch('/api/auth/observer-login', {
+      const walletAddress = auth?.walletAddress || addr || vessel.address;
+      const res = await fetch(auth ? '/api/auth/wallet-login' : '/api/auth/observer-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress }),
+        body: JSON.stringify(auth ? {
+          walletAddress: auth.walletAddress,
+          vesselAddress: auth.vesselAddress,
+          signature: auth.signature,
+          message: auth.message,
+        } : { walletAddress }),
       });
 
       if (!res.ok) {
@@ -149,25 +162,14 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       const raw = await res.json();
       const rawSession = raw.session || raw;
       const session = parseSessionResponse(rawSession);
-
-      // 持久化会话
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('web5_vessel_session', JSON.stringify({
-          ...session,
-          ap2Budget: {
-            ...session.ap2Budget,
-            dailyLimit: session.ap2Budget.dailyLimit.toString(),
-            perTxLimit: session.ap2Budget.perTxLimit.toString(),
-          },
-        }));
-      }
+      persistVesselSession(session);
 
       // Phase 4: complete — 唤醒完成
       setPhase('complete');
       audio?.playDashboard();
       appendLogs(['> VESSEL AWAKENED. Welcome to Web5.blog.']);
       setProgress(100);
-      await sleep(400);
+      await sleep(250);
 
       onSuccess?.(session);
     } catch (err) {
@@ -179,7 +181,15 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', wal
       appendLogs([`> ${e.message}`]);
       onError?.(e);
     }
-  }, [phase, audio, appendLogs, onSuccess, onError]);
+  }, [phase, audio, appendLogs, onSuccess, onError, auth]);
+
+  // 已持有签名凭据时（容器登录卡片刚点击）直接开启动效，避免二次点击
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!auth || autoStarted.current) return;
+    autoStarted.current = true;
+    void startRitual();
+  }, [auth, startRitual]);
 
   return (
     <div className="relative w-full max-w-md mx-auto">

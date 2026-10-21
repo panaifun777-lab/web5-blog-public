@@ -16,6 +16,7 @@ import {
   REVENUE_ROUTING,
   type CommerceTaskOrder,
 } from '@/lib/web5/ap2/commerce';
+import { ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
 
 export interface AgentEventMessage {
   type:
@@ -635,6 +636,11 @@ class HeadlessAgentDaemon {
    * 子流水线 3：待处理任务扫描接单、高智商成果交付与 80/20 清算
    */
   public async processCommerceTasksPipeline(): Promise<number> {
+    // 托管验证与真实出款就绪前，守护进程不得自动接单或把任务置为 SETTLED。
+    if (!ESCROW_PAYOUTS_ENABLED) {
+      return 0;
+    }
+
     const orders: CommerceTaskOrder[] = await listActiveCommerceOrders();
     if (!orders || orders.length === 0) return 0;
 

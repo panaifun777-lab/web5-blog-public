@@ -8,8 +8,10 @@ import { db } from '@/lib/db';
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const limit = Number(url.searchParams.get('limit') || 20);
-    const offset = Number(url.searchParams.get('offset') || 0);
+    const rawLimit = Number(url.searchParams.get('limit') || 20);
+    const rawOffset = Number(url.searchParams.get('offset') || 0);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 20;
+    const offset = Number.isFinite(rawOffset) ? Math.max(Math.trunc(rawOffset), 0) : 0;
     const search = url.searchParams.get('q') || url.searchParams.get('search') || '';
 
     const where = search.trim() ? {
@@ -20,25 +22,28 @@ export async function GET(req: NextRequest) {
       ],
     } : undefined;
 
-    const contents = await db.content.findMany({
-      where,
-      orderBy: { publishedAt: 'desc' },
-      take: limit,
-      skip: offset,
-      include: {
-        prime: {
-          select: {
-            displayName: true,
-            did: true,
-            avatarSeed: true,
-            bio: true,
+    const [contents, total] = await Promise.all([
+      db.content.findMany({
+        where,
+        orderBy: { publishedAt: 'desc' },
+        take: limit,
+        skip: offset,
+        include: {
+          prime: {
+            select: {
+              displayName: true,
+              did: true,
+              avatarSeed: true,
+              bio: true,
+            },
+          },
+          _count: {
+            select: { interactions: true },
           },
         },
-        _count: {
-          select: { interactions: true },
-        },
-      },
-    });
+      }),
+      db.content.count({ where }),
+    ]);
 
     // 统计每篇内容的互动数
     const enriched = await Promise.all(
@@ -66,7 +71,10 @@ export async function GET(req: NextRequest) {
           authorBio: c.prime?.bio || '',
           license: c.license,
           royaltyRate: c.royaltyRate,
-          arpVcId: c.arpVcId,
+          arpVcId: c.nftStatus === 'MINTED' ? c.arpVcId : null,
+          storageProvider: c.storageProvider,
+          storageStatus: c.storageStatus,
+          nftStatus: c.nftStatus,
           publishedAt: c.publishedAt.toISOString(),
           stats: {
             reads,
@@ -81,8 +89,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       contents: enriched,
-      total: enriched.length,
-      hasMore: enriched.length === limit,
+      total,
+      limit,
+      offset,
+      hasMore: offset + enriched.length < total,
     });
   } catch (err) {
     const e = err as Error;

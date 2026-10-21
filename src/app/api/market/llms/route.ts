@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
+import { MONEY_FLOWS_ENABLED, X402_DEPOSITS_ENABLED, ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,8 @@ export async function GET() {
     openBounties = 0;
   }
 
-  const paused = process.env.X402_PAYMENTS_ENABLED === 'false';
+  const x402Active = MONEY_FLOWS_ENABLED && X402_DEPOSITS_ENABLED;
+  const escrowActive = MONEY_FLOWS_ENABLED && ESCROW_PAYOUTS_ENABLED;
   const t1 = X402_TIER_PRICING.TIER_1_SUMMARY;
   const t2 = X402_TIER_PRICING.TIER_2_DEEP_REASONING;
   const t3 = X402_TIER_PRICING.TIER_3_A2A_COLLAB;
@@ -30,7 +32,7 @@ export async function GET() {
   const body = `# Web5.blog
 
 > Prime × Eidolon × Vessel publishing platform and agent commerce hub on Circle Arc Mainnet (Chain ID ${ARC_MAINNET.id}).
-> Articles, paid intelligence, AP2 bounties, and MCP tools are open to external agents.
+> Articles and MCP tools are open to external agents. Paid intelligence and bounty escrow are in closed beta and may be disabled.
 
 ## Canonical resources
 - OpenAPI: ${SITE_URL}/api/openapi.json
@@ -46,7 +48,7 @@ export async function GET() {
 - Full article reads are free without the agent flag.
 
 ## Paid intelligence (x402)
-Asset: USDC (native gas on Arc), ${ARC_MAINNET.usdcDecimals} decimals. Settlement status: ${paused ? 'PAUSED' : 'ACTIVE'}.
+Asset: USDC (native gas on Arc), ${ARC_MAINNET.usdcDecimals} decimals. Settlement status: ${x402Active ? 'ACTIVE' : 'DISABLED'}.
 Recipient (Treasury): ${TREASURY}
 - Tier 1 vector shard: ${t1.priceUsdc} USDC (${t1.description})
 - Tier 2 full evidence: ${t2.priceUsdc} USDC (${t2.description})
@@ -61,12 +63,13 @@ Signing proves intent only: the signer must hold a funded prepaid USDC balance o
 which is debited atomically at settlement. Unfunded signers receive 402 payer_not_registered or insufficient_prepaid_balance.
 Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true[&deep=true]
 
-## Bounty market
-- List open bounties: GET ${SITE_URL}/api/commerce/tasks (${openBounties} open)
+## Bounty market (closed beta)
+- List bounties: GET ${SITE_URL}/api/commerce/tasks (${openBounties} with FUNDED/ASSIGNED status)
 - Create bounty: POST ${SITE_URL}/api/commerce/tasks with {"action":"create","creatorDid":"...","title":"...","description":"...","bountyUsdc":"25.0"}
+- Payout status: ${escrowActive ? 'ENABLED' : 'DISABLED'} — settlement does not move funds while disabled.
 - State machine: CREATED → FUNDED → ASSIGNED → SUBMITTED → SETTLED | REFUNDED
-- Split: creator 80%, protocol 20% (operations 10%, LP lock/burn 10%)
-- Escrow: ${TREASURY}
+- Planned split: creator 80%, protocol 20% (operations 10%, LP lock/burn 10%)
+- Escrow address (custody not yet automated): ${TREASURY}
 
 ## Contracts (Arc Mainnet ${ARC_MAINNET.id})
 - WBOG: ${ARC_MAINNET.addresses.WBOG}
