@@ -13,6 +13,8 @@ const ADDRS = {
   VesselAuth: ARC_MAINNET.addresses.VesselAuth,
 };
 
+const SOURCE_URL = process.env.NEXT_PUBLIC_SOURCE_URL || '';
+
 export function Footer() {
   return (
     <footer className="relative z-10 border-t border-white/[0.04] bg-[#050508] px-6 py-10 mt-24">
@@ -53,15 +55,25 @@ export function Footer() {
           <div>
             <div className="font-bold text-sm text-white mb-3">关注我们</div>
             <div className="flex gap-3">
-              <a
-                href="https://github.com/panaifun777-lab/web5.blog"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="GitHub 源码"
-                className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
-              >
-                <Github className="w-4 h-4" />
-              </a>
+              {SOURCE_URL ? (
+                <a
+                  href={SOURCE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="GitHub 源码"
+                  className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
+                >
+                  <Github className="w-4 h-4" />
+                </a>
+              ) : (
+                <div
+                  title="源码位于私有仓库，需授权后访问"
+                  aria-label="源码位于私有仓库，需授权后访问"
+                  className="w-8 h-8 rounded-lg border border-white/[0.04] flex items-center justify-center text-[#333] cursor-not-allowed"
+                >
+                  <Github className="w-4 h-4" />
+                </div>
+              )}
               <a
                 href="https://x.com/PiaoshuAgent"
                 target="_blank"

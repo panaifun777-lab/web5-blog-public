@@ -3,10 +3,21 @@
 // x402 协议集成 — 基于 HTTP 402 Payment Required 的高阶价值跃升网关
 // 规范参考: https://github.com/x402-foundation/x402
 // 单次调用设定到 0.03 - 0.05 - 0.1 USDC 区间，激活代币与 50% 销毁飞轮
+//
+// 安全约束：
+// - 仅接受 `Web5-Voucher <base64url(JSON)>` 形式的 EIP-712 凭单
+// - 凭单必须绑定 contentId / authorDid / amountUsdc，且金额不得低于标价
+// - 验签、防重放、有效期任一失败即返回 402，不存在放行分支
 // ════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import {
+  decimalToAtomicUsdc,
+  EIP712_VOUCHER_DOMAIN,
+  EIP712_VOUCHER_TYPES,
+  voucherGateway,
+  type SessionVoucher,
+} from '@/lib/web5/x402/voucher-engine';
 
 export type X402CallTier = 'TIER_1_SUMMARY' | 'TIER_2_DEEP_REASONING' | 'TIER_3_A2A_COLLAB';
 
@@ -49,44 +60,77 @@ export interface X402PaymentRequirement {
   network: 'arc-mainnet' | 'arc-testnet';
   chainId: number;
   description: string;
+  /** 付费内容强绑定：凭单中的 contentId 必须与此一致 */
+  contentId?: string;
+  /** 付费内容强绑定：凭单中的 authorDid 必须与此一致 */
+  authorDid?: string;
 }
 
-/**
- * 校验请求中的 x402 支付授权头
- * 并在通过时记录触发 50% 网关手续费回购销毁飞轮
- */
-export function handleX402PaymentGate(
-  req: NextRequest,
-  requirement: X402PaymentRequirement
-): { authorized: boolean; response?: NextResponse } {
-  const tierConfig = requirement.tier ? X402_TIER_PRICING[requirement.tier] : X402_TIER_PRICING.TIER_1_SUMMARY;
-  const effectivePrice = requirement.priceUsdc || tierConfig.priceUsdc;
+export interface X402GateResult {
+  authorized: boolean;
+  response?: NextResponse;
+  reason?: string;
+}
 
-  const authHeader = req.headers.get('x-402-payment-authorization') || req.headers.get('x-payment-proof') || req.headers.get('authorization');
+const PAYMENT_HEADER_NAMES = ['x-402-payment-authorization', 'x-payment-proof', 'x-web5-voucher'];
+const VOUCHER_HEADER_RE = /^Web5-Voucher\s+([A-Za-z0-9_-]+)$/;
 
-  // 若携带有效的 EIP-712 Session Voucher 签名或有效哈希
-  if (authHeader && (authHeader.startsWith('0x') || authHeader.startsWith('Web5-Voucher') || authHeader.startsWith('Bearer'))) {
-    return { authorized: true };
+function getVoucherHeader(req: NextRequest): string | null {
+  for (const name of PAYMENT_HEADER_NAMES) {
+    const value = req.headers.get(name);
+    if (value) return value;
   }
+  return null;
+}
 
-  // 未付费时返回工业级 RFC 兼容 HTTP 402 响应
+function parseVoucherHeader(raw: string): SessionVoucher | null {
+  const match = VOUCHER_HEADER_RE.exec(raw.trim());
+  if (!match) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(match[1], 'base64url').toString('utf8'));
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+    return payload as SessionVoucher;
+  } catch {
+    return null;
+  }
+}
+
+function paymentRequired(
+  requirement: X402PaymentRequirement,
+  effectivePrice: string,
+  tierConfig: X402TierConfig,
+  reason: string
+): X402GateResult {
   const response = NextResponse.json(
     {
       error: 'Payment Required (x402 Autonomous Gateway)',
       protocol: 'x402/v1.0-commercial',
+      reason,
       tier: requirement.tier || 'TIER_1_SUMMARY',
       requirement: {
         priceUsdc: effectivePrice,
+        priceAtomic: decimalToAtomicUsdc(effectivePrice)?.toString() || null,
         priceWbogDiscounted: (parseFloat(effectivePrice) * 10000).toString(),
         currency: 'USDC / $WBOG',
         decimals: 18,
         network: requirement.network,
         chainId: requirement.chainId,
         recipientAddress: requirement.recipient,
+        contentId: requirement.contentId || null,
+        authorDid: requirement.authorDid || null,
         description: requirement.description || tierConfig.description,
         burnMechanism: '50% of fees automatically burned into 0x0...dead',
       },
-      instructions: `Please provide an Arc Mainnet payment proof of ${effectivePrice} USDC (or discounted WBOG) to ${requirement.recipient} in 'X-402-Payment-Authorization' to unlock this high-value intelligence.`,
+      voucher: {
+        header: 'Web5-Voucher <base64url(JSON)>',
+        fields: ['contentId', 'authorDid', 'amountUsdc', 'nonce', 'timestamp', 'signerAddress', 'signature'],
+        domain: EIP712_VOUCHER_DOMAIN,
+        types: EIP712_VOUCHER_TYPES,
+      },
+      instructions:
+        `Sign an EIP-712 Web5SessionVoucher for contentId=${requirement.contentId || '(any)'}, ` +
+        `authorDid=${requirement.authorDid || '(any)'}, amountUsdc>=${effectivePrice}, then send it in ` +
+        `'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>'.`,
     },
     {
       status: 402,
@@ -95,9 +139,74 @@ export function handleX402PaymentGate(
         'X-402-Price-USDC': effectivePrice,
         'X-402-Discount-WBOG': '20% OFF',
         'X-402-Recipient': requirement.recipient,
+        'X-402-Reason': reason,
       },
     }
   );
 
-  return { authorized: false, response };
+  return { authorized: false, reason, response };
+}
+
+/**
+ * 校验请求中的 x402 支付凭单，并在通过时记入离线聚合账本。
+ * 仅接受已签名的结构化凭单；裸 0x 哈希、Bearer 或任意字符串一律拒绝。
+ */
+export async function handleX402PaymentGate(
+  req: NextRequest,
+  requirement: X402PaymentRequirement
+): Promise<X402GateResult> {
+  const tierConfig = requirement.tier ? X402_TIER_PRICING[requirement.tier] : X402_TIER_PRICING.TIER_1_SUMMARY;
+  const effectivePrice = requirement.priceUsdc || tierConfig.priceUsdc;
+  const expectedAtomic = decimalToAtomicUsdc(effectivePrice);
+
+  if (expectedAtomic === null) {
+    return {
+      authorized: false,
+      reason: 'price_misconfigured',
+      response: NextResponse.json({ error: 'x402 price misconfigured' }, { status: 500 }),
+    };
+  }
+
+  // 紧急暂停开关：维护或异常期间一律停止收费放行
+  if (process.env.X402_PAYMENTS_ENABLED === 'false') {
+    return {
+      authorized: false,
+      reason: 'payments_paused',
+      response: NextResponse.json(
+        { error: 'x402 payments are temporarily paused', reason: 'payments_paused' },
+        { status: 503, headers: { 'X-402-Status': 'paused', 'Retry-After': '300' } }
+      ),
+    };
+  }
+
+  const raw = getVoucherHeader(req);
+  if (!raw) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'missing_voucher');
+  }
+
+  const voucher = parseVoucherHeader(raw);
+  if (!voucher) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'malformed_voucher');
+  }
+
+  // 内容强绑定：防止用低价内容的凭单解锁其他内容
+  if (requirement.contentId && voucher.contentId !== requirement.contentId) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'content_mismatch');
+  }
+  if (requirement.authorDid && voucher.authorDid !== requirement.authorDid) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'author_mismatch');
+  }
+
+  // 金额强绑定：凭单金额不得低于当前标价
+  const paidAtomic = decimalToAtomicUsdc(voucher.amountUsdc);
+  if (paidAtomic === null || paidAtomic < expectedAtomic) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'insufficient_amount');
+  }
+
+  const verdict = await voucherGateway.verifyAndAccept(voucher);
+  if (!verdict.ok) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, verdict.reason || 'invalid_voucher');
+  }
+
+  return { authorized: true };
 }

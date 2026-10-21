@@ -5,9 +5,10 @@
 // ════════════════════════════════════════════════════════════════
 
 import type { NextResponse } from 'next/server';
+import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web5.blog';
-const SUPERADMIN = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1';
+const SUPERADMIN = ARC_MAINNET.addresses.Deployer;
 
 export interface AgentDiscoveryMeta {
   platform: string;
@@ -15,6 +16,7 @@ export interface AgentDiscoveryMeta {
   protocols: string[];
   contracts: Record<string, string>;
   superadmin: string;
+  treasury: string;
   endpoints: Record<string, string>;
   capabilities: string[];
 }
@@ -25,20 +27,28 @@ export interface AgentDiscoveryMeta {
 export const AGENT_META: AgentDiscoveryMeta = {
   platform: 'Web5.blog',
   version: '2.0.0',
-  protocols: ['AP2', 'ARP', 'AA2P', 'ERC-4337', 'ERC-721', 'ERC-2981'],
+  protocols: ['AP2', 'ARP', 'AA2P', 'x402', 'ERC-4337', 'ERC-721', 'ERC-2981'],
   contracts: {
-    WBOG: '0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f',
-    ContentNFT: '0x8537fe7268296f37c2f85f9aad992f11659d1c8a',
-    BudgetFence: '0xe0d246c09d7a3097bab3148f89201157dd531eea',
-    VesselAuth: '0x2d4aebbd5d3e318c0deb91f927019835ecd9a120',
+    WBOG: ARC_MAINNET.addresses.WBOG,
+    ContentNFT: ARC_MAINNET.addresses.ContentNFT,
+    BudgetFence: ARC_MAINNET.addresses.BudgetFence,
+    VesselAuth: ARC_MAINNET.addresses.VesselAuth,
     Superadmin: SUPERADMIN,
+    Treasury: TREASURY,
   },
   superadmin: SUPERADMIN,
+  treasury: TREASURY,
   endpoints: {
     explore: '/api/explore',
     content: '/api/content/list',
+    contentDetail: '/api/content/detail',
     agent_admin: '/api/admin/agent',
     openapi: '/api/openapi.json',
+    market: '/api/market/x402-market',
+    llms: '/llms.txt',
+    mcp: '/api/mcp',
+    commerce: '/api/commerce/tasks',
+    health: '/api/daemon/health',
   },
   capabilities: [
     'vessel_login',
@@ -46,6 +56,9 @@ export const AGENT_META: AgentDiscoveryMeta = {
     'arweave_permanent_storage',
     'content_nft_minting',
     'ap2_micropayments',
+    'x402_paid_content',
+    'bounty_market',
+    'mcp_server',
     'agent_discovery',
   ],
 };
@@ -75,7 +88,8 @@ export function generateOpenApiSchema() {
     openapi: '3.1.0',
     info: {
       title: 'Web5.blog Agent API',
-      description: 'Vessel-native blogging platform API for AI agent discovery and interaction',
+      description:
+        'Vessel-native blogging platform API for AI agents: content discovery, x402 paid reads (EIP-712 vouchers on Arc Mainnet 5042), AP2 bounty market, and MCP tools.',
       version: '2.0.0',
       contact: { name: 'piaoshu.eth', url: base },
     },
@@ -119,6 +133,65 @@ export function generateOpenApiSchema() {
           responses: { '200': { description: 'Platform statistics' } },
         },
       },
+      '/api/content/detail': {
+        get: {
+          operationId: 'getContentDetail',
+          summary: 'Read a published article (x402 paid when agent=true)',
+          parameters: [
+            { name: 'hash', in: 'query', required: true, schema: { type: 'string' }, description: 'Arweave content hash' },
+            { name: 'agent', in: 'query', schema: { type: 'boolean' }, description: 'Enable x402 payment gate' },
+            { name: 'deep', in: 'query', schema: { type: 'boolean' }, description: 'Tier 2 (0.05 USDC) instead of Tier 1 (0.03 USDC)' },
+          ],
+          security: [{ X402Voucher: [] }],
+          responses: {
+            '200': { description: 'Article detail and recent interactions' },
+            '402': { description: 'Payment required: signed Web5SessionVoucher missing or invalid' },
+          },
+          'x-payment': {
+            protocol: 'x402',
+            header: 'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>',
+            chainId: ARC_MAINNET.id,
+            recipient: TREASURY,
+            asset: 'USDC',
+            decimals: 18,
+          },
+        },
+      },
+      '/api/market/x402-market': {
+        get: {
+          operationId: 'getMarketManifest',
+          summary: 'Machine-readable x402 pricing, bounty market, and settlement manifest',
+          responses: { '200': { description: 'Market manifest' } },
+        },
+      },
+      '/api/commerce/tasks': {
+        get: {
+          operationId: 'listBounties',
+          summary: 'List open AP2 bounty orders',
+          responses: { '200': { description: 'Active bounty orders' } },
+        },
+        post: {
+          operationId: 'createOrAdvanceBounty',
+          summary: 'Create, assign, or settle an AP2 bounty order',
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { type: 'object', properties: { action: { type: 'string', enum: ['create', 'assign', 'settle'] } }, required: ['action'] } } },
+          },
+          responses: { '200': { description: 'Bounty order state' } },
+        },
+      },
+      '/api/mcp': {
+        get: {
+          operationId: 'mcpServerInfo',
+          summary: 'MCP server card',
+          responses: { '200': { description: 'MCP server metadata' } },
+        },
+        post: {
+          operationId: 'mcpJsonRpc',
+          summary: 'MCP JSON-RPC 2.0 endpoint (initialize, tools/list, tools/call)',
+          responses: { '200': { description: 'JSON-RPC response' } },
+        },
+      },
     },
     components: {
       securitySchemes: {
@@ -126,6 +199,12 @@ export function generateOpenApiSchema() {
           type: 'apiKey',
           in: 'header',
           name: 'X-API-Key',
+        },
+        X402Voucher: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'X-402-Payment-Authorization',
+          description: 'Web5-Voucher <base64url(JSON EIP-712 Web5SessionVoucher)>',
         },
       },
     },

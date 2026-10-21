@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { handleX402PaymentGate } from '@/lib/web5/x402/middleware';
-import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,23 +52,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'hash required' }, { status: 400 });
     }
 
-    // ── x402 外部智能体微支付检测 (Tier 1 基础数据 0.03 USDC，若请求带 deep=true 则升级至 Tier 2 0.05 USDC) ──
-    const isAgentCall = url.searchParams.get('agent') === 'true' || req.headers.get('accept')?.includes('application/vnd.x402');
-    if (isAgentCall) {
-      const isDeep = url.searchParams.get('deep') === 'true';
-      const gate = handleX402PaymentGate(req, {
-        tier: isDeep ? 'TIER_2_DEEP_REASONING' : 'TIER_1_SUMMARY',
-        priceUsdc: isDeep ? '0.05' : '0.03',
-        recipient: ARC_MAINNET.addresses.Deployer,
-        network: 'arc-mainnet',
-        chainId: ARC_MAINNET.id,
-        description: `Unlock high-fidelity Web5 blog reading for arweaveHash: ${arweaveHash}`,
-      });
-      if (!gate.authorized && gate.response) {
-        return gate.response;
-      }
-    }
-
     const content = await db.content.findUnique({
       where: { arweaveHash },
       include: {
@@ -80,6 +63,26 @@ export async function GET(req: NextRequest) {
 
     if (!content) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });
+    }
+
+    // ── x402 外部智能体微支付检测 (Tier 1 基础数据 0.03 USDC，若请求带 deep=true 则升级至 Tier 2 0.05 USDC) ──
+    // 凭单必须绑定当前 arweaveHash 与作者 DID，并由 Treasury 收款。
+    const isAgentCall = url.searchParams.get('agent') === 'true' || req.headers.get('accept')?.includes('application/vnd.x402');
+    if (isAgentCall) {
+      const isDeep = url.searchParams.get('deep') === 'true';
+      const gate = await handleX402PaymentGate(req, {
+        tier: isDeep ? 'TIER_2_DEEP_REASONING' : 'TIER_1_SUMMARY',
+        priceUsdc: isDeep ? '0.05' : '0.03',
+        recipient: TREASURY,
+        network: 'arc-mainnet',
+        chainId: ARC_MAINNET.id,
+        description: `Unlock high-fidelity Web5 blog reading for arweaveHash: ${arweaveHash}`,
+        contentId: arweaveHash,
+        authorDid: content.authorDid,
+      });
+      if (!gate.authorized && gate.response) {
+        return gate.response;
+      }
     }
 
     const interactions = await db.interaction.findMany({

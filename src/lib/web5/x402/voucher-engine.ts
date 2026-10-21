@@ -43,27 +43,65 @@ export interface SettlementBatchItem {
   lastTimestamp: number;
 }
 
+export const VOUCHER_TTL_MS = 2 * 60 * 60 * 1000;
+export const VOUCHER_MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+export const VOUCHER_MAX_USDC = 10;
+
+const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+const SIGNATURE_RE = /^0x[0-9a-fA-F]{130}$/;
+const AMOUNT_RE = /^(0|[1-9]\d*)(\.\d{1,18})?$/;
+
+/** 将 USDC 十进制字符串精确转换为 18 位原子单位，避免浮点误差 */
+export function decimalToAtomicUsdc(value: string): bigint | null {
+  if (typeof value !== 'string' || !AMOUNT_RE.test(value)) return null;
+  const [whole, frac = ''] = value.split('.');
+  return BigInt(whole) * 10n ** 18n + BigInt((frac + '0'.repeat(18)).slice(0, 18));
+}
+
 // 内存离线状态通道账本 (延迟聚合至 Arc Mainnet)
 class VoucherChannelPool {
   private vouchers: SessionVoucher[] = [];
   private nonces: Set<string> = new Set();
 
   /**
-   * 极速内存离线验签 (低于 5ms)
+   * 极速内存离线验签 (低于 5ms)，任何校验异常一律拒绝
    */
   async verifyAndAccept(voucher: SessionVoucher): Promise<{ ok: boolean; reason?: string }> {
-    // 1. 防重放校验
-    const nonceKey = `${voucher.signerAddress}:${voucher.nonce}`;
+    // 1. 结构校验
+    if (
+      !voucher ||
+      typeof voucher.contentId !== 'string' || voucher.contentId.length === 0 || voucher.contentId.length > 256 ||
+      typeof voucher.authorDid !== 'string' || voucher.authorDid.length === 0 || voucher.authorDid.length > 256 ||
+      typeof voucher.signature !== 'string' || !SIGNATURE_RE.test(voucher.signature) ||
+      typeof voucher.signerAddress !== 'string' || !ADDRESS_RE.test(voucher.signerAddress) ||
+      !Number.isSafeInteger(voucher.nonce) || voucher.nonce <= 0 ||
+      !Number.isSafeInteger(voucher.timestamp) || voucher.timestamp <= 0
+    ) {
+      return { ok: false, reason: 'Malformed voucher' };
+    }
+
+    // 2. 金额校验 (必须为正数且不超过单笔上限)
+    const atomic = decimalToAtomicUsdc(voucher.amountUsdc);
+    if (atomic === null || atomic <= 0n || atomic > decimalToAtomicUsdc(String(VOUCHER_MAX_USDC))!) {
+      return { ok: false, reason: 'Invalid voucher amount' };
+    }
+
+    // 3. 防重放校验
+    const nonceKey = `${voucher.signerAddress.toLowerCase()}:${voucher.nonce}`;
     if (this.nonces.has(nonceKey)) {
       return { ok: false, reason: 'Replay detected: nonce already used' };
     }
 
-    // 2. 超时校验 (凭单有效期 2 小时)
-    if (Date.now() - voucher.timestamp > 7200 * 1000) {
+    // 4. 有效期校验 (2 小时，容忍 5 分钟时钟漂移)
+    const age = Date.now() - voucher.timestamp;
+    if (age > VOUCHER_TTL_MS) {
       return { ok: false, reason: 'Voucher expired' };
     }
+    if (age < -VOUCHER_MAX_FUTURE_SKEW_MS) {
+      return { ok: false, reason: 'Voucher timestamp is in the future' };
+    }
 
-    // 3. EIP-712 离线签名数学还原与校验
+    // 5. EIP-712 离线签名数学还原与校验 (失败即拒绝，无放行分支)
     try {
       const valid = await verifyTypedData({
         address: voucher.signerAddress as `0x${string}`,
@@ -84,8 +122,8 @@ class VoucherChannelPool {
         return { ok: false, reason: 'Invalid EIP-712 cryptographic signature' };
       }
     } catch (err: any) {
-      // 容错: 若本地测试环境无公钥，记录调试放行
-      console.warn('[VoucherEngine] Signature verify warning:', err?.message);
+      console.warn('[VoucherEngine] Signature verify failed:', err?.message);
+      return { ok: false, reason: 'Signature verification failed' };
     }
 
     this.nonces.add(nonceKey);
