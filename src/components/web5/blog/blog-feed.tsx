@@ -50,7 +50,7 @@ interface BlogPost {
   authorBio: string;
   license: string;
   royaltyRate: number;
-  arpVcId: string;
+  arpVcId: string | null;
   publishedAt: string;
   stats: {
     reads: number;
@@ -530,7 +530,7 @@ export function BlogFeed({
             })()}
 
             <div className="cyber-mono text-xs text-[#666] mb-6">
-              {new Date(detail.publishedAt).toLocaleString('zh-CN')} · Arweave: {detail.arweaveHash.slice(0, 16)}... · NFT #{detail.tokenId} · ARP: {detail.arpVcId?.slice(0, 20)}...
+              {new Date(detail.publishedAt).toLocaleString('zh-CN')} · Arweave: {detail.arweaveHash.slice(0, 16)}...{detail.tokenId ? ` · NFT #${detail.tokenId}` : ''}{detail.arpVcId ? ` · ARP: ${detail.arpVcId.slice(0, 20)}...` : ''}
             </div>
 
             {/* 正文 */}

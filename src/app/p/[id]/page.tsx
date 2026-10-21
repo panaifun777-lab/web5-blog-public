@@ -96,7 +96,7 @@ export async function generateMetadata(
     other: {
       'arweave-hash': content.arweaveHash,
       'token-id': content.tokenId ? content.tokenId.toString() : '',
-      'arp-vc-id': content.arpVcId || '',
+      'arp-vc-id': content.nftStatus === 'MINTED' ? content.arpVcId || '' : '',
       'chain-id': '5042',
     },
   };

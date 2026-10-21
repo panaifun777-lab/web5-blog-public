@@ -115,7 +115,7 @@ export async function GET(req: NextRequest) {
             authorAvatarSeed: c.prime?.avatarSeed || 'default',
             license: c.license,
             royaltyRate: c.royaltyRate,
-            arpVcId: c.arpVcId,
+            arpVcId: c.nftStatus === 'MINTED' ? c.arpVcId : null,
             publishedAt: c.publishedAt.toISOString(),
             tipsCount: tips._count,
             tipsAmount: tips._sum.amount?.toString() || '0',

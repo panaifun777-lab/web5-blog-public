@@ -147,7 +147,10 @@ export async function GET(req: NextRequest) {
         authorBio: content.prime?.bio || '',
         license: content.license,
         royaltyRate: content.royaltyRate,
-        arpVcId: content.arpVcId,
+        arpVcId: content.nftStatus === 'MINTED' ? content.arpVcId : null,
+        nftStatus: content.nftStatus,
+        storageProvider: content.storageProvider,
+        storageStatus: content.storageStatus,
         publishedAt: content.publishedAt.toISOString(),
       },
       interactions: interactions.map((i) => ({

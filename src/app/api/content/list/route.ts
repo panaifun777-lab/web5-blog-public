@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
           authorBio: c.prime?.bio || '',
           license: c.license,
           royaltyRate: c.royaltyRate,
-          arpVcId: c.arpVcId,
+          arpVcId: c.nftStatus === 'MINTED' ? c.arpVcId : null,
           storageProvider: c.storageProvider,
           storageStatus: c.storageStatus,
           nftStatus: c.nftStatus,
