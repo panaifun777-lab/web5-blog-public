@@ -36,6 +36,7 @@ const SOURCE_LABEL: Record<string, string> = {
   github: 'GitHub Bounty',
   remotive: 'Remotive',
   arbeitnow: 'Arbeitnow',
+  jobicy: 'Jobicy',
   remoteok: 'RemoteOK',
 };
 
@@ -246,7 +247,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
         <div className="mt-2 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[9px] font-mono text-[#555]">
           <span className="flex items-center gap-1">
             <Clock className="w-2.5 h-2.5" />
-            {isEn ? 'Sources: GitHub · Remotive · Arbeitnow · RemoteOK' : '数据源：GitHub · Remotive · Arbeitnow · RemoteOK'}
+            {isEn ? 'Sources: GitHub · Remotive · Jobicy · RemoteOK' : '数据源：GitHub · Remotive · Jobicy · RemoteOK'}
           </span>
           <span>{items.length} {isEn ? 'items' : '条'}</span>
         </div>

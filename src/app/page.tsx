@@ -162,11 +162,24 @@ export default function Home() {
     if (stored) {
       setSession(stored);
       setView('app');
-      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    // 深链直达：?tab=feed&module=bounties（Telegram Bot / 外部入口）
+    const tabParam = params.get('tab');
+    if (tabParam && ['feed', 'write', 'vessels', 'explore', 'settings'].includes(tabParam)) {
+      setTab(tabParam as Tab);
+      setView('app');
+    }
+    const moduleParam = params.get('module');
+    if (moduleParam && ['tech', 'humanities', 'experts', 'bounties', 'crowdfunding'].includes(moduleParam)) {
+      setActiveModule(moduleParam as Module);
+      setTab('feed');
+      setView('app');
     }
 
     // 检查直达弹窗参数 (?vault=curve 或 ?modal=airdrop)
-    const params = new URLSearchParams(window.location.search);
     if (params.get('vault') === 'curve' || params.get('modal') === 'curve') {
       setCurveModalOpen(true);
     }

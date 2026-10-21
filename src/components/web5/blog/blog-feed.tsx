@@ -741,8 +741,8 @@ export function BlogFeed({
         </div>
       </div>
 
-      {/* 专有模块快速操作卡 */}
-      {(mod === 'bounties' || mod === 'crowdsourcing') && (
+      {/* 悬赏模块的 TaskBoard 由页面层统一渲染，避免重复挂载 */}
+      {mod === 'crowdsourcing' && (
         <TaskBoard />
       )}
       {mod === 'crowdfunding' && (
