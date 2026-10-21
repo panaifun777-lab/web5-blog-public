@@ -57,6 +57,8 @@ To pay, sign an EIP-712 Web5SessionVoucher and resend the request with:
 Voucher fields: contentId, authorDid, amountUsdc, nonce, timestamp, signerAddress, signature.
 Domain: {"name":"Web5.blog AP2 Voucher Gateway","version":"1.0","chainId":${ARC_MAINNET.id},"verifyingContract":"${ARC_MAINNET.addresses.BudgetFence}"}
 Vouchers are bound to the requested content and author, expire in 2 hours, and each nonce is accepted once.
+Signing proves intent only: the signer must hold a funded prepaid USDC balance on the platform (BackupWallet),
+which is debited atomically at settlement. Unfunded signers receive 402 payer_not_registered or insufficient_prepaid_balance.
 Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true[&deep=true]
 
 ## Bounty market

@@ -18,6 +18,10 @@ import {
   voucherGateway,
   type SessionVoucher,
 } from '@/lib/web5/x402/voucher-engine';
+import {
+  isPrepaidSettlementRequired,
+  settleVoucherFromPrepaidBalance,
+} from '@/lib/web5/x402/settlement';
 
 export type X402CallTier = 'TIER_1_SUMMARY' | 'TIER_2_DEEP_REASONING' | 'TIER_3_A2A_COLLAB';
 
@@ -127,10 +131,20 @@ function paymentRequired(
         domain: EIP712_VOUCHER_DOMAIN,
         types: EIP712_VOUCHER_TYPES,
       },
+      settlement: {
+        prepaidBalanceRequired: isPrepaidSettlementRequired(),
+        failureReasons: [
+          'payer_not_registered',
+          'insufficient_prepaid_balance',
+          'Replay detected: voucher already settled',
+          'concurrent_debit',
+        ],
+      },
       instructions:
         `Sign an EIP-712 Web5SessionVoucher for contentId=${requirement.contentId || '(any)'}, ` +
         `authorDid=${requirement.authorDid || '(any)'}, amountUsdc>=${effectivePrice}, then send it in ` +
-        `'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>'.`,
+        `'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>'. ` +
+        `The signer must hold a funded prepaid USDC balance (BackupWallet) on the platform.`,
     },
     {
       status: 402,
@@ -203,10 +217,19 @@ export async function handleX402PaymentGate(
     return paymentRequired(requirement, effectivePrice, tierConfig, 'insufficient_amount');
   }
 
-  const verdict = await voucherGateway.verifyAndAccept(voucher);
+  const verdict = await voucherGateway.verify(voucher);
   if (!verdict.ok) {
     return paymentRequired(requirement, effectivePrice, tierConfig, verdict.reason || 'invalid_voucher');
   }
 
+  // 签名只证明意图；生产环境还必须从付款方预付费余额完成原子扣减
+  if (isPrepaidSettlementRequired()) {
+    const settlement = await settleVoucherFromPrepaidBalance(voucher);
+    if (!settlement.ok) {
+      return paymentRequired(requirement, effectivePrice, tierConfig, settlement.reason || 'settlement_failed');
+    }
+  }
+
+  voucherGateway.commit(voucher);
   return { authorized: true };
 }

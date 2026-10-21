@@ -64,9 +64,9 @@ class VoucherChannelPool {
   private nonces: Set<string> = new Set();
 
   /**
-   * 极速内存离线验签 (低于 5ms)，任何校验异常一律拒绝
+   * 验签与规则校验（不消费 nonce），供结算层先检查余额
    */
-  async verifyAndAccept(voucher: SessionVoucher): Promise<{ ok: boolean; reason?: string }> {
+  async verify(voucher: SessionVoucher): Promise<{ ok: boolean; reason?: string }> {
     // 1. 结构校验
     if (
       !voucher ||
@@ -86,7 +86,7 @@ class VoucherChannelPool {
       return { ok: false, reason: 'Invalid voucher amount' };
     }
 
-    // 3. 防重放校验
+    // 3. 防重放校验 (进程内快速路径；跨重启由数据库 AuthNonce 兜底)
     const nonceKey = `${voucher.signerAddress.toLowerCase()}:${voucher.nonce}`;
     if (this.nonces.has(nonceKey)) {
       return { ok: false, reason: 'Replay detected: nonce already used' };
@@ -126,8 +126,24 @@ class VoucherChannelPool {
       return { ok: false, reason: 'Signature verification failed' };
     }
 
-    this.nonces.add(nonceKey);
+    return { ok: true };
+  }
+
+  /**
+   * 结算成功后消费 nonce
+   */
+  commit(voucher: SessionVoucher): void {
+    this.nonces.add(`${voucher.signerAddress.toLowerCase()}:${voucher.nonce}`);
     this.vouchers.push(voucher);
+  }
+
+  /**
+   * 验签 + 消费（无余额结算场景的兼容入口）
+   */
+  async verifyAndAccept(voucher: SessionVoucher): Promise<{ ok: boolean; reason?: string }> {
+    const verified = await this.verify(voucher);
+    if (!verified.ok) return verified;
+    this.commit(voucher);
     return { ok: true };
   }
 

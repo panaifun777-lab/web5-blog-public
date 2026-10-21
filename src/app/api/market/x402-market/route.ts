@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY, SUPERADMIN } from '@/lib/web5/contracts/addresses';
 import { decimalToAtomicUsdc } from '@/lib/web5/x402/voucher-engine';
+import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
 
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,7 @@ export async function GET() {
       recipient: TREASURY,
       finality: 'sub-second',
       paused: paymentsPaused,
+      prepaidBalanceRequired: isPrepaidSettlementRequired(),
       voucher: {
         header: 'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>',
         standard: 'EIP-712',
@@ -77,7 +79,7 @@ export async function GET() {
         maxAmountUsdc: '10',
         replayProtection: 'signerAddress + nonce',
       },
-      note: 'USDC 为该链原生 Gas，精度 18 位。金额一律使用最小原子单位字符串（1 USDC = 1000000000000000000）。',
+      note: 'USDC 为该链原生 Gas，精度 18 位。金额一律使用最小原子单位字符串（1 USDC = 1000000000000000000）。签名仅代表支付意图，结算时从付款方站内预付费余额原子扣减。',
     },
     discovery: {
       llmsTxt: `${SITE_URL}/llms.txt`,
