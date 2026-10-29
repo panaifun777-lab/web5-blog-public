@@ -25,21 +25,29 @@ export interface VesselWallet {
   isNew: boolean;
 }
 
-/** 获取或创建本地专用钱包（Session Key 密钥对） */
+/** 获取或创建本地专用钱包（Session Key 密钥对）；本地密钥损坏时自动重建 */
 export function getOrCreateVesselWallet(): VesselWallet {
   let pk = '';
   let isNew = false;
   try {
     pk = localStorage.getItem(WALLET_PK_KEY) || '';
   } catch {}
-  if (!pk) {
+  let account: ReturnType<typeof privateKeyToAccount> | null = null;
+  if (pk) {
+    try {
+      account = privateKeyToAccount(pk as `0x${string}`);
+    } catch {
+      console.warn('[Web5] Stored vessel key is invalid, regenerating');
+    }
+  }
+  if (!account) {
     pk = generatePrivateKey();
     isNew = true;
+    account = privateKeyToAccount(pk as `0x${string}`);
     try {
       localStorage.setItem(WALLET_PK_KEY, pk);
     } catch {}
   }
-  const account = privateKeyToAccount(pk as `0x${string}`);
   return { address: account.address, privateKey: pk, isNew };
 }
 

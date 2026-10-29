@@ -105,15 +105,21 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', aut
       setProgress(45);
       await sleep(550);
 
-      // 静默获取已连接钱包地址（eth_accounts 不弹窗，不阻塞动画）
+      // 静默获取已连接钱包地址（eth_accounts 不弹窗）；已签名时无需查询
+      // 部分 WebView 会注入不响应的 provider，必须限时，否则仪式永久卡在 45%
       let addr = '';
-      try {
-        const ethereum = (window as any).ethereum;
-        if (ethereum) {
-          const accounts = await ethereum.request({ method: 'eth_accounts' });
-          if (accounts && accounts[0]) addr = (accounts[0] || '').toLowerCase();
-        }
-      } catch {}
+      if (!auth) {
+        try {
+          const ethereum = (window as any).ethereum;
+          if (ethereum) {
+            const accounts = await Promise.race([
+              ethereum.request({ method: 'eth_accounts' }),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+            ]);
+            if (accounts && accounts[0]) addr = (accounts[0] || '').toLowerCase();
+          }
+        } catch {}
+      }
 
       if (addr) {
         appendLogs([
