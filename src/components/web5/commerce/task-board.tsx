@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { OpportunityRadar } from '@/components/web5/reach/opportunity-radar';
+import { DemoBadge } from '@/components/web5/commerce/demo-badge';
 import type { CommerceTaskOrder } from '@/lib/web5/ap2/commerce';
 import { GLOBAL_REMOTE_JOBS, type RemoteJob } from '@/lib/web5/ap2/remote-jobs';
 import {
@@ -396,24 +397,39 @@ export function TaskBoard({
     }
   };
 
-  // ━━ 模拟或执行分身交付结算 ━━
-  const handleSettleTask = async (task: CommerceTaskOrder) => {
+  // ━━ 提交交付草稿（不触发任何链上出款） ━━
+  const handleSubmitDeliverable = async (task: CommerceTaskOrder) => {
     try {
-      const mockContent = `# 《${task.title} — 深度交付成果报告》\n**执行分身**: ${task.agentReputation?.name || 'Eidolon Agent'}\n**存证网络**: Circle ARC 5042 & Arweave\n\n## 成果核心摘要\n分身已自主调用高维推理框架完成该项需求，通过代码测试并进行形式化验证。全量存证哈希已上链锁定，按 80/20 规则预览分润（结算通道内测中）。`;
+      const draftContent = `# 《${task.title} — 交付草稿》
+**执行分身**: ${task.agentReputation?.name || 'Unassigned'}
+
+## 成果摘要
+本文件为人工/分身提交的交付草稿，尚未完成 Arweave 永久存证，也未发生任何链上出款。`;
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(draftContent));
+      const deliverableHash = `0x${Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')}`;
+
       const res = await fetch('/api/commerce/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'settle',
+          action: 'submit',
           orderId: task.orderId,
-          deliverableHash: `ar://k8x9M_${task.orderId.slice(-6)}_${Date.now().toString(36)}`,
-          deliverableContent: mockContent,
+          deliverableHash,
+          deliverableContent: draftContent,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        alert(isEn ? '✅ Deliverable submitted for review. No on-chain payout has occurred.' : '✅ 分身成果已提交，等待审核（未发生链上分润或出款）。');
+        alert(
+          isEn
+            ? '✅ Draft submitted for review. No on-chain payout has occurred.'
+            : '✅ 交付草稿已提交，等待验收（未发生链上分润或出款）。'
+        );
         await fetchTasks();
+      } else {
+        alert(data.error || 'Submit failed');
       }
     } catch (e: any) {
       alert(e.message);
@@ -542,7 +558,7 @@ export function TaskBoard({
             <Coins className="w-3.5 h-3.5" />
             <span>{isEn ? 'AP2 Bounty Plaza' : 'AP2 悬赏广场'}</span>
             <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 px-1.5 border-none">
-              {tasks.length}
+              {tasks.filter((t) => !t.isDemo).length}
             </Badge>
           </button>
 
@@ -596,7 +612,7 @@ export function TaskBoard({
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-[#555] font-mono">
-                {filteredTasks.length} {isEn ? 'Tasks Active' : '个任务待处理'}
+                {filteredTasks.filter((t) => !t.isDemo).length} {isEn ? 'Tasks Active' : '个任务待处理'}
               </span>
               <Button
                 size="sm"
@@ -636,6 +652,7 @@ export function TaskBoard({
                           {task.title}
                         </div>
                         <div className="flex items-center gap-1 text-[#FFCC00] font-mono text-xs font-bold flex-shrink-0 bg-[#FFCC00]/10 px-2 py-0.5 rounded border border-[#FFCC00]/20 shadow-sm">
+                          <DemoBadge isDemo={task.isDemo} className="mr-0.5" />
                           <Coins className="w-3.5 h-3.5" /> {task.bountyUsdc} USDC
                         </div>
                       </div>
@@ -733,10 +750,10 @@ export function TaskBoard({
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleSettleTask(task)}
+                            onClick={() => handleSubmitDeliverable(task)}
                             className="h-6 px-2 text-[10px] text-[#00FFCC] hover:bg-[#00FFCC]/10 border border-[#00FFCC]/20"
                           >
-                            {isEn ? 'Deliver' : '交付结算'}
+                            {isEn ? 'Submit Draft' : '提交交付'}
                           </Button>
                         </div>
                       )}
@@ -1156,6 +1173,7 @@ export function TaskBoard({
                   </span>
                 </div>
                 <DialogTitle className="text-base sm:text-lg font-bold text-white">
+                  <DemoBadge isDemo={selectedTaskForReport.isDemo} className="mr-1.5 align-middle" />
                   {selectedTaskForReport.title}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-[#888]">
@@ -1174,20 +1192,20 @@ export function TaskBoard({
                     </div>
                     <div>
                       <div className="font-bold text-white flex items-center gap-2">
-                        <span>{selectedTaskForReport.agentReputation?.name || 'Eidolon #7042'}</span>
+                        <span>{selectedTaskForReport.agentReputation?.name || 'Unassigned'}</span>
                         <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[9px] py-0">
-                          {selectedTaskForReport.agentReputation?.score || '99.2%'} {isEn ? 'Score' : '声誉分'}
+                          {selectedTaskForReport.agentReputation?.score || '—'} {isEn ? 'Score' : '声誉分'}
                         </Badge>
                       </div>
                       <div className="text-[10px] text-[#777] font-mono mt-0.5">
-                        DID: {selectedTaskForReport.assignedAgentDid || selectedTaskForReport.agentReputation?.did || 'did:eidolon:arc-researcher-01'}
+                        DID: {selectedTaskForReport.assignedAgentDid || selectedTaskForReport.agentReputation?.did || '—'}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <Badge className="bg-[#B080E8]/20 text-[#B080E8] border-[#B080E8]/40 text-xs">
-                      {selectedTaskForReport.agentReputation?.level || 'Lv.4 深度推理'}
+                      {selectedTaskForReport.agentReputation?.level || 'Unverified'}
                     </Badge>
                   </div>
                 </div>

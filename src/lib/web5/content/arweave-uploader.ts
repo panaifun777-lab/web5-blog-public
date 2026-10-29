@@ -14,6 +14,17 @@ export interface UploadResult {
   fallback: boolean;
 }
 
+// 永久存证失败：requirePermanent 模式下不允许降级，直接抛错
+export class ArweavePermanenceError extends Error {
+  readonly causeMessage: string;
+
+  constructor(causeMessage: string, cause?: unknown) {
+    super(`Arweave 永久存证失败：${causeMessage}`, { cause });
+    this.name = 'ArweavePermanenceError';
+    this.causeMessage = causeMessage;
+  }
+}
+
 /**
  * 获取 Irys Uploader（Polygon Matic / POL 主网钱包）
  * 支持生产环境配置的 IRYS_PRIVATE_KEY，真实直连 Arweave Mainnet Permaweb
@@ -31,29 +42,67 @@ async function getIrysUploader() {
       .withRpc(rpcURL);
   } catch (err) {
     console.warn('[arweave-uploader] Irys SDK load failed:', err);
-    throw new Error('Irys SDK not available');
+    throw new Error('Irys SDK not available', { cause: err });
   }
+}
+
+// 错误信息里剔除私钥与环境变量值，只保留可读原因
+function describeCause(err: unknown): string {
+  const base = err instanceof Error ? err.message : String(err);
+  const inner = err instanceof Error && err.cause instanceof Error ? `（${err.cause.message}）` : '';
+  return redactEnvValues(`${base}${inner}`).trim() || 'unknown error';
+}
+
+function redactEnvValues(text: string): string {
+  let out = text;
+  const privateKey = process.env.IRYS_PRIVATE_KEY;
+  if (privateKey) out = out.split(privateKey).join('[redacted]');
+  for (const value of Object.values(process.env)) {
+    if (typeof value === 'string' && value.length >= 8) {
+      out = out.split(value).join('[redacted]');
+    }
+  }
+  return out.slice(0, 300);
 }
 
 /**
  * 上传内容至 Arweave 主网（通过 Irys 真实主网节点）
+ * requirePermanent=true 时只能成功或抛 ArweavePermanenceError，绝不用本地哈希冒充
  */
-export async function uploadToArweave(content: {
-  title: string;
-  bodyMd: string;
-  authorDid: string;
-  timestamp: number;
-  coverImageHash?: string;
-}): Promise<UploadResult> {
+export async function uploadToArweave(
+  content: {
+    title: string;
+    bodyMd: string;
+    authorDid: string;
+    timestamp: number;
+    coverImageHash?: string;
+  },
+  options?: { requirePermanent?: boolean }
+): Promise<UploadResult> {
   const body = JSON.stringify(content);
   const size = Buffer.byteLength(body, 'utf8');
 
   try {
-    return await uploadViaIrys(body, size);
+    const result = await uploadViaIrys(body, size);
+    // 严格模式下 hash 必须是合法 Arweave 交易 ID（43 位 base64url）
+    if (options?.requirePermanent === true && !isPermanentUpload(result)) {
+      throw new ArweavePermanenceError('Irys 返回的 arweaveHash 不是合法的 43 位交易 ID', result);
+    }
+    return result;
   } catch (err) {
+    if (err instanceof ArweavePermanenceError) throw err;
+    if (options?.requirePermanent === true) {
+      // 严格模式：缺私钥、SDK 异常、任何抛出都视为存证失败
+      throw new ArweavePermanenceError(describeCause(err), err);
+    }
     console.warn('[arweave-uploader] Irys upload failed, using fallback:', err);
     return generateFallback(content, size);
   }
+}
+
+// 只有真实上链且 hash 合法才算永久存证
+export function isPermanentUpload(result: UploadResult): boolean {
+  return !result.fallback && /^[A-Za-z0-9_-]{43}$/.test(result.arweaveHash);
 }
 
 async function uploadViaIrys(body: string, size: number): Promise<UploadResult> {

@@ -44,6 +44,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { WalletGuideModal } from '@/components/web5/auth/wallet-guide-modal';
+import { DemoBadge } from '@/components/web5/commerce/demo-badge';
 import {
   PUBLIC_MONEY_FLOWS_ENABLED,
   PUBLIC_DEMO_NOTICE,
@@ -71,6 +72,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
     title: string;
     description: string;
     bountyUsdc: string;
+    isDemo: boolean;
     remainingQuota: number;
     totalQuota: number;
   }>({
@@ -78,6 +80,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
     title: '悬赏任务加载中',
     description: '',
     bountyUsdc: '0',
+    isDemo: false,
     remainingQuota: 0,
     totalQuota: 0,
   });
@@ -149,6 +152,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                   title: data.order.title || prev.title,
                   description: data.order.description || prev.description,
                   bountyUsdc: data.order.bountyUsdc || prev.bountyUsdc,
+                  isDemo: Boolean(data.order.isDemo ?? data.demo),
                   remainingQuota: data.order.remainingQuota ?? 0,
                   totalQuota: data.order.totalQuota ?? 0,
                 }));
@@ -489,6 +493,7 @@ export function MobileInstantPod({ bountyId }: MobileInstantPodProps) {
                 <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[10px] font-mono">
                   80/20 规则预览
                 </Badge>
+                <DemoBadge isDemo={task.isDemo} className="text-[10px] px-1.5 py-0.5" />
               </div>
               <h1 className="text-base font-bold text-white tracking-tight leading-snug">
                 {task.title}

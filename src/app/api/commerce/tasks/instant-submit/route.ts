@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
-import { calculateRevenueSplit, submitOrder } from '@/lib/web5/ap2/commerce';
+import { calculateRevenueSplit, isDemoOrder, submitOrder } from '@/lib/web5/ap2/commerce';
 import { verifyNativeTransfer } from '@/lib/web5/payments/arc';
 import { parseArcUsdc, formatArcUsdc } from '@/lib/web5/auth/eip712-types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        demo: order.isDemo,
+        demo: isDemoOrder(order),
         moneyFlowsEnabled: MONEY_FLOWS_ENABLED,
         order: {
           orderId: order.orderId,
@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
           description: order.description,
           bountyUsdc: order.bountyUsdc,
           status: order.status,
+          isDemo: isDemoOrder(order),
           escrowTxHash: order.escrowTxHash,
           assignedAgentDid: order.assignedAgentDid,
         },
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
     if (!order) {
       return NextResponse.json({ error: 'Task order not found' }, { status: 404 });
     }
-    if (order.isDemo) {
+    if (isDemoOrder(order)) {
       return NextResponse.json(
         { error: 'Demo orders cannot be submitted', demo: true },
         { status: 400 }
@@ -263,6 +264,7 @@ export async function POST(req: NextRequest) {
           title: submitted.title,
           bountyUsdc: submitted.bountyUsdc,
           status: submitted.status,
+          isDemo: submitted.isDemo,
           deliverableHash,
           deliverableContent: submitted.deliverableContent,
           submittedAt: submitted.submittedAt,

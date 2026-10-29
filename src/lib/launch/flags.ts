@@ -20,6 +20,10 @@ export const X402_DEPOSITS_ENABLED = enabled(process.env.X402_DEPOSITS_ENABLED);
 /** 托管结算必须执行真实分账后才允许把订单置为 SETTLED。 */
 export const ESCROW_PAYOUTS_ENABLED = enabled(process.env.ESCROW_PAYOUTS_ENABLED);
 
+/** 退款需要真实出款签名，默认关闭。 */
+export const REFUNDS_ENABLED =
+  MONEY_FLOWS_ENABLED && enabled(process.env.REFUNDS_ENABLED);
+
 /** 自治代理会产生公开互动与日志，上线初期默认关闭，避免合成内容。 */
 export const AUTONOMOUS_AGENTS_ENABLED = enabled(process.env.AUTONOMOUS_AGENTS_ENABLED);
 

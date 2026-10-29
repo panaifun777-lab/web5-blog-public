@@ -1,6 +1,7 @@
 // ════════════════════════════════════════════════════════════════
 // src/app/api/commerce/tasks/route.ts
-// AP2 bounty orders. All write actions are authenticated and gated.
+// AP2 bounty orders. Every write action is authenticated and gated.
+// Settlement/refund are the only endpoints that can move money.
 // ════════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -10,46 +11,91 @@ import {
   createCommerceOrder,
   assignAgentToOrder,
   submitOrder,
+  verifyOrder,
+  disputeOrder,
   settleOrder,
+  refundOrder,
+  auditOrder,
+  CommerceError,
+  type SettlementActor,
 } from '@/lib/web5/ap2/commerce';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import {
   ESCROW_PAYOUTS_ENABLED,
   MONEY_FLOWS_ENABLED,
-  featureDisabled,
+  REFUNDS_ENABLED,
   moneyFlowBlocked,
 } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 function bearer(req: NextRequest): string {
   return (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 }
 
-function fail(message: string, status: number) {
+function fail(message: string, status: number, code?: string) {
   return NextResponse.json(
-    { error: message },
-    { status, headers: { 'Cache-Control': 'no-store' } }
+    code ? { error: message, code } : { error: message },
+    { status, headers: NO_STORE }
   );
 }
 
-export async function GET() {
+function toFailure(err: any) {
+  if (err instanceof CommerceError) {
+    if (err.status >= 500) console.error('[commerce/tasks] Error:', err.message);
+    return fail(err.message, err.status, err.code);
+  }
+  const message = err?.message || 'Request failed';
+  const status = /not found/i.test(message)
+    ? 404
+    : /required|invalid|verification failed|must be|mismatch/i.test(message)
+      ? 400
+      : 500;
+  if (status === 500) console.error('[commerce/tasks] Error:', err);
+  return fail(message, status);
+}
+
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action');
+
   try {
+    if (action === 'audit') {
+      const admin = authorizeAdmin(req);
+      if (!admin.ok) return fail('Admin authorization required for audits', 403);
+
+      const orderId = url.searchParams.get('orderId');
+      if (!orderId) return fail('orderId is required', 400);
+
+      const result = await auditOrder(orderId, {
+        chain: url.searchParams.get('chain') !== 'false',
+      });
+      return NextResponse.json(
+        { success: true, ...result, allPassed: result.checks.every((c) => c.pass) },
+        { headers: NO_STORE }
+      );
+    }
+
     const orders = await listActiveCommerceOrders();
     return NextResponse.json(
       {
         success: true,
-        count: orders.length,
+        count: orders.filter((order) => !order.isDemo).length,
+        demoCount: orders.filter((order) => order.isDemo).length,
         moneyFlowsEnabled: MONEY_FLOWS_ENABLED,
         escrowPayoutsEnabled: ESCROW_PAYOUTS_ENABLED,
+        refundsEnabled: REFUNDS_ENABLED,
+        settlementWindowHours: Math.max(1, Number(process.env.SETTLEMENT_WINDOW_HOURS || 72)),
         orders,
       },
-      { headers: { 'Cache-Control': 'no-store' } }
+      { headers: NO_STORE }
     );
   } catch (err: any) {
-    return fail(err.message || 'Failed to load orders', 500);
+    return toFailure(err);
   }
 }
 
@@ -64,7 +110,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { action } = body;
+    const action = body.action;
 
     if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
 
@@ -84,6 +130,8 @@ export async function POST(req: NextRequest) {
         escrowContract: body.escrowContract,
         escrowTxHash: body.escrowTxHash || body.txHash,
         orderId: typeof body.orderId === 'string' ? body.orderId : undefined,
+        acceptanceHash: typeof body.acceptanceHash === 'string' ? body.acceptanceHash : undefined,
+        deliveryHours: Number(body.deliveryHours) || undefined,
       });
       return NextResponse.json({ success: true, order });
     }
@@ -124,37 +172,65 @@ export async function POST(req: NextRequest) {
       const order = await submitOrder(
         body.orderId,
         body.deliverableHash,
-        body.deliverableContent
+        body.deliverableContent,
+        body.provenance
+          ? {
+              provider: body.provenance.provider === 'arweave' ? 'arweave' : 'local',
+              hash: String(body.provenance.hash || ''),
+              fallback: Boolean(body.provenance.fallback),
+            }
+          : undefined
       );
       return NextResponse.json({ success: true, order, payoutExecuted: false });
     }
 
+    if (action === 'verify') {
+      if (!admin.ok) return fail('Admin authorization required for verification', 403);
+      const order = await verifyOrder(body.orderId);
+      return NextResponse.json({ success: true, order });
+    }
+
+    if (action === 'dispute') {
+      if (!session?.primeDid) return fail('Connect a Vessel session to dispute', 401);
+      const order = await disputeOrder(body.orderId, session.primeDid, body.reason);
+      return NextResponse.json({ success: true, order });
+    }
+
     if (action === 'settle') {
-      if (!admin.ok) return fail('Admin authorization required for settlement', 403);
-      if (!ESCROW_PAYOUTS_ENABLED) {
-        return featureDisabled(
-          'ESCROW_PAYOUTS_DISABLED',
-          'Settlement payouts are disabled. Submit the deliverable and wait for payout configuration.'
-        );
+      let actor: SettlementActor;
+      if (admin.ok) {
+        actor = { kind: 'admin' };
+      } else if (session?.accessMode === 'vessel' && session.vesselDid) {
+        actor = { kind: 'orchestrator', did: session.vesselDid };
+      } else {
+        return fail('Admin or orchestrator authorization required for settlement', 403);
       }
-      const order = await settleOrder(body.orderId);
+
+      const order = await settleOrder(body.orderId, actor, {
+        force: actor.kind === 'admin' && body.force === true,
+      });
       return NextResponse.json({
         success: true,
         order,
-        payoutExecuted: true,
+        payoutExecuted: Boolean(order.payoutTxHash),
         payoutTxHash: order.payoutTxHash,
+        feeTxHash: order.feeTxHash,
+      });
+    }
+
+    if (action === 'refund') {
+      if (!admin.ok) return fail('Admin authorization required for refunds', 403);
+      const order = await refundOrder(body.orderId, { kind: 'admin' }, body.reason);
+      return NextResponse.json({
+        success: true,
+        order,
+        refundExecuted: Boolean(order.refundTxHash),
+        refundTxHash: order.refundTxHash,
       });
     }
 
     return fail('Invalid action', 400);
   } catch (err: any) {
-    const message = err?.message || 'Request failed';
-    const status = /not found/i.test(message)
-      ? 404
-      : /required|invalid|verification failed|must be/i.test(message)
-        ? 400
-        : 500;
-    if (status === 500) console.error('[commerce/tasks] Error:', err);
-    return fail(message, status);
+    return toFailure(err);
   }
 }

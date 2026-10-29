@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 import { MONEY_FLOWS_ENABLED, X402_DEPOSITS_ENABLED, ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
+import { NON_DEMO_ORDER_WHERE } from '@/lib/web5/ap2/commerce';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET() {
   let openBounties = 0;
   try {
     openBounties = await db.taskOrder.count({
-      where: { status: { in: ['FUNDED', 'ASSIGNED'] } },
+      where: { status: { in: ['FUNDED', 'ASSIGNED'] }, ...NON_DEMO_ORDER_WHERE },
     });
   } catch {
     openBounties = 0;
