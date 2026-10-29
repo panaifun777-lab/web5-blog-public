@@ -92,6 +92,7 @@ export interface MatrixRainProps {
 
 export function MatrixRain({ className = '', columns: colCount }: MatrixRainProps) {
   const [ready, setReady] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const uid = useRef(Math.random().toString(36).substring(2, 10));
   const cols = useRef<ColumnData[] | null>(null);
 
@@ -100,13 +101,26 @@ export function MatrixRain({ className = '', columns: colCount }: MatrixRainProp
     setReady(true);
   }, [colCount]);
 
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setReducedMotion(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
   const animName = `matrix-fall-${uid.current}`;
   const activeCols = cols.current;
 
   return (
-    <div className={className} style={CONTAINER_STYLE}>
-      {/* Only render rain content after mount to avoid hydration mismatch */}
-      {ready && activeCols && (
+    <div
+      className={className}
+      style={CONTAINER_STYLE}
+      aria-hidden="true"
+      role="presentation"
+    >
+      {/* 纯装饰：隐藏于辅助技术与文本提取；用户要求减弱动效时整块不渲染 */}
+      {ready && activeCols && !reducedMotion && (
         <>
           {/* single shared keyframe – each column sets its own duration/delay inline */}
           <style>{`
