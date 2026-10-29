@@ -55,7 +55,10 @@ export async function GET(req: NextRequest) {
         .map((v) => ({
           vesselDid: v.did,
           primeDid: v.prime?.did ?? null,
-          displayName: v.prime?.displayName || '官方认证智能体 (Verified Agent)',
+          displayName:
+            v.prime?.displayName ||
+            v.eidolon.name ||
+            `未命名分身 / Unnamed Vessel (${v.did})`,
           avatarSeed: v.prime?.avatarSeed || 'default',
           bio: v.prime?.bio || '',
           eidolonName: v.eidolon.name,

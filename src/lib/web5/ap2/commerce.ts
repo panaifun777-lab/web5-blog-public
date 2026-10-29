@@ -14,7 +14,12 @@ import crypto from 'crypto';
 import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { parseArcUsdc } from '@/lib/web5/auth/eip712-types';
-import { sendNativeUsdc, verifyNativeTransfer } from '@/lib/web5/payments/arc';
+import {
+  PAYOUT_SINGLE_CAP_USDC,
+  sendNativeUsdc,
+  verifyNativeTransfer,
+} from '@/lib/web5/payments/arc';
+import { ESCROW_VAULT_ADDRESS, TREASURY } from '@/lib/web5/contracts/addresses';
 import {
   auditOrderEvidence,
   readBlockNumbers,
@@ -87,8 +92,34 @@ export interface CommerceTaskOrder {
   settledAt?: number | null;
 }
 
-const SETTLEMENT_WINDOW_MS =
-  Math.max(1, Number(process.env.SETTLEMENT_WINDOW_HOURS || 72)) * 3600 * 1000;
+export function settlementWindowMs(
+  hours: number | string | undefined = process.env.SETTLEMENT_WINDOW_HOURS
+): number {
+  const parsed = Number(hours ?? 72);
+  const safeHours = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 24 * 30) : 72;
+  return safeHours * 3600 * 1000;
+}
+
+const SETTLEMENT_WINDOW_MS = settlementWindowMs();
+
+/** 80/20 split in wei; the fee absorbs the rounding remainder. */
+export function splitBountyWei(totalWei: bigint): { agentWei: bigint; feeWei: bigint } {
+  if (totalWei <= 0n) return { agentWei: 0n, feeWei: 0n };
+  const agentWei = (totalWei * 80n) / 100n;
+  return { agentWei, feeWei: totalWei - agentWei };
+}
+
+/**
+ * Submission verdict. Without an acceptance hash a human/admin decision is
+ * required, so the order parks in SUBMITTED instead of auto-verifying.
+ */
+export function acceptanceVerdict(
+  acceptanceHash: string | null | undefined,
+  deliverableHash: string
+): 'VERIFIED' | 'REJECTED' | 'SUBMITTED' {
+  if (!acceptanceHash) return 'SUBMITTED';
+  return acceptanceHash === deliverableHash ? 'VERIFIED' : 'REJECTED';
+}
 
 export function isDemoOrder(record: {
   orderId: string;
@@ -242,8 +273,29 @@ export async function createCommerceOrder(params: {
     throw new CommerceError('escrowTxHash is required: funds must be verifiably deposited first');
   }
 
-  const escrowContract =
-    params.escrowContract || '0xCA36335845E382129167fC44243F07A76827bA22';
+  // The escrow destination is fixed server-side: accepting a caller-chosen
+  // address would let any transfer (including a self-transfer) look funded.
+  const escrowContract = ESCROW_VAULT_ADDRESS;
+
+  const creatorWallets = await resolveCreatorWallets(params.creatorDid);
+  if (creatorWallets.length === 0) {
+    throw new CommerceError(
+      'Creator has no wallet on record; escrow must come from the creator wallet',
+      422,
+      'CREATOR_WALLET_REQUIRED'
+    );
+  }
+
+  const { agentWei } = splitBountyWei(bountyWei);
+  const singleCapWei = BigInt(PAYOUT_SINGLE_CAP_USDC) * 10n ** 18n;
+  if (agentWei > singleCapWei) {
+    const maxBounty = (PAYOUT_SINGLE_CAP_USDC * 100) / 80;
+    throw new CommerceError(
+      `Agent share exceeds the per-payout cap (${PAYOUT_SINGLE_CAP_USDC} USDC); max bounty is ${maxBounty} USDC`,
+      422,
+      'BOUNTY_EXCEEDS_PAYOUT_CAP'
+    );
+  }
 
   const duplicate = await db.taskOrder.findFirst({
     where: { escrowTxHash: params.escrowTxHash },
@@ -255,10 +307,22 @@ export async function createCommerceOrder(params: {
     txHash: params.escrowTxHash,
     to: escrowContract,
     minValueWei: bountyWei,
+    exactValueWei: bountyWei,
     minConfirmations: 3,
   });
   if (!verified.ok) {
-    throw new CommerceError(`Escrow verification failed: ${verified.reason}`, 400);
+    throw new CommerceError(`Escrow verification failed: ${verified.reason}`, 400, 'ESCROW_INVALID');
+  }
+  if (!creatorWallets.includes(verified.transfer.from.toLowerCase())) {
+    throw new CommerceError(
+      'Escrow transfer was not sent by the creator wallet',
+      400,
+      'ESCROW_WRONG_SENDER'
+    );
+  }
+
+  if (params.orderId && /^ap2-task-(seed|meme)-/.test(params.orderId)) {
+    throw new CommerceError('Reserved orderId prefix', 422, 'RESERVED_ORDER_ID');
   }
 
   const orderId =
@@ -267,22 +331,30 @@ export async function createCommerceOrder(params: {
 
   const deliveryHours = Math.max(1, params.deliveryHours || 72);
 
-  const record = await db.taskOrder.create({
-    data: {
-      orderId,
-      creatorDid: params.creatorDid,
-      title,
-      description,
-      bountyUsdc: params.bountyUsdc,
-      status: 'FUNDED',
-      escrowContract,
-      escrowTxHash: verified.transfer.txHash,
-      acceptanceHash: params.acceptanceHash || null,
-      deliveryDueAt: new Date(Date.now() + deliveryHours * 3600 * 1000),
-      blockNumbers: JSON.stringify({ escrow: verified.transfer.blockNumber.toString() }),
-      isDemo: false,
-    },
-  });
+  let record;
+  try {
+    record = await db.taskOrder.create({
+      data: {
+        orderId,
+        creatorDid: params.creatorDid,
+        title,
+        description,
+        bountyUsdc: params.bountyUsdc,
+        status: 'FUNDED',
+        escrowContract,
+        escrowTxHash: verified.transfer.txHash,
+        acceptanceHash: params.acceptanceHash || null,
+        deliveryDueAt: new Date(Date.now() + deliveryHours * 3600 * 1000),
+        blockNumbers: JSON.stringify({ escrow: verified.transfer.blockNumber.toString() }),
+        isDemo: false,
+      },
+    });
+  } catch (err: any) {
+    if (err?.code === 'P2002') {
+      throw new CommerceError('This escrow transaction was already used', 409);
+    }
+    throw err;
+  }
 
   return mapPrismaOrder(record);
 }
@@ -403,8 +475,7 @@ export async function submitOrder(
     throw new CommerceError('Arweave 交易 ID 不合法', 422, 'PROVENANCE_INVALID');
   }
 
-  const accepted =
-    !existing.acceptanceHash || existing.acceptanceHash === deliverableHash;
+  const verdict = acceptanceVerdict(existing.acceptanceHash, deliverableHash);
   const submittedAt = new Date();
 
   const updated = await db.taskOrder.update({
@@ -413,9 +484,9 @@ export async function submitOrder(
       deliverableHash,
       deliverableContent: deliverableContent?.slice(0, 200_000) || null,
       deliverableArweaveHash: provenance?.hash || null,
-      status: accepted ? (existing.acceptanceHash ? 'VERIFIED' : 'SUBMITTED') : 'REJECTED',
+      status: verdict,
       submittedAt,
-      verifiedAt: accepted && existing.acceptanceHash ? submittedAt : null,
+      verifiedAt: verdict === 'VERIFIED' ? submittedAt : null,
       settlementDueAt: new Date(submittedAt.getTime() + SETTLEMENT_WINDOW_MS),
     },
   });
@@ -492,11 +563,36 @@ async function resolveAgentPayoutAddress(agentDid: string): Promise<string | nul
 }
 
 async function resolveCreatorAddress(creatorDid: string): Promise<string | null> {
+  const [wallet] = await resolveCreatorWallets(creatorDid);
+  return wallet || null;
+}
+
+/**
+ * Every address the creator DID can legitimately pay from: the DID itself when
+ * it is an address, the prime wallet, and the vessel smart account.
+ */
+async function resolveCreatorWallets(creatorDid: string): Promise<string[]> {
+  const wallets = new Set<string>();
+  const push = (value?: string | null) => {
+    if (value && /^0x[0-9a-fA-F]{40}$/.test(value)) wallets.add(value.toLowerCase());
+  };
+
+  if (/^0x[0-9a-fA-F]{40}$/.test(creatorDid)) push(creatorDid);
+  if (creatorDid.startsWith('did:plvtvs:')) push(creatorDid.slice('did:plvtvs:'.length));
+
   const prime = await db.prime.findUnique({
     where: { did: creatorDid },
     select: { walletAddress: true },
   });
-  return prime?.walletAddress || null;
+  push(prime?.walletAddress);
+
+  const vessel = await db.vessel.findUnique({
+    where: { did: creatorDid },
+    select: { smartAccountAddress: true },
+  });
+  push(vessel?.smartAccountAddress);
+
+  return [...wallets];
 }
 
 function feeAddress(): string | null {
@@ -506,8 +602,8 @@ function feeAddress(): string | null {
 
 /**
  * Settles a verified order: 80% to the agent, 20% to the fee address.
- * Idempotent — concurrent callers lose the SETTLING claim and receive
- * the in-flight order instead of a second transfer.
+ * Idempotent — the SETTLING claim serializes callers, and every transfer is
+ * reused from PayoutLedger before anything is broadcast again.
  */
 export async function settleOrder(
   orderId: string,
@@ -524,7 +620,13 @@ export async function settleOrder(
 
   const existing = await db.taskOrder.findUnique({ where: { orderId } });
   if (!existing) throw new CommerceError('Task order not found', 404);
+  if (isDemoOrder(existing)) {
+    throw new CommerceError('Demo orders never move real funds', 409, 'DEMO_NOT_SETTLEABLE');
+  }
   if (existing.disputedAt) throw new CommerceError('Task is disputed', 409, 'DISPUTED');
+  if (existing.refundTxHash || existing.status === 'REFUNDED') {
+    throw new CommerceError('Task has already been refunded', 409, 'ALREADY_REFUNDED');
+  }
 
   const settleable = existing.status === 'VERIFIED' || existing.status === 'SUBMITTED';
   if (!settleable) {
@@ -536,7 +638,7 @@ export async function settleOrder(
   if (!existing.assignedAgentDid) throw new CommerceError('Task has no assigned agent', 409);
 
   // Evidence E3: payout requires permanent provenance, never a local fallback hash.
-  if (!existing.deliverableArweaveHash && !isDemoOrder(existing) && !(actor.kind === 'admin' && opts.force)) {
+  if (!existing.deliverableArweaveHash && !(actor.kind === 'admin' && opts.force)) {
     throw new CommerceError(
       '交付物缺少 Arweave 永久存证，拒绝结算',
       422,
@@ -549,44 +651,47 @@ export async function settleOrder(
     throw new CommerceError('Settlement window has not elapsed', 409, 'WINDOW_OPEN');
   }
 
+  const payoutAddress = await resolveAgentPayoutAddress(existing.assignedAgentDid);
+  if (!payoutAddress) {
+    throw new CommerceError('Assigned agent has no payout wallet on record', 409);
+  }
+
+  // Self-dealing is checked on resolved wallets as well as the DID string, so a
+  // different DID form backed by the same wallet cannot settle its own payout.
   if (actor.kind === 'orchestrator') {
+    if (!actor.did) throw new CommerceError('Orchestrator DID required', 403);
     if (actor.did === existing.assignedAgentDid) {
       throw new CommerceError('Self-dealing blocked: settler cannot be the deliverer', 403, 'SELF_DEALING');
     }
-    if (!actor.did) throw new CommerceError('Orchestrator DID required', 403);
+    const actorWallets = await resolveCreatorWallets(actor.did);
+    if (actorWallets.includes(payoutAddress.toLowerCase())) {
+      throw new CommerceError('Self-dealing blocked: settler wallet owns the payout address', 403, 'SELF_DEALING');
+    }
   }
 
   // Claim the order; only one caller wins.
   const claim = await db.taskOrder.updateMany({
     where: { orderId, status: { in: ['VERIFIED', 'SUBMITTED'] }, disputedAt: null },
-    data: { status: 'SETTLING' },
+    data: { status: 'SETTLING', claimAt: new Date() },
   });
   if (claim.count !== 1) {
     const current = await db.taskOrder.findUnique({ where: { orderId } });
     return mapPrismaOrder(current);
   }
 
-  const payoutAddress = await resolveAgentPayoutAddress(existing.assignedAgentDid);
-  if (!payoutAddress) {
-    await db.taskOrder.update({
-      where: { orderId },
-      data: { status: existing.status, settlementError: 'Assigned agent has no payout wallet on record' },
-    });
-    throw new CommerceError('Assigned agent has no payout wallet on record', 409);
-  }
-
   const totalWei = parseArcUsdc(existing.bountyUsdc);
-  const agentWei = (totalWei * 80n) / 100n;
-  const feeWei = totalWei - agentWei;
+  const { agentWei, feeWei } = splitBountyWei(totalWei);
   const blocks = readBlockNumbers(existing.blockNumbers);
 
-  let payoutTxHash = existing.payoutTxHash || '';
-  let payoutBlock = blocks.payout || '';
-  let feeTxHash = existing.feeTxHash || '';
-  let feeBlock = blocks.fee || '';
-
-  // Retry-safe: reuse anything already paid before sending again.
+  // Ledger-first: anything already paid is reused, never sent twice.
   const ledger = await db.payoutLedger.findMany({ where: { orderId } });
+  const agentRow = ledger.find((row) => row.kind === 'AGENT' && row.txHash);
+  const feeRow = ledger.find((row) => row.kind === 'FEE' && row.txHash);
+
+  let payoutTxHash = existing.payoutTxHash || agentRow?.txHash || '';
+  let payoutBlock = blocks.payout || agentRow?.blockNumber || '';
+  let feeTxHash = existing.feeTxHash || feeRow?.txHash || '';
+  let feeBlock = blocks.fee || feeRow?.blockNumber || '';
 
   try {
     if (!payoutTxHash) {
@@ -606,11 +711,19 @@ export async function settleOrder(
           blockNumber: payout.blockNumber,
         },
       });
+      // Persist the hash immediately: a later failure must never re-broadcast it.
+      await db.taskOrder.update({
+        where: { orderId },
+        data: {
+          payoutTxHash,
+          blockNumbers: JSON.stringify({ ...blocks, payout: payoutBlock }),
+        },
+      });
     }
 
     const feeTo = feeAddress();
-    const feeAlreadyPaid = ledger.some((row) => row.kind === 'FEE' && row.txHash);
-    if (feeWei > 0n && !feeTxHash && feeTo && !feeAlreadyPaid) {
+    const feeRetained = ledger.some((row) => row.kind === 'RETAINED');
+    if (feeWei > 0n && !feeTxHash && feeTo) {
       const fee = await sendNativeUsdc({ to: feeTo, amountWei: feeWei });
       if (!fee.ok) {
         throw new CommerceError(
@@ -631,14 +744,21 @@ export async function settleOrder(
           blockNumber: fee.blockNumber,
         },
       });
-    } else if (feeWei > 0n && !feeTo && !ledger.some((row) => row.kind === 'RETAINED')) {
+      await db.taskOrder.update({
+        where: { orderId },
+        data: {
+          feeTxHash,
+          blockNumbers: JSON.stringify({ ...blocks, payout: payoutBlock, fee: feeBlock }),
+        },
+      });
+    } else if (feeWei > 0n && !feeTo && !feeRetained) {
       // No fee address configured: the 20% stays in treasury. Record it
       // as retained so E4 can reconcile without inventing a tx.
       await db.payoutLedger.create({
         data: {
           orderId,
           kind: 'RETAINED',
-          address: REVENUE_ROUTING.OPERATIONAL_TREASURY_ADDRESS.toLowerCase(),
+          address: TREASURY.toLowerCase(),
           amountWei: feeWei.toString(),
         },
       });
@@ -649,6 +769,7 @@ export async function settleOrder(
       data: {
         status: 'SETTLED',
         settledAt: new Date(),
+        claimAt: null,
         payoutTxHash,
         feeTxHash: feeTxHash || null,
         blockNumbers: JSON.stringify({
@@ -660,10 +781,15 @@ export async function settleOrder(
       },
     });
 
-    await db.vessel.updateMany({
-      where: { did: existing.assignedAgentDid },
-      data: { successCount: { increment: 1 } },
-    });
+    // Reputation is best-effort: never fail a settled order over a counter.
+    try {
+      await db.vessel.updateMany({
+        where: { did: existing.assignedAgentDid },
+        data: { successCount: { increment: 1 } },
+      });
+    } catch (repErr: any) {
+      console.warn(`[AP2] reputation update failed for ${orderId}:`, repErr?.message);
+    }
 
     console.log(
       `[AP2] order ${orderId} settled: agent ${agentWei} wei -> ${payoutAddress} tx=${payoutTxHash}` +
@@ -675,7 +801,8 @@ export async function settleOrder(
     await db.taskOrder.update({
       where: { orderId },
       data: {
-        status: 'VERIFIED',
+        status: existing.status,
+        claimAt: null,
         settlementError: String(err?.message || err).slice(0, 500),
       },
     });
@@ -697,6 +824,12 @@ export async function refundOrder(
 
   const existing = await db.taskOrder.findUnique({ where: { orderId } });
   if (!existing) throw new CommerceError('Task order not found', 404);
+  if (isDemoOrder(existing)) {
+    throw new CommerceError('Demo orders never move real funds', 409, 'DEMO_NOT_REFUNDABLE');
+  }
+  if (existing.refundTxHash || existing.status === 'REFUNDED') {
+    throw new CommerceError('Task has already been refunded', 409, 'ALREADY_REFUNDED');
+  }
   if (!['FUNDED', 'ASSIGNED', 'SUBMITTED', 'VERIFIED', 'DISPUTED'].includes(existing.status)) {
     throw new CommerceError(`Cannot refund task in status: ${existing.status}`, 409);
   }
@@ -711,7 +844,7 @@ export async function refundOrder(
 
   const claim = await db.taskOrder.updateMany({
     where: { orderId, status: existing.status },
-    data: { status: 'REFUNDING' },
+    data: { status: 'REFUNDING', claimAt: new Date(), refundOrigin: existing.status },
   });
   if (claim.count !== 1) {
     const current = await db.taskOrder.findUnique({ where: { orderId } });
@@ -719,39 +852,62 @@ export async function refundOrder(
   }
 
   const totalWei = parseArcUsdc(existing.bountyUsdc);
+  const blocks = readBlockNumbers(existing.blockNumbers);
+
   try {
-    const refund = await sendNativeUsdc({ to: creatorAddress, amountWei: totalWei });
-    if (!refund.ok) {
-      throw new CommerceError(`Refund failed: ${refund.reason}`, refund.status || 502, refund.code || 'REFUND_FAILED');
+    // Ledger-first: a refund that already reached the chain is reused.
+    const ledger = await db.payoutLedger.findMany({ where: { orderId } });
+    const refundRow = ledger.find((row) => row.kind === 'REFUND' && row.txHash);
+    let refundTxHash = existing.refundTxHash || refundRow?.txHash || '';
+    let refundBlock = blocks.refund || refundRow?.blockNumber || '';
+
+    if (!refundTxHash) {
+      const refund = await sendNativeUsdc({ to: creatorAddress, amountWei: totalWei });
+      if (!refund.ok) {
+        throw new CommerceError(`Refund failed: ${refund.reason}`, refund.status || 502, refund.code || 'REFUND_FAILED');
+      }
+      refundTxHash = refund.txHash;
+      refundBlock = refund.blockNumber;
+      await db.payoutLedger.create({
+        data: {
+          orderId,
+          kind: 'REFUND',
+          address: creatorAddress.toLowerCase(),
+          amountWei: totalWei.toString(),
+          txHash: refund.txHash,
+          blockNumber: refund.blockNumber,
+        },
+      });
+      await db.taskOrder.update({
+        where: { orderId },
+        data: {
+          refundTxHash,
+          blockNumbers: JSON.stringify({ ...blocks, refund: refundBlock }),
+        },
+      });
     }
 
-    await db.payoutLedger.create({
-      data: {
-        orderId,
-        kind: 'REFUND',
-        address: creatorAddress.toLowerCase(),
-        amountWei: totalWei.toString(),
-        txHash: refund.txHash,
-        blockNumber: refund.blockNumber,
-      },
-    });
-
-    const blocks = readBlockNumbers(existing.blockNumbers);
     const updated = await db.taskOrder.update({
       where: { orderId },
       data: {
         status: 'REFUNDED',
-        refundTxHash: refund.txHash,
-        blockNumbers: JSON.stringify({ ...blocks, refund: refund.blockNumber }),
+        refundTxHash,
+        claimAt: null,
+        refundOrigin: null,
+        blockNumbers: JSON.stringify({ ...blocks, refund: refundBlock }),
         settlementError: reason ? `refund: ${reason}`.slice(0, 500) : null,
       },
     });
 
     if (existing.assignedAgentDid) {
-      await db.vessel.updateMany({
-        where: { did: existing.assignedAgentDid },
-        data: { failCount: { increment: 1 } },
-      });
+      try {
+        await db.vessel.updateMany({
+          where: { did: existing.assignedAgentDid },
+          data: { failCount: { increment: 1 } },
+        });
+      } catch (repErr: any) {
+        console.warn(`[AP2] reputation update failed for refund ${orderId}:`, repErr?.message);
+      }
     }
 
     return mapPrismaOrder(updated);
@@ -760,6 +916,7 @@ export async function refundOrder(
       where: { orderId },
       data: {
         status: existing.status,
+        claimAt: null,
         settlementError: String(err?.message || err).slice(0, 500),
       },
     });
@@ -802,6 +959,7 @@ export async function auditOrder(
 export async function listSettlementsDue(limit = 20) {
   return db.taskOrder.findMany({
     where: {
+      ...NON_DEMO_ORDER_WHERE,
       status: 'VERIFIED',
       disputedAt: null,
       settlementDueAt: { lte: new Date() },
@@ -815,12 +973,105 @@ export async function listSettlementsDue(limit = 20) {
 export async function listExpiredDeliveries(limit = 20) {
   return db.taskOrder.findMany({
     where: {
+      ...NON_DEMO_ORDER_WHERE,
       status: { in: ['FUNDED', 'ASSIGNED'] },
       deliveryDueAt: { lte: new Date() },
     },
     orderBy: { deliveryDueAt: 'asc' },
     take: limit,
   });
+}
+
+/**
+ * Reclaims SETTLING / REFUNDING claims left behind by a crash. Anything that
+ * already reached the chain is finalized from the ledger; the rest is released
+ * back to its pre-claim status so the retry path (ledger-first) can resume.
+ */
+export async function reclaimStaleClaims(
+  maxAgeMinutes = 30
+): Promise<{ settled: number; refunded: number; released: number }> {
+  const cutoff = new Date(Date.now() - Math.max(1, maxAgeMinutes) * 60_000);
+  let settled = 0;
+  let refunded = 0;
+  let released = 0;
+
+  const settling = await db.taskOrder.findMany({
+    where: { status: 'SETTLING', claimAt: { lt: cutoff } },
+  });
+  for (const order of settling) {
+    const ledger = await db.payoutLedger.findMany({ where: { orderId: order.orderId } });
+    const agentRow = ledger.find((row) => row.kind === 'AGENT' && row.txHash);
+    const feeRow = ledger.find((row) => row.kind === 'FEE' && row.txHash);
+    const retained = ledger.some((row) => row.kind === 'RETAINED');
+    const blocks = readBlockNumbers(order.blockNumbers);
+
+    if (agentRow && (feeRow || retained)) {
+      await db.taskOrder.update({
+        where: { orderId: order.orderId },
+        data: {
+          status: 'SETTLED',
+          settledAt: new Date(),
+          claimAt: null,
+          payoutTxHash: agentRow.txHash,
+          feeTxHash: feeRow?.txHash ?? null,
+          blockNumbers: JSON.stringify({
+            ...blocks,
+            payout: agentRow.blockNumber || blocks.payout,
+            ...(feeRow?.blockNumber ? { fee: feeRow.blockNumber } : {}),
+          }),
+          settlementError: 'recovered: both transfers were already on chain',
+        },
+      });
+      settled += 1;
+    } else {
+      await db.taskOrder.update({
+        where: { orderId: order.orderId },
+        data: {
+          status: 'VERIFIED',
+          claimAt: null,
+          settlementError: 'released stale SETTLING claim; payout resumes from ledger',
+        },
+      });
+      released += 1;
+    }
+  }
+
+  const refunding = await db.taskOrder.findMany({
+    where: { status: 'REFUNDING', claimAt: { lt: cutoff } },
+  });
+  for (const order of refunding) {
+    const ledger = await db.payoutLedger.findMany({ where: { orderId: order.orderId } });
+    const refundRow = ledger.find((row) => row.kind === 'REFUND' && row.txHash);
+    if (refundRow) {
+      const blocks = readBlockNumbers(order.blockNumbers);
+      await db.taskOrder.update({
+        where: { orderId: order.orderId },
+        data: {
+          status: 'REFUNDED',
+          refundTxHash: refundRow.txHash,
+          claimAt: null,
+          refundOrigin: null,
+          blockNumbers: JSON.stringify({ ...blocks, refund: refundRow.blockNumber || blocks.refund }),
+          settlementError: 'recovered: refund was already on chain',
+        },
+      });
+      refunded += 1;
+    } else {
+      const origin = (order.refundOrigin as OrderStatus) || 'VERIFIED';
+      await db.taskOrder.update({
+        where: { orderId: order.orderId },
+        data: {
+          status: origin,
+          claimAt: null,
+          refundOrigin: null,
+          settlementError: 'released stale REFUNDING claim',
+        },
+      });
+      released += 1;
+    }
+  }
+
+  return { settled, refunded, released };
 }
 
 /** Backwards-compatible wrapper: submission never settles money. */

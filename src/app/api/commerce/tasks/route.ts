@@ -4,6 +4,7 @@
 // Settlement/refund are the only endpoints that can move money.
 // ════════════════════════════════════════════════════════════════
 
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
@@ -17,6 +18,7 @@ import {
   refundOrder,
   auditOrder,
   CommerceError,
+  type CommerceTaskOrder,
   type SettlementActor,
 } from '@/lib/web5/ap2/commerce';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
@@ -44,22 +46,34 @@ function fail(message: string, status: number, code?: string) {
   );
 }
 
-function toFailure(err: any) {
+function toFailure(err: any, requestId: string) {
   if (err instanceof CommerceError) {
     if (err.status >= 500) console.error('[commerce/tasks] Error:', err.message);
     return fail(err.message, err.status, err.code);
   }
-  const message = err?.message || 'Request failed';
-  const status = /not found/i.test(message)
-    ? 404
-    : /required|invalid|verification failed|must be|mismatch/i.test(message)
-      ? 400
-      : 500;
-  if (status === 500) console.error('[commerce/tasks] Error:', err);
-  return fail(message, status);
+  console.error(`[commerce/tasks] Unhandled error (requestId=${requestId}):`, err);
+  return NextResponse.json(
+    { success: false, error: 'Internal error', requestId },
+    { status: 500, headers: NO_STORE }
+  );
+}
+
+const ORDER_ID_RE = /^[A-Za-z0-9._:-]{1,100}$/;
+
+function isOrderId(value: unknown): value is string {
+  return typeof value === 'string' && ORDER_ID_RE.test(value);
+}
+
+/** Public listing projection: never expose private deliverable bodies or acceptance hashes. */
+function publicOrder(order: CommerceTaskOrder): CommerceTaskOrder {
+  const copy: CommerceTaskOrder = { ...order };
+  delete copy.deliverableContent;
+  delete copy.acceptanceHash;
+  return copy;
 }
 
 export async function GET(req: NextRequest) {
+  const requestId = randomUUID();
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
@@ -70,6 +84,7 @@ export async function GET(req: NextRequest) {
 
       const orderId = url.searchParams.get('orderId');
       if (!orderId) return fail('orderId is required', 400);
+      if (!isOrderId(orderId)) return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
 
       const result = await auditOrder(orderId, {
         chain: url.searchParams.get('chain') !== 'false',
@@ -90,16 +105,17 @@ export async function GET(req: NextRequest) {
         escrowPayoutsEnabled: ESCROW_PAYOUTS_ENABLED,
         refundsEnabled: REFUNDS_ENABLED,
         settlementWindowHours: Math.max(1, Number(process.env.SETTLEMENT_WINDOW_HOURS || 72)),
-        orders,
+        orders: orders.map(publicOrder),
       },
       { headers: NO_STORE }
     );
   } catch (err: any) {
-    return toFailure(err);
+    return toFailure(err, requestId);
   }
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = randomUUID();
   const limited = rateLimit(`commerce-tasks:${clientIp(req)}`, 20, 60_000);
   if (!limited.ok) {
     return NextResponse.json(
@@ -117,10 +133,38 @@ export async function POST(req: NextRequest) {
     const session = await resolveVesselSessionFromToken(bearer(req));
     const admin = authorizeAdmin(req);
 
+    // Every action below identifies an existing order by orderId.
+    const needsOrderId =
+      action === 'assign' ||
+      action === 'submit' ||
+      action === 'verify' ||
+      action === 'dispute' ||
+      action === 'settle' ||
+      action === 'refund';
+    if (needsOrderId && !isOrderId(body.orderId)) {
+      return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
+    }
+
+    // Optional on create; validate only when supplied.
+    if (action === 'create' && body.orderId !== undefined && !isOrderId(body.orderId)) {
+      return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
+    }
+
+    const reason =
+      typeof body.reason === 'string' ? body.reason.slice(0, 500) : '';
+
     if (action === 'create') {
       if (!session || session.accessMode !== 'vessel' || !session.primeDid) {
         return fail('Connect a Vessel session to publish a bounty', 401);
       }
+
+      const rawDeliveryHours = Number(body.deliveryHours);
+      const deliveryHours =
+        Number.isInteger(rawDeliveryHours) &&
+        rawDeliveryHours >= 1 &&
+        rawDeliveryHours <= 720
+          ? rawDeliveryHours
+          : undefined;
 
       const order = await createCommerceOrder({
         creatorDid: session.primeDid,
@@ -131,7 +175,7 @@ export async function POST(req: NextRequest) {
         escrowTxHash: body.escrowTxHash || body.txHash,
         orderId: typeof body.orderId === 'string' ? body.orderId : undefined,
         acceptanceHash: typeof body.acceptanceHash === 'string' ? body.acceptanceHash : undefined,
-        deliveryHours: Number(body.deliveryHours) || undefined,
+        deliveryHours,
       });
       return NextResponse.json({ success: true, order });
     }
@@ -192,18 +236,32 @@ export async function POST(req: NextRequest) {
 
     if (action === 'dispute') {
       if (!session?.primeDid) return fail('Connect a Vessel session to dispute', 401);
-      const order = await disputeOrder(body.orderId, session.primeDid, body.reason);
+      const order = await disputeOrder(body.orderId, session.primeDid, reason);
       return NextResponse.json({ success: true, order });
     }
 
     if (action === 'settle') {
+      const existing = await db.taskOrder.findUnique({
+        where: { orderId: body.orderId },
+      });
+      if (!existing) return fail('Task order not found', 404);
+
       let actor: SettlementActor;
       if (admin.ok) {
         actor = { kind: 'admin' };
-      } else if (session?.accessMode === 'vessel' && session.vesselDid) {
+      } else if (
+        session?.accessMode === 'vessel' &&
+        session.vesselDid &&
+        (session.primeDid === existing.creatorDid || session.vesselDid === existing.creatorDid)
+      ) {
+        // Only a session linked to the order creator may settle as orchestrator.
         actor = { kind: 'orchestrator', did: session.vesselDid };
       } else {
-        return fail('Admin or orchestrator authorization required for settlement', 403);
+        return fail(
+          'Admin or orchestrator authorization required for settlement',
+          403,
+          'NOT_ORCHESTRATOR'
+        );
       }
 
       const order = await settleOrder(body.orderId, actor, {
@@ -220,7 +278,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'refund') {
       if (!admin.ok) return fail('Admin authorization required for refunds', 403);
-      const order = await refundOrder(body.orderId, { kind: 'admin' }, body.reason);
+      const order = await refundOrder(body.orderId, { kind: 'admin' }, reason);
       return NextResponse.json({
         success: true,
         order,
@@ -231,6 +289,6 @@ export async function POST(req: NextRequest) {
 
     return fail('Invalid action', 400);
   } catch (err: any) {
-    return toFailure(err);
+    return toFailure(err, requestId);
   }
 }

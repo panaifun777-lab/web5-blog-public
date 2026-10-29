@@ -8,6 +8,10 @@ export const SUPERADMIN = '0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1' as const;
 // 平台独立收银金库（与部署者钱包隔离，确保打赏为真实跨地址入账）
 export const TREASURY = '0xCA36335845E382129167fC44243F07A76827bA22' as const;
 
+// 托管收款地址：订单押金只能转入这里。服务端不接受调用方自选地址，
+// 否则一笔普通转账（甚至自转）就能伪造"已托管"。
+export const ESCROW_VAULT_ADDRESS = TREASURY;
+
 // ━━ Circle ARC Mainnet (正式主网 Chain ID: 5042) ━━
 export const ARC_MAINNET = {
   id: 5042,

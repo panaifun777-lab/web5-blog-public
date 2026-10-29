@@ -5,7 +5,7 @@
 >
 > 状态标记：`[x]` 代码完成并存于仓库 · `[~]` 代码完成但需真实链上资金/时长验证 · `[ ]` 未完成 · `[!]` 阻塞（需要外部输入）
 >
-> 最近更新：2026-10-30（阶段 1、2、5 代码落地；阶段 3 需测试网资金，阶段 4 需主网灰度）
+> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 20 项单测，已部署 build9；阶段 3 需测试网资金，阶段 4 需主网灰度）
 
 ---
 
@@ -29,11 +29,12 @@
 ## 1. 执行层补齐
 
 - [x] **1.1 20% 真实落账**：`settleOrder` 把 80% 打给 agent，20% 单独打给 `PLATFORM_FEE_ADDRESS`；两笔都写 `payoutTxHash` / `feeTxHash` 与 block number。未配置费用地址时写 `PayoutLedger.kind='RETAINED'`（留在 treasury，不伪造 tx）。
-- [x] **1.2 幂等与并发**：`updateMany({ where: { orderId, status: in([...]), disputedAt: null }, data: { status: 'SETTLING' } })` 作为互斥锁；抢锁失败直接返回当前订单。重试时先读 `PayoutLedger`，已付的 AGENT/FEE 不会重复转账；失败回滚到 `VERIFIED` 并写 `settlementError`。
-- [x] **1.3 退款路径**：`REFUNDED` 必须带 `refundTxHash`；`deliveryDueAt` 过期的 `FUNDED/ASSIGNED` 由 cron 自动退款（需 `REFUNDS_ENABLED=true`）；admin 可手动退款。退款失败回滚原状态并写 `settlementError`。
+- [x] **1.2 幂等与并发**：`updateMany({ where: { orderId, status: in([...]), disputedAt: null }, data: { status: 'SETTLING' } })` 作为互斥锁；抢锁失败直接返回当前订单。重试时**先读 `PayoutLedger` 再发 tx**（AGENT/FEE 各查各的），已付的一笔绝不重发；每笔 tx 发出后**立即**把 hash 写回订单，崩溃也只丢「最后一笔未落库」；失败回滚用抢锁前快照恢复 `status`/`claimAt`。`cron` 入口先跑 `reclaimStaleClaims(30)`：超过 30 分钟仍卡在 `SETTLING`/`REFUNDING` 的订单按 ledger 判定收尾或释放，不会永久卡死。
+- [x] **1.3 退款路径**：`REFUNDED` 必须带 `refundTxHash`；`deliveryDueAt` 过期的 `FUNDED/ASSIGNED` 由 cron 自动退款（需 `REFUNDS_ENABLED=true`）；admin 可手动退款。退款同样 ledger-first 防重复打款，抢锁时把原状态写入 `refundOrigin`，失败按原状态回滚。
 - [x] **1.4 voucher 持久化**：nonce 写入 `AuthNonce`（purpose `VOUCHER`），`commit()` 依赖唯一约束返回 409；统计改为 DB 计数；重启后计数不清零、重放被拒。
-- [x] **1.5 限额落到执行层**：`sendNativeUsdc` 前置单笔上限（5 USDC）与 24h 滚动上限（25 USDC），上限取自 `PayoutLedger` 实付记录，env 只能调低不能调高。超限返回 409 且不发 tx。
-- [x] **1.6 结算授权收口**：结算发起者必须满足其一：admin，或 orchestrator DID 且 ≠ `assignedAgentDid`（禁止自派自付）。另：非 admin 非 force 结算要求交付物已有 Arweave 永久存证。
+- [x] **1.5 限额落到执行层**：`sendNativeUsdc` 前置单笔上限（5 USDC）与 **24h 滚动窗口**上限（25 USDC），上限取自 `PayoutLedger` 实付记录（`RETAINED` 不计入），env 只能调低不能调高；发款调用在进程内串行化，避免并发请求同时通过上限检查。超限返回 409 且不发 tx。
+- [x] **1.6 结算授权收口**：结算发起者必须满足其一：admin，或 orchestrator DID 且 ≠ `assignedAgentDid`（禁止自派自付）。自派自付检查按**钱包地址**比对（creator 的 did/0x/prime/vessel 地址集合 vs 收款地址），换个 DID 也绕不过去。另：非 admin 非 force 结算要求交付物已有 Arweave 永久存证。
+- [x] **1.7 托管建单防伪**：托管地址由服务端常量固定（`ESCROW_VAULT_ADDRESS`），不再信任请求体；`from` 必须在 creator 钱包集合内；`escrowTxHash` 加唯一索引，同一笔链上转账不能重复建单；bounty 上限在发 tx 前拦截。
 
 ## 2. 验收自动化
 
@@ -42,6 +43,9 @@
 - [x] **2.3 争议窗口**：提交后 `settlementDueAt = submittedAt + SETTLEMENT_WINDOW_HOURS`（默认 72h）；窗口内 creator 可 `dispute`；cron 只结算 `dueAt <= now` 且 `disputedAt IS NULL` 的订单。
 - [x] **2.4 禁止自派自付**：daemon 只对 `assignedAgentDid === DAEMON_WORKER_DID` 的订单交付，且**从不结算**（结算留给 cron/admin）；自动接单需显式 `AGENT_DAEMON_AUTOCLAIM=true`；orchestrator 结算时后端强制 `settler ≠ deliverer`。
 - [x] **2.5 声誉自动记账**：`Vessel.successCount` 只在链上放款确认后 +1，`failCount` 只在退款确认后 +1；`reputationFromCounts()` 由这两个计数推导 score/level/badges，无链上结果时为 `—` / `Unverified`（前端已移除 `99.2%`、`Lv.4` 等假数据兜底）。
+- [x] **2.6 demo 订单硬隔离**：`settleOrder` / `refundOrder` 对 `isDemo` 订单直接抛 `DEMO_NOT_SETTLEABLE`（在发任何 tx 之前）；`listSettlementsDue` / `listExpiredDeliveries` 的查询自带 demo 过滤，cron 根本取不到 demo 单。
+- [x] **2.7 会话吊销即时生效**：`resolveVesselSessionFromToken` 不再回退到「仅验签」，必须命中存活的 `vesselSession` 行；吊销/过期后 token 立即失效。
+- [x] **2.8 列表不泄露验收材料**：任务列表投影剔除 `deliverableContent` 与 `acceptanceHash`，验收哈希只在审计/管理路径可见。
 
 ## 3. 测试网端到端（Arc Testnet 5042002）
 
@@ -84,6 +88,20 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 - [x] **5.2** 页面/清单里的计数只统计 `isDemo === false`：`GET /api/commerce/tasks` 的 `count`、`/api/market/x402-market`、`/api/market/llms`、任务广场与“待处理”计数
 - [~] **5.3** 造 1 条 demo + 1 条真实，页面数字只 +真实那一笔（代码已满足，待在灰度环境用真实订单复核）
 
+## 6. 本地单测（不依赖测试网资金）
+
+Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**20 项全部通过**：
+
+| 文件 | 覆盖 |
+|---|---|
+| `tests/settlement.test.ts` | 80/20 分账；重试时已付的 agent 份额不再重发；超限不发 tx 且订单留在 `VERIFIED`；acceptanceHash 三态（`SUBMITTED`/`VERIFIED`/`REJECTED`）；demo 订单拒绝结算/退款；结算调度器排除 demo；抢锁失败返回在途订单；分账与窗口计算的边界 |
+| `tests/caps.test.ts` | 单笔上限、恰好等于上限放行、24h 滚动窗口（23h 计入 / 26h 不计入）、`RETAINED` 不占额度 |
+| `tests/token-session.test.ts` | 存活会话通过；无会话行 / 已吊销 / 已过期 / 伪造签名一律拒绝 |
+
+```bash
+npm test            # vitest run
+```
+
 ---
 
 ## 环境变量
@@ -112,7 +130,8 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 ## 运行与验收命令
 
 ```bash
-# 本地类型检查与构建
+# 本地单测 / 类型检查 / 构建
+npm test
 npm run typecheck
 npm run build
 
@@ -121,6 +140,11 @@ PORT=3103 node .next/standalone/server.js
 curl -s -o /dev/null -w '%{http_code}\n' localhost:3103/
 curl -s -X POST -H 'content-type: application/json' -d '{}' localhost:3103/api/commerce/tasks
 
+# 端到端只读探测（在 VPS 上对 127.0.0.1:3102 影子实例跑）
+node scripts/e2e-settlement.mjs --base http://127.0.0.1:3102
+
 # 端到端（测试网，需真实资金）
-node scripts/e2e-settlement.mjs --base http://127.0.0.1:3103
+node scripts/e2e-settlement.mjs --live --base https://web5.blog
 ```
+
+上线前基线（build9 于 2026-10-30 部署，BUILD_ID `6Ga61EMUXcYAmJ9y2w8ev`）：线上 `/`、`/api/commerce/tasks`、cron GET 均 200；cron POST 503（未配置 secret）；预算接口匿名 403；列表 `count` 只算非 demo。线上资金开关仍全部关闭。

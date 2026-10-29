@@ -1040,11 +1040,11 @@ const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
   humanity:      { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
   experts:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
   piaoshu:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
-  bounties:      { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
-  bounty:        { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
+  bounties:      { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
+  bounty:        { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
   crowdfunding:  { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
   crowd:         { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
-  crowdsourcing: { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，链上秒级结算。' },
+  crowdsourcing: { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
 };
 function ModuleDesc({ module }: { module: string }) {
   const info = MODULE_DESCS[module] || MODULE_DESCS.tech;

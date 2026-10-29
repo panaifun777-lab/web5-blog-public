@@ -128,8 +128,8 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
     setDailyLimitUsdc(lim);
     localStorage.setItem('web5_daily_limit_usdc', lim);
     alert(isEn 
-      ? `✅ Daily Limit updated to ${lim} USDC! Synced with BudgetFence contract allowance.`
-      : `✅ 分身每日预算围栏已更新为 ${lim} USDC！已与 BudgetFence 链上合约配额同步。`);
+      ? `✅ Daily Limit saved locally as ${lim} USDC. This is a browser-only draft; it is not yet synced to the BudgetFence contract allowance.`
+      : `✅ 分身每日预算已本地保存为 ${lim} USDC。该设置仅为浏览器本地草稿，尚未同步到 BudgetFence 链上合约配额。`);
   };
 
   const handleWithdraw = async () => {
@@ -1045,11 +1045,17 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       onClick={() => {
                         const customAmount = prompt('输入新的日限额 (USDC):', fromTokenUnits(toBigInt(treasury.dailyLimit)));
                         if (customAmount !== null && !isNaN(Number(customAmount))) {
+                          if (!session?.sessionToken) { alert('需要 Vessel 会话后才能调整预算'); return; }
                           fetch('/api/ap2/budget', {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
+                            headers: {'Content-Type': 'application/json', Authorization: 'Bearer ' + session.sessionToken},
                             body: JSON.stringify({ dailyLimit: Number(customAmount) })
-                          }).then(r => r.json()).then(() => { alert('预算已更新'); window.location.reload(); }).catch(() => alert('调整失败'));
+                          }).then(async r => {
+                            const j = await r.json().catch(() => ({}));
+                            if (!r.ok) throw new Error(j.error || '调整失败');
+                            alert('预算已更新');
+                            window.location.reload();
+                          }).catch((e) => alert(e?.message || '调整失败'));
                         }
                       }}>
                       <Coins className="w-3 h-3 mr-1" /> ADJUST BUDGET

@@ -27,8 +27,16 @@ export const arcPublicClient = createPublicClient({
 });
 
 /** 服务端硬上限：env 只能调低，不能突破 5 / 25。 */
-const SINGLE_CAP_USDC = Math.min(Number(process.env.PAYOUT_SINGLE_CAP_USDC || 5) || 5, 5);
-const DAILY_CAP_USDC = Math.min(Number(process.env.PAYOUT_DAILY_CAP_USDC || 25) || 25, 25);
+export const PAYOUT_SINGLE_CAP_USDC = Math.min(
+  Number(process.env.PAYOUT_SINGLE_CAP_USDC || 5) || 5,
+  5
+);
+export const PAYOUT_DAILY_CAP_USDC = Math.min(
+  Number(process.env.PAYOUT_DAILY_CAP_USDC || 25) || 25,
+  25
+);
+const SINGLE_CAP_USDC = PAYOUT_SINGLE_CAP_USDC;
+const DAILY_CAP_USDC = PAYOUT_DAILY_CAP_USDC;
 
 export type PayoutFailure = {
   ok: false;
@@ -51,9 +59,10 @@ export async function verifyNativeTransfer(params: {
   to?: string;
   from?: string;
   minValueWei: bigint;
+  exactValueWei?: bigint;
   minConfirmations?: number;
 }): Promise<{ ok: true; transfer: VerifiedTransfer } | { ok: false; reason: string }> {
-  const { txHash, to, from, minValueWei, minConfirmations = 3 } = params;
+  const { txHash, to, from, minValueWei, exactValueWei, minConfirmations = 3 } = params;
 
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
     return { ok: false, reason: 'Malformed transaction hash' };
@@ -78,6 +87,9 @@ export async function verifyNativeTransfer(params: {
     }
     if (tx.value < minValueWei) {
       return { ok: false, reason: 'Transferred amount is below the required amount' };
+    }
+    if (exactValueWei !== undefined && tx.value !== exactValueWei) {
+      return { ok: false, reason: 'Transferred amount does not match the recorded amount' };
     }
 
     const blockNumber = await arcPublicClient.getBlockNumber();
@@ -128,7 +140,7 @@ export function getPayoutAccount() {
 const USDC_UNIT = 10n ** 18n;
 
 /**
- * 单笔与 24h 滚动上限校验。以 PayoutLedger 的真实出款为基准，
+ * 单笔与滚动 24h 上限校验。以 PayoutLedger 的真实出款为基准，
  * 超限时不发任何交易。
  */
 export async function checkPayoutCaps(amountWei: bigint): Promise<
@@ -144,11 +156,10 @@ export async function checkPayoutCaps(amountWei: bigint): Promise<
     };
   }
 
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
+  const windowStart = new Date(Date.now() - 24 * 3600 * 1000);
   const rows = await db.payoutLedger.findMany({
     where: {
-      createdAt: { gte: dayStart },
+      createdAt: { gte: windowStart },
       kind: { in: ['AGENT', 'FEE', 'REFUND'] },
     },
     select: { amountWei: true },
@@ -166,7 +177,26 @@ export async function checkPayoutCaps(amountWei: bigint): Promise<
   return { ok: true };
 }
 
+// Serializes cap-check + broadcast inside this process so two concurrent
+// payouts cannot both read the same spent total and overshoot the cap.
+let payoutQueue: Promise<unknown> = Promise.resolve();
+
 export async function sendNativeUsdc(params: {
+  to: string;
+  amountWei: bigint;
+}): Promise<
+  | { ok: true; txHash: `0x${string}`; blockNumber: string }
+  | PayoutFailure
+> {
+  const run = payoutQueue.then(() => sendNativeUsdcSerialized(params));
+  payoutQueue = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
+async function sendNativeUsdcSerialized(params: {
   to: string;
   amountWei: bigint;
 }): Promise<

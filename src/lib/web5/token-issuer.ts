@@ -163,21 +163,9 @@ export async function resolveVesselSessionFromToken(
       };
     }
 
-    // 备用 fallback（若 token 正确但 session 记录不在数据库中）
-    const vessel = await db.vessel.findUnique({
-      where: { did: vesselDid },
-      include: { eidolon: true, ap2Budgets: true },
-    });
-    return {
-      vesselDid,
-      eidolonDid: vessel?.eidolon?.did || '',
-      primeDid,
-      sessionToken: token,
-      expiresAt,
-      ap2Budget: getDefaultBudget(),
-      permissions: ['read', 'comment', 'micropay', 'publish'],
-      accessMode: 'vessel',
-    };
+    // No live session row (revoked, expired in the DB, or never issued):
+    // deny. Trusting the signature alone would make revocation a no-op.
+    return null;
   } catch (e) {
     console.error('[resolveVesselSessionFromToken] Error:', e);
     return null;
