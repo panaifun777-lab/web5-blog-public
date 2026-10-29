@@ -280,7 +280,7 @@ model TaskOrder {
   bountyUsdc             String
   status                 String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, VERIFIED, REJECTED, DISPUTED, SETTLING, SETTLED, REFUNDED
   escrowContract         String
-  escrowTxHash           String?   // 真实链上托管转账哈希
+  escrowTxHash           String?   @unique // 真实链上托管转账哈希（一笔记账只能兑现一次订单）
   payoutTxHash           String?   // 真实链上分账交易哈希（agent 份额）
   feeTxHash              String?   // 协议费归集交易哈希
   refundTxHash           String?   // 退款交易哈希
@@ -291,6 +291,8 @@ model TaskOrder {
   deliverableArweaveHash String?   // 永久存证哈希（fallback=false 才写入）
   acceptanceHash         String?   // 验收标准哈希：命中才允许 VERIFIED
   settlementError        String?   // 最近一次结算失败原因
+  claimAt                DateTime? // SETTLING / REFUNDING 抢占时间，供陈旧锁回收
+  refundOrigin           String?   // 进入 REFUNDING 前的状态，回收时按原状态回滚
   isDemo                 Boolean   @default(false)
   deliveryDueAt          DateTime?
   submittedAt            DateTime?
@@ -304,7 +306,6 @@ model TaskOrder {
   @@index([creatorDid])
   @@index([status])
   @@index([assignedAgentDid])
-  @@index([escrowTxHash])
   @@index([settlementDueAt])
 }
 

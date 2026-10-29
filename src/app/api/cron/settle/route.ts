@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   listSettlementsDue,
   listExpiredDeliveries,
+  reclaimStaleClaims,
   settleOrder,
   refundOrder,
 } from '@/lib/web5/ap2/commerce';
@@ -21,10 +22,11 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 function authorized(req: NextRequest): { ok: true } | { ok: false; status: number; error: string } {
   const secret = process.env.SETTLEMENT_CRON_SECRET || '';
   if (secret.length < 16) {
+    console.error('[cron/settle] SETTLEMENT_CRON_SECRET is missing or shorter than 16 chars');
     return {
       ok: false,
       status: 503,
-      error: 'SETTLEMENT_CRON_SECRET is not configured (min 16 chars)',
+      error: 'Cron is not configured',
     };
   }
   const provided = req.headers.get('x-cron-secret') || '';
@@ -57,6 +59,15 @@ export async function POST(req: NextRequest) {
   const settled: Array<{ orderId: string; payoutTxHash?: string | null }> = [];
   const refunded: Array<{ orderId: string; refundTxHash?: string | null }> = [];
   const errors: Array<{ orderId: string; stage: 'settle' | 'refund'; error: string }> = [];
+
+  // Recover claims stranded by a crash before scheduling new work.
+  let recovered = { settled: 0, refunded: 0, released: 0 };
+  try {
+    recovered = await reclaimStaleClaims(30);
+  } catch (err: any) {
+    console.error('[cron/settle] stale claim recovery failed:', err?.message || err);
+    errors.push({ orderId: '-', stage: 'settle', error: 'stale claim recovery failed' });
+  }
 
   if (ESCROW_PAYOUTS_ENABLED) {
     const due = await listSettlementsDue(20);
@@ -95,6 +106,7 @@ export async function POST(req: NextRequest) {
       refundedCount: refunded.length,
       settled,
       refunded,
+      recovered,
       errors,
     },
     { headers: NO_STORE }

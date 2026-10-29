@@ -526,7 +526,7 @@ export function TaskBoard({
             <div className="text-[11px]">
               <div className="font-semibold text-white">{isEn ? 'Claim High-Yield Tasks' : '高声誉分身自主接单'}</div>
               <div className="text-[#666] text-[10px]">
-                {isEn ? 'Bounties from 10 to 100 USDC' : '声誉 98%+ 智识节点领航'}
+                {isEn ? 'Bounties from 10 to 100 USDC' : '按交付记录展示分身声誉'}
               </div>
             </div>
           </div>
@@ -674,25 +674,29 @@ export function TaskBoard({
                           <div className="flex items-center gap-1.5">
                             <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[10px] py-0 h-4 font-mono">
                               <Shield className="w-2.5 h-2.5 mr-0.5" />
-                              {isEn ? 'Rep' : '声誉'} {rep?.score || '98.5%'}
+                              {isEn ? 'Rep' : '声誉'} {rep?.score || (isEn ? 'Unrated' : '未评级')}
                             </Badge>
-                            <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[10px] py-0 h-4">
-                              {rep?.level || 'Lv.3 智识节点'}
-                            </Badge>
+                            {rep?.level ? (
+                              <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[10px] py-0 h-4">
+                                {rep.level}
+                              </Badge>
+                            ) : null}
                           </div>
                         </div>
 
-                        {/* 技能徽章 */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {(rep?.badges || ['Circle ARC 5042', 'AP2 众包', '智能审计']).map((b) => (
-                            <span
-                              key={b}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.03] text-[#aaa] border border-white/[0.06]"
-                            >
-                              {b}
-                            </span>
-                          ))}
-                        </div>
+                        {/* 技能徽章（仅展示真实徽章） */}
+                        {rep?.badges?.length ? (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {rep.badges.map((b) => (
+                              <span
+                                key={b}
+                                className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.03] text-[#aaa] border border-white/[0.06]"
+                              >
+                                {b}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 
@@ -1336,61 +1340,58 @@ export function TaskBoard({
 
                   {/* 收益分配条形进度 */}
                   <div className="w-full h-2 rounded-full bg-white/[0.08] overflow-hidden flex">
-                    <div className="h-full bg-gradient-to-r from-[#10B981] to-[#00FFCC] w-[80%]" title="80% Creator" />
-                    <div className="h-full bg-[#0066FF] w-[10%]" title="10% Ops Treasury" />
-                    <div className="h-full bg-[#B080E8] w-[10%]" title="10% LP Buyback & Burn" />
+                    <div className="h-full bg-gradient-to-r from-[#10B981] to-[#00FFCC] w-[80%]" title="80% Agent" />
+                    <div className="h-full bg-[#0066FF] w-[20%]" title="20% Protocol Fee (RETAINED if no fee address)" />
                   </div>
 
-                  {/* 3 部分配卡片 */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
-                    {/* 80% 创作者实得 */}
+                  {/* 2 部分配卡片：80% 交付方 / 20% 协议费 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                    {/* 80% 交付方（agent） */}
                     <div className="p-2 rounded-lg bg-black/40 border border-[#10B981]/30 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#10B981] font-bold text-[10px]">80% 创作者应得</span>
+                        <span className="text-[#10B981] font-bold text-[10px]">
+                          {isEn ? '80% Deliverer (agent)' : '80% 交付方（agent）'}
+                        </span>
                         <Badge className="bg-[#10B981]/15 text-[#10B981] text-[9px] py-0 h-3.5">
-                          待出款
+                          {isEn ? 'Unpaid' : '待出款'}
                         </Badge>
                       </div>
                       <div className="text-sm font-mono font-bold text-white">
                         {(parseFloat(selectedTaskForReport.bountyUsdc) * 0.8).toFixed(2)} USDC
                       </div>
                       <p className="text-[9px] text-[#777] leading-tight">
-                        需人工/后台出款流程，当前未自动执行
+                        {isEn
+                          ? 'Paid to the assigned agent wallet at settlement; payouts are gated by MONEY_FLOWS_ENABLED and ESCROW_PAYOUTS_ENABLED.'
+                          : '结算时转入已在记录中的分身收款钱包；出款受 MONEY_FLOWS_ENABLED 与 ESCROW_PAYOUTS_ENABLED 开关控制。'}
                       </p>
                     </div>
 
-                    {/* 10% 运营出纳 */}
+                    {/* 20% 协议费 */}
                     <div className="p-2 rounded-lg bg-black/40 border border-[#0066FF]/30 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[#0066FF] font-bold text-[10px]">10% 国库运营</span>
+                        <span className="text-[#0066FF] font-bold text-[10px]">
+                          {isEn ? '20% Protocol fee' : '20% 协议费'}
+                        </span>
                         <Badge className="bg-[#0066FF]/15 text-[#0066FF] text-[9px] py-0 h-3.5">
-                          算力覆盖
+                          {isEn ? 'Unpaid' : '待出款'}
                         </Badge>
                       </div>
                       <div className="text-sm font-mono font-bold text-white">
-                        {(parseFloat(selectedTaskForReport.bountyUsdc) * 0.1).toFixed(2)} USDC
+                        {(parseFloat(selectedTaskForReport.bountyUsdc) * 0.2).toFixed(2)} USDC
                       </div>
                       <p className="text-[9px] text-[#777] leading-tight">
-                        注入 0xCA36...bA22 支持节点与模型
-                      </p>
-                    </div>
-
-                    {/* 10% LP 回购销毁 */}
-                    <div className="p-2 rounded-lg bg-black/40 border border-[#B080E8]/30 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[#B080E8] font-bold text-[10px]">10% LP 锁死回购</span>
-                        <Badge className="bg-[#B080E8]/15 text-[#B080E8] text-[9px] py-0 h-3.5">
-                          通缩飞轮
-                        </Badge>
-                      </div>
-                      <div className="text-sm font-mono font-bold text-white">
-                        {(parseFloat(selectedTaskForReport.bountyUsdc) * 0.1).toFixed(2)} USDC
-                      </div>
-                      <p className="text-[9px] text-[#777] leading-tight">
-                        Uniswap v4 深度扩充 & 回购 $WBOG
+                        {isEn
+                          ? 'Sent to PLATFORM_FEE_ADDRESS when configured; otherwise retained in the treasury (RETAINED, no transfer).'
+                          : '配置 PLATFORM_FEE_ADDRESS 时转入该地址；未配置时保留在金库（RETAINED，不发生转账）。'}
                       </p>
                     </div>
                   </div>
+
+                  <p className="text-[9px] text-[#777] leading-tight border-t border-white/[0.06] pt-2">
+                    {isEn
+                      ? 'Plan preview only — no payout has been executed in this view, and no LP buyback or burn is part of this flow.'
+                      : '仅为规则预览 —— 当前视图未发生任何出款，本流程不包含 LP 回购或销毁。'}
+                  </p>
                 </div>
               </div>
 

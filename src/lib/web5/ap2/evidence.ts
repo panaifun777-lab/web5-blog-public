@@ -114,6 +114,7 @@ export async function auditOrderEvidence(
       txHash: hashes.escrow,
       to: record.escrowContract,
       minValueWei: totalWei,
+      exactValueWei: totalWei,
       minConfirmations: 1,
     });
     if (!escrowCheck.ok) e2Gaps.push(`escrow: ${escrowCheck.reason}`);
@@ -125,6 +126,7 @@ export async function auditOrderEvidence(
         from: TREASURY,
         to: agentRow.address,
         minValueWei: BigInt(agentRow.amountWei),
+        exactValueWei: BigInt(agentRow.amountWei),
         minConfirmations: 1,
       });
       if (!payoutCheck.ok) e2Gaps.push(`payout: ${payoutCheck.reason}`);
@@ -136,6 +138,7 @@ export async function auditOrderEvidence(
         from: TREASURY,
         to: feeRow.address,
         minValueWei: BigInt(feeRow.amountWei),
+        exactValueWei: BigInt(feeRow.amountWei),
         minConfirmations: 1,
       });
       if (!feeCheck.ok) e2Gaps.push(`fee: ${feeCheck.reason}`);
@@ -147,6 +150,7 @@ export async function auditOrderEvidence(
         from: TREASURY,
         to: refundRow.address,
         minValueWei: BigInt(refundRow.amountWei),
+        exactValueWei: BigInt(refundRow.amountWei),
         minConfirmations: 1,
       });
       if (!refundCheck.ok) e2Gaps.push(`refund: ${refundCheck.reason}`);

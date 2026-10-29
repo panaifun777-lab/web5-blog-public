@@ -104,3 +104,13 @@ normalize-env.js
 /deploy-prebuilt.mjs
 /sync-vps.ps1
 /scripts/update_settled_tasks.py
+
+# local ops helpers stay out of the repo
+/deploy-cron.py
+/deploy-vps.py
+/deploy-vps.mjs
+/extract_conv.py
+/get_creation.py
+/upgrade_license.py
+/verify_wellknown_live.py
+/fetch_gdoc_preview.html
