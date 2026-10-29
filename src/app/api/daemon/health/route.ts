@@ -28,6 +28,13 @@ export async function GET() {
   const daemonEnabled = AGENT_DAEMON_ENABLED && process.env.DISABLE_AGENT_DAEMON !== 'true';
   const healthy = database === 'OK';
 
+  let voucherStats: Awaited<ReturnType<typeof voucherGateway.getChannelStats>> | null = null;
+  try {
+    voucherStats = await voucherGateway.getChannelStats();
+  } catch (err) {
+    console.error('[daemon/health] voucher stats check failed:', err);
+  }
+
   return NextResponse.json(
     {
       status: healthy ? 'HEALTHY' : 'DEGRADED',
@@ -50,7 +57,7 @@ export async function GET() {
         maxConcurrency: 3,
         retryPolicy: 'ExponentialBackoff (1s -> 2s -> 4s)',
       },
-      voucherGateway: voucherGateway.getChannelStats(),
+      voucherGateway: voucherStats,
       onChain: {
         network: 'Circle ARC Mainnet',
         chainId: ARC_MAINNET.id,

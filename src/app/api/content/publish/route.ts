@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { publishContent } from '@/lib/web5/content/publisher';
+import { ArweavePermanenceError } from '@/lib/web5/content/arweave-uploader';
 import { serializeForJson } from '@/lib/web5/types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const e = err as Error;
     console.error('[content/publish] Error:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    // 永久存证失败属于不可降级的发布失败，返回 422
+    const status = e instanceof ArweavePermanenceError ? 422 : 500;
+    return NextResponse.json({ error: e.message }, { status });
   }
 }
 

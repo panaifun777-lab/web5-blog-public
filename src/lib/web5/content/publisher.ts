@@ -33,8 +33,12 @@ export interface PublishResult {
   nftTxHash: string | null;
 }
 
-// 升级版：使用真实 Irys SDK（带本地 fallback）
-import { uploadToArweave as irysUpload, estimateUploadCost } from './arweave-uploader';
+// 升级版：使用真实 Irys SDK（发布路径强制永久存证，禁止本地 fallback）
+import {
+  uploadToArweave as irysUpload,
+  estimateUploadCost,
+  ArweavePermanenceError,
+} from './arweave-uploader';
 
 async function uploadToArweave(content: {
   title: string;
@@ -43,12 +47,23 @@ async function uploadToArweave(content: {
   timestamp: number;
   coverImageHash?: string;
 }): Promise<{ hash: string; fallback: boolean; size: number }> {
-  const result = await irysUpload(content);
-  return {
-    hash: result.arweaveHash,
-    fallback: result.fallback,
-    size: result.size,
-  };
+  try {
+    const result = await irysUpload(content, { requirePermanent: true });
+    return {
+      hash: result.arweaveHash,
+      fallback: result.fallback,
+      size: result.size,
+    };
+  } catch (err) {
+    if (err instanceof ArweavePermanenceError) {
+      // 发布必须真实上链，失败即中止，不用本地哈希顶替
+      throw new ArweavePermanenceError(
+        `已中止发布，未使用本地哈希（${err.causeMessage}）`,
+        err
+      );
+    }
+    throw err;
+  }
 }
 
 import { createWalletClient, createPublicClient, http, defineChain } from 'viem';

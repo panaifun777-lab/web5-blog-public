@@ -115,6 +115,8 @@ model Vessel {
   status        VesselStatus @default(INACTIVE)
   accountStage  AccountStage @default(STAGE_1_CONTAINER_ACTIVE)
   lastActiveAt  DateTime?
+  successCount  Int        @default(0) // 仅由链上确认的放款更新
+  failCount     Int        @default(0) // 仅由已完成的退款更新
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -270,28 +272,56 @@ model SystemConfig {
 
 // ━━ TaskOrder：AP2 众包与悬赏任务订单模型 ━━
 model TaskOrder {
-  id                 String    @id @default(cuid())
-  orderId            String    @unique
-  creatorDid         String
-  title              String
-  description        String
-  bountyUsdc         String
-  status             String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, SETTLED, REFUNDED
-  escrowContract     String
-  escrowTxHash       String?   // 真实链上托管转账哈希
-  payoutTxHash       String?   // 真实链上分账交易哈希
-  assignedAgentDid   String?
-  deliverableHash    String?   // 交付成果哈希
-  deliverableContent String?   // 交付报告文本
-  isDemo             Boolean   @default(false)
-  submittedAt        DateTime?
-  createdAt          DateTime  @default(now())
-  settledAt          DateTime?
+  id                     String    @id @default(cuid())
+  orderId                String    @unique
+  creatorDid             String
+  title                  String
+  description            String
+  bountyUsdc             String
+  status                 String    @default("FUNDED") // FUNDED, ASSIGNED, SUBMITTED, VERIFIED, REJECTED, DISPUTED, SETTLING, SETTLED, REFUNDED
+  escrowContract         String
+  escrowTxHash           String?   // 真实链上托管转账哈希
+  payoutTxHash           String?   // 真实链上分账交易哈希（agent 份额）
+  feeTxHash              String?   // 协议费归集交易哈希
+  refundTxHash           String?   // 退款交易哈希
+  blockNumbers           String?   // JSON: { escrow, payout, fee, refund }
+  assignedAgentDid       String?
+  deliverableHash        String?   // 交付成果哈希
+  deliverableContent     String?   // 交付报告文本
+  deliverableArweaveHash String?   // 永久存证哈希（fallback=false 才写入）
+  acceptanceHash         String?   // 验收标准哈希：命中才允许 VERIFIED
+  settlementError        String?   // 最近一次结算失败原因
+  isDemo                 Boolean   @default(false)
+  deliveryDueAt          DateTime?
+  submittedAt            DateTime?
+  verifiedAt             DateTime?
+  settlementDueAt        DateTime? // 争议窗口结束时间（默认提交后 72h）
+  disputedAt             DateTime?
+  disputeReason          String?
+  createdAt              DateTime  @default(now())
+  settledAt              DateTime?
 
   @@index([creatorDid])
   @@index([status])
   @@index([assignedAgentDid])
   @@index([escrowTxHash])
+  @@index([settlementDueAt])
+}
+
+// ━━ PayoutLedger：每一笔真实出款的链上留痕（E1/E2/E4 证据源） ━━
+model PayoutLedger {
+  id          String   @id @default(cuid())
+  orderId     String
+  kind        String   // AGENT | FEE | RETAINED | REFUND
+  address     String
+  amountWei   String
+  txHash      String?  @unique
+  blockNumber String?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@index([address])
 }
 
 // ━━ BackupWallet：站内备用轻钱包资产模型（Circle ARC 主网原生 18-decimal USDC） ━━

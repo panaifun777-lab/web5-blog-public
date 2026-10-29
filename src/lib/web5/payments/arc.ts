@@ -8,20 +8,34 @@ import {
   parseGwei,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
+import { TREASURY, getActiveChain } from '@/lib/web5/contracts/addresses';
+import { db } from '@/lib/db';
+
+const ACTIVE_CHAIN = getActiveChain();
 
 export const arcChain = defineChain({
-  id: ARC_MAINNET.id,
-  name: ARC_MAINNET.name,
+  id: ACTIVE_CHAIN.id,
+  name: ACTIVE_CHAIN.name,
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: [ARC_MAINNET.rpcUrl] } },
-  blockExplorers: { default: { name: 'ArcScan', url: ARC_MAINNET.explorer } },
+  rpcUrls: { default: { http: [ACTIVE_CHAIN.rpcUrl] } },
+  blockExplorers: { default: { name: 'ArcScan', url: ACTIVE_CHAIN.explorer } },
 });
 
 export const arcPublicClient = createPublicClient({
   chain: arcChain,
-  transport: http(ARC_MAINNET.rpcUrl),
+  transport: http(ACTIVE_CHAIN.rpcUrl),
 });
+
+/** 服务端硬上限：env 只能调低，不能突破 5 / 25。 */
+const SINGLE_CAP_USDC = Math.min(Number(process.env.PAYOUT_SINGLE_CAP_USDC || 5) || 5, 5);
+const DAILY_CAP_USDC = Math.min(Number(process.env.PAYOUT_DAILY_CAP_USDC || 25) || 25, 25);
+
+export type PayoutFailure = {
+  ok: false;
+  reason: string;
+  code?: 'CAP_SINGLE' | 'CAP_DAILY' | 'NO_SIGNER' | 'TX_FAILED';
+  status?: number;
+};
 
 export interface VerifiedTransfer {
   txHash: `0x${string}`;
@@ -111,21 +125,70 @@ export function getPayoutAccount() {
   }
 }
 
+const USDC_UNIT = 10n ** 18n;
+
+/**
+ * 单笔与 24h 滚动上限校验。以 PayoutLedger 的真实出款为基准，
+ * 超限时不发任何交易。
+ */
+export async function checkPayoutCaps(amountWei: bigint): Promise<
+  { ok: true } | { ok: false; reason: string; code: 'CAP_SINGLE' | 'CAP_DAILY'; status: number }
+> {
+  const singleCapWei = BigInt(SINGLE_CAP_USDC) * USDC_UNIT;
+  if (amountWei > singleCapWei) {
+    return {
+      ok: false,
+      reason: `单笔出款超过上限 ${SINGLE_CAP_USDC} USDC`,
+      code: 'CAP_SINGLE',
+      status: 409,
+    };
+  }
+
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const rows = await db.payoutLedger.findMany({
+    where: {
+      createdAt: { gte: dayStart },
+      kind: { in: ['AGENT', 'FEE', 'REFUND'] },
+    },
+    select: { amountWei: true },
+  });
+  const spent = rows.reduce((sum, row) => sum + BigInt(row.amountWei), 0n);
+  if (spent + amountWei > BigInt(DAILY_CAP_USDC) * USDC_UNIT) {
+    return {
+      ok: false,
+      reason: `24h 出款超过上限 ${DAILY_CAP_USDC} USDC`,
+      code: 'CAP_DAILY',
+      status: 409,
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function sendNativeUsdc(params: {
   to: string;
   amountWei: bigint;
-}): Promise<{ ok: true; txHash: `0x${string}` } | { ok: false; reason: string }> {
-  if (!isAddress(params.to)) return { ok: false, reason: 'Invalid recipient address' };
-  if (params.amountWei <= 0n) return { ok: false, reason: 'Amount must be positive' };
+}): Promise<
+  | { ok: true; txHash: `0x${string}`; blockNumber: string }
+  | PayoutFailure
+> {
+  if (!isAddress(params.to)) return { ok: false, reason: 'Invalid recipient address', code: 'TX_FAILED' };
+  if (params.amountWei <= 0n) return { ok: false, reason: 'Amount must be positive', code: 'TX_FAILED' };
+
+  const capped = await checkPayoutCaps(params.amountWei);
+  if (!capped.ok) return { ok: false, reason: capped.reason, code: capped.code, status: capped.status };
 
   const payout = getPayoutAccount();
-  if (!payout.ok) return { ok: false, reason: payout.reason };
+  if (!payout.ok) {
+    return { ok: false, reason: payout.reason, code: 'NO_SIGNER', status: 503 };
+  }
 
   try {
     const walletClient = createWalletClient({
       account: payout.account,
       chain: arcChain,
-      transport: http(ARC_MAINNET.rpcUrl),
+      transport: http(ACTIVE_CHAIN.rpcUrl),
     });
 
     const txHash = await walletClient.sendTransaction({
@@ -141,11 +204,11 @@ export async function sendNativeUsdc(params: {
       timeout: 120_000,
     });
     if (receipt.status !== 'success') {
-      return { ok: false, reason: 'Payout transaction reverted' };
+      return { ok: false, reason: 'Payout transaction reverted', code: 'TX_FAILED' };
     }
-    return { ok: true, txHash };
+    return { ok: true, txHash, blockNumber: receipt.blockNumber.toString() };
   } catch (err: any) {
     console.warn('[arc] Payout failed:', err?.shortMessage || err?.message);
-    return { ok: false, reason: 'Payout transaction failed' };
+    return { ok: false, reason: 'Payout transaction failed', code: 'TX_FAILED' };
   }
 }

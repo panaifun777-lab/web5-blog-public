@@ -230,6 +230,9 @@ export async function handleX402PaymentGate(
     }
   }
 
-  voucherGateway.commit(voucher);
+  const committed = await voucherGateway.commit(voucher);
+  if (!committed) {
+    return paymentRequired(requirement, effectivePrice, tierConfig, 'Replay detected: nonce already used');
+  }
   return { authorized: true };
 }

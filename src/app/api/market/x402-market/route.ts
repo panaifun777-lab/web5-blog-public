@@ -10,6 +10,7 @@ import { ARC_MAINNET, TREASURY, SUPERADMIN } from '@/lib/web5/contracts/addresse
 import { decimalToAtomicUsdc } from '@/lib/web5/x402/voucher-engine';
 import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
+import { NON_DEMO_ORDER_WHERE } from '@/lib/web5/ap2/commerce';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function GET() {
   let openBounties = 0;
   try {
     openBounties = await db.taskOrder.count({
-      where: { status: { in: ['FUNDED', 'ASSIGNED'] } },
+      where: { status: { in: ['FUNDED', 'ASSIGNED'] }, ...NON_DEMO_ORDER_WHERE },
     });
   } catch {
     openBounties = 0;

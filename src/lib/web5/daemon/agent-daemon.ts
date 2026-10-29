@@ -11,11 +11,10 @@ import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
 import {
   listActiveCommerceOrders,
   assignAgentToOrder,
-  submitAndSettleOrder,
-  calculateRevenueSplit,
-  REVENUE_ROUTING,
+  submitOrder,
   type CommerceTaskOrder,
 } from '@/lib/web5/ap2/commerce';
+import { uploadToArweave, ArweavePermanenceError } from '@/lib/web5/content/arweave-uploader';
 import { ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
 
 export interface AgentEventMessage {
@@ -42,6 +41,9 @@ export interface AgentEventMessage {
  * 守护进程默认受托分身标识
  */
 export const DAEMON_WORKER_DID = 'did:vessel:daemon-autonomous-worker';
+
+/** 自动接单默认关闭；开启后守护分身才会认领 FUNDED 任务。 */
+const AUTOCLAIM_ENABLED = process.env.AGENT_DAEMON_AUTOCLAIM === 'true';
 
 /**
  * 高智商专业结构化成果生成器
@@ -636,7 +638,7 @@ class HeadlessAgentDaemon {
    * 子流水线 3：待处理任务扫描接单、高智商成果交付与 80/20 清算
    */
   public async processCommerceTasksPipeline(): Promise<number> {
-    // 托管验证与真实出款就绪前，守护进程不得自动接单或把任务置为 SETTLED。
+    // 出款未启用时守护进程不参与任何资金链路。
     if (!ESCROW_PAYOUTS_ENABLED) {
       return 0;
     }
@@ -644,25 +646,21 @@ class HeadlessAgentDaemon {
     const orders: CommerceTaskOrder[] = await listActiveCommerceOrders();
     if (!orders || orders.length === 0) return 0;
 
-    // 扫描待处理任务：已指定 ASSIGNED 或待自动接单的 FUNDED 任务
-    const pendingOrders = orders.filter(
-      (o) => o.status === 'ASSIGNED' || o.status === 'FUNDED'
-    );
-
-    if (pendingOrders.length === 0) {
-      return 0;
-    }
+    // 自动接单默认关闭；只处理已明确指派给本守护分身的任务。
+    const pendingOrders = orders.filter((order) => {
+      if (order.status === 'FUNDED') return AUTOCLAIM_ENABLED;
+      if (order.status !== 'ASSIGNED') return false;
+      return order.assignedAgentDid === DAEMON_WORKER_DID;
+    });
+    if (pendingOrders.length === 0) return 0;
 
     let processedCount = 0;
-
-    // 每次 tick 优先处理至多 2 个任务，避免单次心跳时间过长
     const batch = pendingOrders.slice(0, 2);
 
     for (const order of batch) {
       try {
         console.log(`🔍 [Headless Daemon] Scanning commerce task: [${order.orderId}] "${order.title}" (Status: ${order.status})`);
 
-        // 1. 若为 FUNDED 状态，执行自主接单（认领）
         let activeOrder = order;
         if (order.status === 'FUNDED') {
           console.log(`🤝 [Headless Daemon] Auto-claiming funded task [${order.orderId}] as ${DAEMON_WORKER_DID}...`);
@@ -679,7 +677,6 @@ class HeadlessAgentDaemon {
           });
         }
 
-        // 2. 调用高智商成果生成器产出规范 Markdown 交付报告
         console.log(`🧠 [Headless Daemon] Generating professional deliverable for [${activeOrder.orderId}]...`);
         const deliverableMarkdown = await generateTaskDeliverable({
           orderId: activeOrder.orderId,
@@ -689,79 +686,75 @@ class HeadlessAgentDaemon {
           creatorDid: activeOrder.creatorDid,
         });
 
-        // 3. 计算交付成果的密码学 Hash (SHA-256)
         const deliverableHash = `0x${crypto.createHash('sha256').update(deliverableMarkdown, 'utf8').digest('hex')}`;
-        console.log(`🔐 [Headless Daemon] Deliverable Hash computed: ${deliverableHash}`);
+        console.log(`🔐 [Headless Daemon] Deliverable SHA-256: ${deliverableHash}`);
 
-        // 4. 将成果与 Hash 回写任务记录，状态流转为 SETTLED
-        const settledResult = await submitAndSettleOrder(
+        // 永久存证：严格模式下失败即放弃本轮，绝不拿本地哈希冒充上链。
+        let upload;
+        try {
+          upload = await uploadToArweave(
+            {
+              title: activeOrder.title,
+              bodyMd: deliverableMarkdown,
+              authorDid: DAEMON_WORKER_DID,
+              timestamp: Date.now(),
+            },
+            { requirePermanent: true }
+          );
+        } catch (err: any) {
+          if (err instanceof ArweavePermanenceError) {
+            console.warn(
+              `⛔ [Headless Daemon] 存证失败，任务保持 ASSIGNED: [${activeOrder.orderId}] ${err.causeMessage}`
+            );
+            continue;
+          }
+          throw err;
+        }
+
+        const submitted = await submitOrder(
           activeOrder.orderId,
           deliverableHash,
-          deliverableMarkdown
+          deliverableMarkdown,
+          { provider: 'arweave', hash: upload.arweaveHash, fallback: false }
         );
 
-        // 5. 触发 calculateRevenueSplit 与 80/20 记账与事件广播
-        const totalBounty = parseFloat(activeOrder.bountyUsdc);
-        const split = settledResult.split || calculateRevenueSplit(totalBounty);
+        console.log(
+          `📦 [Headless Daemon] Task [${activeOrder.orderId}] delivered: status=${submitted.status}` +
+            ` arweave=${upload.arweaveHash} sha256=${deliverableHash}`
+        );
+        // 结算留给 cron / admin：结算人不得等于交付人（2.4 / 1.6）。
 
-        console.log(`════════════════════════════════════════════════════════════════`);
-        console.log(`🎉 [Headless Daemon] Task [${activeOrder.orderId}] SETTLED & CLEARED!`);
-        console.log(`   Title: ${activeOrder.title}`);
-        console.log(`   Deliverable Hash: ${deliverableHash}`);
-        console.log(`   Total Bounty: ${totalBounty.toFixed(4)} USDC`);
-        console.log(`   ├─ 80% Creator Net Earning: ${split.authorShare.amountUsdc} USDC`);
-        console.log(`   └─ 20% Protocol Fee Split:`);
-        console.log(`      ├─ 50% Operational Treasury: ${split.operationalTreasury.amountUsdc} USDC -> ${split.operationalTreasury.recipient}`);
-        console.log(`      └─ 50% Uniswap v4 LP Buyback & Lock: ${split.lpBuybackLock.amountUsdc} USDC (~${split.lpBuybackLock.estimatedWbogBurnedOrLocked} $WBOG)`);
-        console.log(`════════════════════════════════════════════════════════════════`);
-
-        // 6. 持久化自治收益审计日志 (AutonomousLog)
         try {
-          const daemonVessel = await db.vessel.findFirst({
-            where: { did: { contains: 'daemon' } },
-          }) || await db.vessel.findFirst();
+          const daemonVessel =
+            (await db.vessel.findFirst({ where: { did: { contains: 'daemon' } } })) ||
+            (await db.vessel.findFirst());
 
           if (daemonVessel) {
             await db.autonomousLog.create({
               data: {
                 vesselId: daemonVessel.id,
-                action: 'task_settle',
+                action: 'task_submit',
                 targetDid: activeOrder.creatorDid,
                 targetContent: deliverableHash,
-                yieldAmount: BigInt(Math.floor(parseFloat(split.authorShare.amountUsdc) * 1e6)),
+                yieldAmount: 0n,
                 metadata: JSON.stringify({
                   orderId: activeOrder.orderId,
                   title: activeOrder.title,
                   bountyUsdc: activeOrder.bountyUsdc,
                   deliverableHash,
-                  revenueSplit: split,
+                  arweaveHash: upload.arweaveHash,
+                  status: submitted.status,
                   timestamp: Date.now(),
                 }),
               },
             });
-            console.log(`📑 [Headless Daemon] Recorded autonomous task settlement log for Vessel [${daemonVessel.id}]`);
           }
         } catch (logErr: any) {
           console.warn('⚠️ [Headless Daemon] AutonomousLog entry skipped (non-fatal):', logErr?.message);
         }
 
-        // 7. 事件广播
-        this.emitEvent({
-          type: 'OnTaskSettled',
-          payload: {
-            orderId: activeOrder.orderId,
-            title: activeOrder.title,
-            authorDid: activeOrder.creatorDid,
-            bountyUsdc: activeOrder.bountyUsdc,
-            deliverableHash,
-            split,
-            timestamp: Date.now(),
-          },
-        });
-
         processedCount++;
       } catch (orderErr: any) {
-        // 单个任务异常严格隔离，不中断后续任务处理
         console.error(`❌ [Headless Daemon] Error processing task [${order.orderId}]:`, orderErr?.message);
       }
     }
