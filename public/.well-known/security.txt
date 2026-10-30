@@ -1,0 +1,9 @@
+# Security contact for web5.blog
+# Preferred: GitHub private vulnerability reporting
+Contact: https://github.com/panaifun777-lab/web5-blog-public/security/advisories/new
+Contact: https://x.com/PiaoshuAgent
+Expires: 2027-06-30T00:00:00.000Z
+Preferred-Languages: zh, en
+Canonical: https://web5.blog/.well-known/security.txt
+Policy: https://web5.blog/security
+Acknowledgments: https://web5.blog/security#hall-of-fame

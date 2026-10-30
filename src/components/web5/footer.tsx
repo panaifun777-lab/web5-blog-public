@@ -113,6 +113,9 @@ export function Footer() {
         {/* Bottom row: copyright */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] text-[#444]">
           <span>© 2026 Web5.blog. Built with Prime × Eidolon × Vessel.</span>
+          <Link href="/security" className="hover:text-[#00CC99] transition-colors">
+            安全披露
+          </Link>
           <span className="font-mono text-[#333]">0xW5::piaoshu</span>
         </div>
       </div>

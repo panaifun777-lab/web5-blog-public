@@ -5,7 +5,7 @@
 >
 > 状态标记：`[x]` 代码完成并存于仓库 · `[~]` 代码完成但需真实链上资金/时长验证 · `[ ]` 未完成 · `[!]` 阻塞（需要外部输入）
 >
-> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 26 项单测，已部署 build9；阶段 3 完成无资金预演（见 3.9），真实链路仍待测试网资金/私钥；阶段 4 需主网灰度）
+> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 29 项单测，已部署 build11；阶段 3 完成无资金预演（见 3.9），真实链路仍待测试网资金/私钥；阶段 4 需主网灰度）
 
 ---
 
@@ -116,7 +116,7 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 
 ## 6. 本地单测（不依赖测试网资金）
 
-Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**26 项全部通过**：
+Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**29 项全部通过**：
 
 | 文件 | 覆盖 |
 |---|---|
@@ -124,6 +124,7 @@ Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`send
 | `tests/caps.test.ts` | 单笔上限、恰好等于上限放行、24h 滚动窗口（23h 计入 / 26h 不计入）、`RETAINED` 不占额度 |
 | `tests/token-session.test.ts` | 存活会话通过；无会话行 / 已吊销 / 已过期 / 伪造签名一律拒绝 |
 | `tests/chain-config.test.ts` | 默认主网地址；`TREASURY_ADDRESS`/`ESCROW_VAULT_ADDRESS` 运行期覆盖；仅 treasury 覆盖时托管回退；非法地址被忽略；链默认 5042 / 测试网 5042002 与 RPC |
+| `tests/commerce-authz.test.ts` | 匿名调用审计接口 403 且不泄露 E1–E5 证据；非创建者船体结算 403 `NOT_ORCHESTRATOR` 且资金未动；非受派船体提交 403 且订单状态不变 |
 
 ```bash
 npm test            # vitest run
