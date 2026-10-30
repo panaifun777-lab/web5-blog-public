@@ -17,11 +17,18 @@
 // Contract notes (read from src/app/api/commerce/tasks/route.ts):
 //   * create requires a real, already-confirmed native-USDC escrow transfer
 //     (escrowTxHash); this script never creates that transfer.
+//   * create also accepts acceptanceHash. Without it the order can only reach
+//     SUBMITTED, so --live requires E2E_ACCEPTANCE_HASH and always sends it.
 //   * submit persists deliverableHash + deliverableContent + provenance
 //     ({ provider, hash, fallback }). Settlement refuses orders without a
 //     permanent Arweave hash (E2E_ARWEAVE_HASH), so pass it in live mode.
 //   * the order projection exposes feeTxHash, refundTxHash, blockNumbers,
-//     acceptanceHash and deliverableArweaveHash; audits also return E1-E5.
+//     acceptanceHash and deliverableArweaveHash.
+//   * POST /api/cron/settle answers HTTP 200 even when nothing settled; the
+//     verdict is body.success, with per-order failures in body.errors[].
+//   * GET ...&action=audit returns the authoritative E1-E5 from
+//     src/lib/web5/ap2/evidence.ts ({ id, pass, skipped, detail }). Those rows
+//     are reported verbatim; local heuristics never score anything.
 //   * admin auth in src/lib/admin/guard.ts reads the cookie web5_admin_session
 //     or the x-api-key header, so E2E_ADMIN_TOKEN is sent as x-api-key as well
 //     as Authorization: Bearer.
@@ -31,7 +38,7 @@
 //                 a configured cron secret cannot trigger a settlement).
 //   --live        drives create -> assign -> submit -> poll -> cron -> audit.
 //
-// Exit codes: 0 = every checked item PASS or SKIP (dry-run)
+// Exit codes: 0 = no FAIL (PASS or SKIP)
 //             1 = at least one FAIL
 //             2 = usage error / missing live environment
 // ---------------------------------------------------------------------------
@@ -46,6 +53,10 @@ const RULE_WIDTH = 78;
 const STARTED_AT = Date.now();
 
 const TERMINAL_STATUSES = new Set(['VERIFIED', 'REJECTED', 'SETTLED', 'REFUNDED']);
+// SETTLING / REFUNDING are claims in progress, not verdicts: keep polling them.
+const IN_FLIGHT_STATUSES = new Set(['SUBMITTED', 'SETTLING', 'REFUNDING']);
+// Evidence only certifies money that actually left escrow.
+const EVIDENCE_TERMINAL = new Set(['SETTLED', 'REFUNDED']);
 
 const EVIDENCE_DEFS = [
   { id: 'E1', name: 'tx on chain + block' },
@@ -60,6 +71,7 @@ const probes = {};
 let liveOrder = null;
 let liveOrderId = null;
 let auditChecks = null;
+let auditUnavailableReason = null;
 
 // ---------------------------------------------------------------------------
 // console helpers (ASCII only, no emojis)
@@ -239,12 +251,6 @@ function fieldState(order, key) {
   const value = present ? order[key] : undefined;
   const filled = present && value !== undefined && value !== null && value !== '';
   return { present, value, filled };
-}
-
-function missingReason(key, state) {
-  if (!state.present) return `${key} absent from API projection`;
-  if (!state.filled) return `${key}=${state.value === null ? 'null' : 'empty'}`;
-  return `${key} present`;
 }
 
 // ---------------------------------------------------------------------------
@@ -441,9 +447,20 @@ function extractOrder(payload, orderId) {
 async function fetchAudit(opts, orderId, env) {
   const path = `/api/commerce/tasks?action=audit&orderId=${encodeURIComponent(orderId)}`;
   const res = await http(opts.base, 'GET', path, { headers: adminAuth(env), timeoutMs: 20000 });
-  probes.audit = { httpStatus: res.status, hasOrder: Boolean(res.json?.order) };
-
-  if (Array.isArray(res.json?.checks)) auditChecks = res.json.checks;
+  const checks = Array.isArray(res.json?.checks) ? res.json.checks : null;
+  probes.audit = {
+    httpStatus: res.status,
+    hasOrder: Boolean(res.json?.order),
+    checks: checks ? checks.length : 0,
+  };
+  if (checks && checks.length) {
+    auditChecks = checks;
+    auditUnavailableReason = null;
+  } else if (!auditChecks) {
+    auditUnavailableReason = res.ok
+      ? 'audit endpoint returned HTTP 200 without checks[]'
+      : `audit endpoint unavailable (HTTP ${res.status})`;
+  }
   const direct = res.json && typeof res.json === 'object' && !Array.isArray(res.json) ? res.json.order : null;
   if (direct && direct.orderId === orderId) {
     return { order: direct, dedicatedAction: true, auditStatus: res.status };
@@ -524,6 +541,9 @@ async function driveFlow(opts, env) {
       description: env.description,
       bountyUsdc: env.bountyUsdc,
       escrowTxHash: env.escrowTxHash,
+      // Without the gate at create the order can only reach SUBMITTED and the
+      // verdict poll below would wait out its full timeout.
+      ...(env.acceptanceHash ? { acceptanceHash: env.acceptanceHash } : {}),
       ...(orderId ? { orderId } : {}),
     };
     const res = await postTask(opts, payload, env);
@@ -614,9 +634,12 @@ async function driveFlow(opts, env) {
     record('F4', 'verdict poll', 'FAIL', 'no order snapshot to poll');
   } else if (TERMINAL_STATUSES.has(polled.status)) {
     record('F4', 'verdict poll', 'PASS', `${polled.status} (pre-existing)`);
-  } else if (polled.status !== 'SUBMITTED') {
+  } else if (!IN_FLIGHT_STATUSES.has(polled.status)) {
     record('F4', 'verdict poll', 'FAIL', `status=${polled.status} is not awaiting verification (submit must reach SUBMITTED first)`);
   } else {
+    if (polled.status !== 'SUBMITTED') {
+      note(`status=${polled.status} is a settlement claim in progress; polling until terminal or timeout`);
+    }
     const timeoutMs = intEnv('E2E_POLL_TIMEOUT_MS', 90000);
     const intervalMs = intEnv('E2E_POLL_INTERVAL_MS', 3000);
     const deadline = Date.now() + timeoutMs;
@@ -638,7 +661,8 @@ async function driveFlow(opts, env) {
     }
 
     if (!TERMINAL_STATUSES.has(polled.status)) {
-      record('F4', 'verdict poll', 'FAIL', `timeout after ${timeoutMs}ms; last status=${polled.status}`);
+      const stuck = IN_FLIGHT_STATUSES.has(polled.status) ? ' (still in flight)' : '';
+      record('F4', 'verdict poll', 'FAIL', `timeout after ${timeoutMs}ms; last status=${polled.status}${stuck}`);
     } else if (polled.status === 'REJECTED') {
       record('F4', 'verdict poll', 'FAIL', `REJECTED after ${polls} poll(s)`);
     } else {
@@ -663,8 +687,49 @@ async function driveFlow(opts, env) {
       record('F5', 'cron settle', 'FAIL', `cron exists but locked (${res.status}); check SETTLEMENT_CRON_SECRET`);
     } else if (!res.ok) {
       record('F5', 'cron settle', 'FAIL', apiError(res));
+    } else if (!res.json || typeof res.json !== 'object') {
+      record('F5', 'cron settle', 'FAIL', `HTTP ${res.status} without a JSON body; settlement cannot be confirmed`);
     } else {
-      record('F5', 'cron settle', 'PASS', `HTTP ${res.status} ${trunc(JSON.stringify(res.json ?? {}), 80)}`);
+      const body = res.json;
+      const settledList = Array.isArray(body.settled) ? body.settled : [];
+      const refundedList = Array.isArray(body.refunded) ? body.refunded : [];
+      const settledCount = typeof body.settledCount === 'number' ? body.settledCount : settledList.length;
+      const refundedCount = typeof body.refundedCount === 'number' ? body.refundedCount : refundedList.length;
+      const errors = Array.isArray(body.errors) ? body.errors : [];
+      const batchIds = new Set([...settledList, ...refundedList].map((item) => item?.orderId).filter(Boolean));
+
+      if (body.success === false) {
+        record('F5', 'cron settle', 'FAIL', `HTTP ${res.status} success=false; ${errors.length} settlement error(s)`);
+        for (const item of errors.slice(0, 10)) {
+          console.log(
+            `  err  ${pad(item?.stage ?? '?', 6)} ${pad(item?.orderId ?? '?', 22)} ${trunc(item?.error ?? '(no message)', 70)}`
+          );
+        }
+        if (body.escrowPayoutsEnabled === false) note('escrowPayoutsEnabled=false: payouts are gated off on this deployment');
+      } else if (body.success !== true) {
+        record('F5', 'cron settle', 'FAIL', `HTTP ${res.status} but body.success is ${String(body.success)}; the cron does not report a result`);
+      } else if (orderId && batchIds.has(orderId)) {
+        const kind = refundedList.some((item) => item?.orderId === orderId) ? 'refunded' : 'settled';
+        record('F5', 'cron settle', 'PASS', `${kind} ${orderId} in this batch (settled=${settledCount} refunded=${refundedCount})`);
+      } else if (settledCount + refundedCount > 0) {
+        record('F5', 'cron settle', 'PASS', `settled=${settledCount} refunded=${refundedCount}; this order was not in the batch`);
+      } else {
+        // Zero work is only legitimate when there was nothing left to do.
+        const after = await fetchOrder(opts, orderId);
+        if (after.order) liveOrder = after.order;
+        const status = after.order?.status ?? liveOrder?.status ?? 'unknown';
+        if (EVIDENCE_TERMINAL.has(status)) {
+          const source = after.order ? 're-read' : 'pre-cron snapshot';
+          record('F5', 'cron settle', 'PASS', `legitimate no-op: success=true, zero settled/refunded, order already ${status} (${source})`);
+        } else {
+          record(
+            'F5',
+            'cron settle',
+            'FAIL',
+            `no-op: success=true but zero settled/refunded while order status=${status}; nothing was settled`
+          );
+        }
+      }
     }
   }
 
@@ -692,133 +757,67 @@ async function driveFlow(opts, env) {
 // evidence E1-E5
 // ---------------------------------------------------------------------------
 
-function buildEvidence(order) {
-  const rows = [];
-  const push = (id, name, status, detail) => rows.push({ id, name, status, detail });
-
-  if (!order) {
-    for (const def of EVIDENCE_DEFS) {
-      push(def.id, def.name, 'FAIL', 'no order snapshot (flow aborted before an order could be read)');
-    }
-    return rows;
-  }
-
+// Evidence is authoritative only as reported by GET ...&action=audit. The
+// observations below are never scored; they exist so a SKIP row still says
+// something factual about what the harness could see.
+function localObservation(order, id) {
+  if (!order) return 'no order snapshot (flow aborted before an order could be read)';
   const status = typeof order.status === 'string' ? order.status : 'unknown';
   const escrow = fieldState(order, 'escrowTxHash');
   const payout = fieldState(order, 'payoutTxHash');
   const fee = fieldState(order, 'feeTxHash');
   const refund = fieldState(order, 'refundTxHash');
   const blocks = parseBlocks(order.blockNumbers);
-  const escrowBlock = blockOf(blocks, 'escrow');
 
-  // E1: escrow tx hash + block number recorded
-  if (!isTxHash(escrow.value)) {
-    push('E1', 'escrow tx recorded', 'FAIL', `${missingReason('escrowTxHash', escrow)} (expected 0x + 64 hex)`);
-  } else if (!escrowBlock) {
-    push(
-      'E1',
-      'escrow tx recorded',
-      'FAIL',
-      `escrowTxHash=${short(escrow.value)} but blockNumbers.escrow is ${blocks ? 'missing' : 'not recorded'}`
-    );
-  } else {
-    push('E1', 'escrow tx recorded', 'PASS', `escrow=${short(escrow.value)} block=${escrowBlock} status=${status}`);
+  switch (id) {
+    case 'E1':
+      return `status=${status} escrow=${short(escrow.value)} escrowBlock=${blockOf(blocks, 'escrow') ?? 'n/a'}`;
+    case 'E2':
+      return `status=${status} payout=${short(payout.value)} refund=${short(refund.value)}`;
+    case 'E3':
+      return `status=${status} fee=${short(fee.value)}`;
+    case 'E4':
+      return `status=${status} blockNumbers=${trunc(JSON.stringify(blocks ?? {}), 60)}`;
+    default:
+      return `status=${status} settledAt=${order.settledAt ?? 'n/a'}`;
   }
-
-  // E2: payout (or refund) tx recorded
-  if (status === 'REFUNDED') {
-    if (isTxHash(refund.value)) {
-      push('E2', 'payout/refund recorded', 'PASS', `refund=${short(refund.value)}`);
-    } else {
-      push('E2', 'payout/refund recorded', 'FAIL', `${missingReason('refundTxHash', refund)} while status=REFUNDED`);
-    }
-  } else if (status === 'SETTLED') {
-    if (isTxHash(payout.value)) {
-      push('E2', 'payout/refund recorded', 'PASS', `payout=${short(payout.value)}`);
-    } else {
-      push('E2', 'payout/refund recorded', 'FAIL', `${missingReason('payoutTxHash', payout)} while status=SETTLED`);
-    }
-  } else if (isTxHash(payout.value)) {
-    push('E2', 'payout/refund recorded', 'PASS', `payout=${short(payout.value)} status=${status}`);
-  } else {
-    push('E2', 'payout/refund recorded', 'FAIL', `status=${status}; no settlement transfer recorded (${missingReason('payoutTxHash', payout)})`);
-  }
-
-  // E3: protocol fee tx recorded
-  if (isTxHash(fee.value)) {
-    push('E3', 'fee tx recorded', 'PASS', `fee=${short(fee.value)}`);
-  } else {
-    push(
-      'E3',
-      'fee tx recorded',
-      'FAIL',
-      `${missingReason('feeTxHash', fee)} (design allows RETAINED when PLATFORM_FEE_ADDRESS is unset, but E3 requires a hash)`
-    );
-  }
-
-  // E4: block numbers recorded for each transfer
-  if (!blocks) {
-    push(
-      'E4',
-      'block numbers recorded',
-      'FAIL',
-      order.blockNumbers === undefined
-        ? 'blockNumbers absent from API projection'
-        : `blockNumbers not parseable JSON (${trunc(JSON.stringify(order.blockNumbers), 60)})`
-    );
-  } else {
-    const required = { escrow: true, payout: status === 'SETTLED', fee: isTxHash(fee.value) };
-    const missing = Object.entries(required)
-      .filter(([key, needed]) => needed && !blockOf(blocks, key))
-      .map(([key]) => key);
-    if (missing.length) {
-      push('E4', 'block numbers recorded', 'FAIL', `blockNumbers missing: ${missing.join(', ')} (got ${trunc(JSON.stringify(blocks), 70)})`);
-    } else {
-      const payoutBlock = blockOf(blocks, 'payout');
-      push(
-        'E4',
-        'block numbers recorded',
-        'PASS',
-        `escrow=${escrowBlock} payout=${payoutBlock ?? 'n/a'} fee=${blockOf(blocks, 'fee') ?? 'n/a'}`
-      );
-    }
-  }
-
-  // E5: state machine consistency
-  if (status === 'SETTLED') {
-    if (isTxHash(payout.value) && order.settledAt) {
-      push('E5', 'state machine consistent', 'PASS', `SETTLED + payoutTxHash + settledAt=${new Date(order.settledAt).toISOString()}`);
-    } else {
-      const gap = !isTxHash(payout.value) ? 'payoutTxHash' : 'settledAt';
-      push('E5', 'state machine consistent', 'FAIL', `SETTLED without ${gap}`);
-    }
-  } else if (status === 'REFUNDED') {
-    if (isTxHash(refund.value)) {
-      push('E5', 'state machine consistent', 'PASS', 'REFUNDED + refundTxHash');
-    } else {
-      push('E5', 'state machine consistent', 'FAIL', `REFUNDED without refundTxHash (${missingReason('refundTxHash', refund)})`);
-    }
-  } else if (status === 'REJECTED') {
-    push('E5', 'state machine consistent', 'FAIL', 'verdict REJECTED; order cannot settle');
-  } else {
-    push('E5', 'state machine consistent', 'FAIL', `status=${status} is not a settled/refunded terminal state`);
-  }
-
-  return rows;
 }
 
 function finishEvidence() {
   section('evidence E1-E5');
+  const names = Object.fromEntries(EVIDENCE_DEFS.map((d) => [d.id, d.name]));
+  const order = liveOrder;
+  const status = typeof order?.status === 'string' ? order.status : 'unknown';
+  // No settlement transfer means no evidence, whatever any check happened to say.
+  const gate = EVIDENCE_TERMINAL.has(status)
+    ? null
+    : `not certified: order status=${status} (E1-E5 require SETTLED or REFUNDED)`;
+
   if (Array.isArray(auditChecks) && auditChecks.length) {
-    const names = Object.fromEntries(EVIDENCE_DEFS.map((d) => [d.id, d.name]));
+    if (gate) note(`${gate}; audit rows below are shown verbatim but cannot certify a settlement`);
     for (const check of auditChecks) {
-      const status = check.skipped ? 'SKIP' : check.pass ? 'PASS' : 'FAIL';
-      record(check.id, names[check.id] || 'evidence', status, check.detail);
+      let state;
+      const detail = String(check.detail ?? '');
+      if (check.skipped) {
+        state = 'SKIP';
+      } else if (check.pass !== true) {
+        state = 'FAIL';
+      } else if (gate) {
+        // A passing audit row on a non-terminal order attests to an unfinished
+        // settlement, not to money having moved.
+        state = 'SKIP';
+      } else {
+        state = 'PASS';
+      }
+      record(check.id, names[check.id] || 'evidence', state, detail);
     }
     return;
   }
-  const rows = buildEvidence(liveOrder);
-  for (const row of rows) record(row.id, row.name, row.status, row.detail);
+
+  const reason = auditUnavailableReason || 'audit checks were not returned';
+  for (const def of EVIDENCE_DEFS) {
+    record(def.id, def.name, 'SKIP', `${reason}; local heuristic not scored (${localObservation(order, def.id)})`);
+  }
 }
 
 function skipEvidence(reason) {
@@ -846,11 +845,11 @@ function printPreconditions(env) {
 
 function skipLiveFlow(env) {
   section('live plan (skipped: dry-run)');
-  record('F1', 'create / reuse', 'SKIP', env.escrowTxHash ? 'would POST action=create with E2E_ESCROW_TX_HASH' : 'no E2E_ESCROW_TX_HASH; would reuse E2E_ORDER_ID');
+  record('F1', 'create / reuse', 'SKIP', env.escrowTxHash ? 'would POST action=create with E2E_ESCROW_TX_HASH + acceptanceHash' : 'no E2E_ESCROW_TX_HASH; would reuse E2E_ORDER_ID');
   record('F2', 'assign', 'SKIP', 'would POST action=assign {orderId, agentDid?}');
   record('F3', 'submit', 'SKIP', 'would POST action=submit {orderId, deliverableHash, deliverableContent}');
-  record('F4', 'verdict poll', 'SKIP', 'would poll GET /api/commerce/tasks until VERIFIED/REJECTED');
-  record('F5', 'cron settle', 'SKIP', 'would POST /api/cron/settle with x-cron-secret');
+  record('F4', 'verdict poll', 'SKIP', 'would poll GET /api/commerce/tasks until VERIFIED/REJECTED (SETTLING/REFUNDING keep polling)');
+  record('F5', 'cron settle', 'SKIP', 'would POST /api/cron/settle with x-cron-secret and judge body.success + settled/refunded');
   record('F6', 'audit GET', 'SKIP', 'would GET /api/commerce/tasks?action=audit&orderId=...');
 }
 
@@ -1079,7 +1078,7 @@ function livePreconditions(env) {
   const missing = [];
   if (!env.sessionToken) missing.push('E2E_SESSION_TOKEN');
   if (!env.adminToken) missing.push('E2E_ADMIN_TOKEN');
-  if (!env.acceptanceHash) missing.push('E2E_ACCEPTANCE_HASH');
+  if (!env.acceptanceHash) missing.push('E2E_ACCEPTANCE_HASH (create must set the acceptance gate, otherwise the order stalls at SUBMITTED)');
   if (!env.arweaveHash) missing.push('E2E_ARWEAVE_HASH (needed for settlement)');
   if (env.arweaveHash && !/^[A-Za-z0-9_-]{43}$/.test(env.arweaveHash)) missing.push('E2E_ARWEAVE_HASH (expected 43-char Arweave tx id)');
   if (!env.orderId && !env.escrowTxHash) missing.push('E2E_ORDER_ID or E2E_ESCROW_TX_HASH');

@@ -3,7 +3,7 @@
 // ════════════════════════════════════════════════════════════════
 // src/components/web5/commerce/task-board.tsx
 // AP2 智能体商业状态机面板 — 众包与悬赏任务大厅 (做任务赚 USDC)
-// 支持连接的 Web3 钱包真实链上托管转账 (Circle ARC 5042)
+// 支持连接的 Web3 钱包真实链上托管转账（链参数来自构建期 PUBLIC_CHAIN）
 // 支持 Vessel 专用钱包快速免签质押
 // 交付成果报告 (Arweave/SHA256 哈希 + 80/20 收益分配明细)
 // 分身声誉分 (Reputation Score) 与技能徽章
@@ -63,10 +63,7 @@ import {
   PUBLIC_DEMO_NOTICE,
   PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE,
 } from '@/lib/launch/public';
-
-const ESCROW_VAULT_ADDRESS = '0xCA36335845E382129167fC44243F07A76827bA22';
-const ARC_CHAIN_ID_HEX = '0x13b2'; // 5042
-const ARC_EXPLORER_URL = 'https://explorer.arc.io';
+import { PUBLIC_CHAIN } from '@/lib/web5/chain-public';
 
 export function TaskBoard({
   session,
@@ -93,7 +90,7 @@ export function TaskBoard({
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [bountyAmount, setBountyAmount] = useState('25.0');
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(['Circle ARC 5042', '智能审计']);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(['Circle ARC ' + PUBLIC_CHAIN.id, '智能审计']);
   const [paymentMethod, setPaymentMethod] = useState<'web3' | 'vessel'>('web3');
 
   // ━━ 专用钱包状态 ━━
@@ -161,13 +158,17 @@ export function TaskBoard({
       );
     }
 
-    setPublishStatusText(isEn ? 'Checking Circle ARC Network (5042)...' : '正在校验 Circle ARC 主网 (5042)...');
+    setPublishStatusText(
+      isEn
+        ? `Checking Circle ${PUBLIC_CHAIN.name} (${PUBLIC_CHAIN.id})...`
+        : `正在校验 Circle ${PUBLIC_CHAIN.name} (${PUBLIC_CHAIN.id})...`
+    );
 
-    // 检查并切换到 5042
+    // 检查并切换到当前构建的链
     try {
       await ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: ARC_CHAIN_ID_HEX }],
+        params: [{ chainId: PUBLIC_CHAIN.idHex }],
       });
     } catch (switchError: any) {
       if (switchError.code === 4902 || switchError?.data?.originalError?.code === 4902) {
@@ -175,11 +176,11 @@ export function TaskBoard({
           method: 'wallet_addEthereumChain',
           params: [
             {
-              chainId: ARC_CHAIN_ID_HEX,
-              chainName: 'Arc Mainnet',
+              chainId: PUBLIC_CHAIN.idHex,
+              chainName: PUBLIC_CHAIN.name,
               nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-              rpcUrls: ['https://rpc.mainnet.arc.io'],
-              blockExplorerUrls: [ARC_EXPLORER_URL],
+              rpcUrls: [PUBLIC_CHAIN.rpcUrl],
+              blockExplorerUrls: [PUBLIC_CHAIN.explorer],
             },
           ],
         });
@@ -195,8 +196,8 @@ export function TaskBoard({
 
     setPublishStatusText(
       isEn
-        ? `Transferring ${amount} USDC to Escrow Vault (${ESCROW_VAULT_ADDRESS.slice(0, 8)}...)...`
-        : `正在向独立金库托管合约 (${ESCROW_VAULT_ADDRESS.slice(0, 8)}...) 转账 ${amount} USDC...`
+        ? `Transferring ${amount} USDC to Escrow Vault (${PUBLIC_CHAIN.escrowVault.slice(0, 8)}...)...`
+        : `正在向独立金库托管合约 (${PUBLIC_CHAIN.escrowVault.slice(0, 8)}...) 转账 ${amount} USDC...`
     );
 
     const txHash = await ethereum.request({
@@ -204,7 +205,7 @@ export function TaskBoard({
       params: [
         {
           from,
-          to: ESCROW_VAULT_ADDRESS,
+          to: PUBLIC_CHAIN.escrowVault,
           value: '0x' + amountWei.toString(16),
         },
       ],
@@ -229,7 +230,7 @@ export function TaskBoard({
     }
 
     setPublishStatusText(isEn ? 'Executing session-key gasless escrow transfer...' : '正在通过专用钱包免签广播链上质押交易...');
-    const txHash = await vesselWalletTransfer(ESCROW_VAULT_ADDRESS, amount);
+    const txHash = await vesselWalletTransfer(PUBLIC_CHAIN.escrowVault, amount);
     return txHash;
   };
 
@@ -249,7 +250,7 @@ export function TaskBoard({
       try {
         await ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: ARC_CHAIN_ID_HEX }],
+          params: [{ chainId: PUBLIC_CHAIN.idHex }],
         });
       } catch (e: any) {
         if (e.code === 4902) {
@@ -257,11 +258,11 @@ export function TaskBoard({
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: ARC_CHAIN_ID_HEX,
-                chainName: 'Arc Mainnet',
+                chainId: PUBLIC_CHAIN.idHex,
+                chainName: PUBLIC_CHAIN.name,
                 nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-                rpcUrls: ['https://rpc.mainnet.arc.io'],
-                blockExplorerUrls: [ARC_EXPLORER_URL],
+                rpcUrls: [PUBLIC_CHAIN.rpcUrl],
+                blockExplorerUrls: [PUBLIC_CHAIN.explorer],
               },
             ],
           });
@@ -337,7 +338,7 @@ export function TaskBoard({
               ? 'Decentralized task published by user. Avatars will autonomously draft, audit, or research.'
               : '由用户发起的去中心化众包需求，分身将自主分析、撰写报告或执行代码审查。'),
           bountyUsdc: bountyAmount,
-          escrowContract: ESCROW_VAULT_ADDRESS,
+          escrowContract: PUBLIC_CHAIN.escrowVault,
           escrowTxHash: txHash,
           txHash,
           fundingMode: paymentMethod === 'web3' ? 'web3_wallet' : 'vessel_wallet',
@@ -473,7 +474,7 @@ export function TaskBoard({
               <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2 flex-wrap">
                 <span>{isEn ? '🎯 AP2 Task & Bounty Plaza — Earn USDC Rewards' : '🎯 AP2 悬赏与任务广场 — 做任务赚 USDC'}</span>
                 <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[9px]">
-                  Circle ARC Mainnet (5042)
+                  Circle {PUBLIC_CHAIN.name} ({PUBLIC_CHAIN.id})
                 </Badge>
               </h3>
               <p className="text-[11px] text-[#888] mt-0.5">
@@ -942,8 +943,8 @@ export function TaskBoard({
             {/* 托管合约信息展示 */}
             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-[11px]">
               <div className="space-y-0.5">
-                <div className="text-[#888]">{isEn ? 'Escrow Vault Contract:' : '独立金库/托管合约 (Circle ARC 5042):'}</div>
-                <div className="font-mono text-white/90 text-[10px]">{ESCROW_VAULT_ADDRESS}</div>
+                <div className="text-[#888]">{isEn ? 'Escrow Vault Contract:' : `独立金库/托管合约 (Circle ARC ${PUBLIC_CHAIN.id}):`}</div>
+                <div className="font-mono text-white/90 text-[10px]">{PUBLIC_CHAIN.escrowVault}</div>
               </div>
               <Badge className="bg-[#00FFCC]/10 text-[#00FFCC] border-[#00FFCC]/20 text-[9px]">
                 BudgetFence Locked
@@ -1030,7 +1031,9 @@ export function TaskBoard({
                     <span className="font-bold text-xs">{isEn ? 'Web3 Wallet' : '连接 Web3 钱包'}</span>
                   </div>
                   <p className="text-[10px] text-[#777] leading-tight">
-                    {isEn ? 'Direct MetaMask/OKX transfer to vault (5042)' : '向 0xCA36...bA22 真实转账并带 txHash'}
+                    {isEn
+                      ? `Direct MetaMask/OKX transfer to vault (${PUBLIC_CHAIN.id})`
+                      : `向 ${PUBLIC_CHAIN.escrowVault.slice(0, 6)}...${PUBLIC_CHAIN.escrowVault.slice(-4)} 真实转账并带 txHash`}
                   </p>
                 </div>
 
@@ -1312,7 +1315,7 @@ export function TaskBoard({
                     <span className="text-[#888]">Circle ARC 托管交易:</span>
                     {selectedTaskForReport.escrowTxHash ? (
                       <a
-                        href={`${ARC_EXPLORER_URL}/tx/${selectedTaskForReport.escrowTxHash}`}
+                        href={`${PUBLIC_CHAIN.explorer}/tx/${selectedTaskForReport.escrowTxHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-mono text-[#00FFCC] hover:underline flex items-center gap-1"

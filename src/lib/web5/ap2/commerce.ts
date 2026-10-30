@@ -19,7 +19,7 @@ import {
   sendNativeUsdc,
   verifyNativeTransfer,
 } from '@/lib/web5/payments/arc';
-import { ESCROW_VAULT_ADDRESS, TREASURY } from '@/lib/web5/contracts/addresses';
+import { getEscrowVaultAddress, getTreasuryAddress } from '@/lib/web5/contracts/addresses';
 import {
   auditOrderEvidence,
   readBlockNumbers,
@@ -275,7 +275,7 @@ export async function createCommerceOrder(params: {
 
   // The escrow destination is fixed server-side: accepting a caller-chosen
   // address would let any transfer (including a self-transfer) look funded.
-  const escrowContract = ESCROW_VAULT_ADDRESS;
+  const escrowContract = getEscrowVaultAddress();
 
   const creatorWallets = await resolveCreatorWallets(params.creatorDid);
   if (creatorWallets.length === 0) {
@@ -758,7 +758,7 @@ export async function settleOrder(
         data: {
           orderId,
           kind: 'RETAINED',
-          address: TREASURY.toLowerCase(),
+          address: getTreasuryAddress().toLowerCase(),
           amountWei: feeWei.toString(),
         },
       });
