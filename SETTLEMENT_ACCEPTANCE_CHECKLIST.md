@@ -5,7 +5,7 @@
 >
 > 状态标记：`[x]` 代码完成并存于仓库 · `[~]` 代码完成但需真实链上资金/时长验证 · `[ ]` 未完成 · `[!]` 阻塞（需要外部输入）
 >
-> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 29 项单测，已部署 build12（`/security` 已进 sitemap）；阶段 3 完成无资金预演（见 3.9），真实链路仍待测试网资金/私钥；阶段 4 需主网灰度）
+> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 29 项单测，已部署 build12（`/security` 已进 sitemap）；阶段 3 完成无资金预演（3.9）并搭好主网影子实例与一键开跑脚本（3.10），真实链路只差私钥/资金与授权；阶段 4 需主网灰度）
 
 ---
 
@@ -100,6 +100,64 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 5. 显式打开 `MONEY_FLOWS_ENABLED=true`、`ESCROW_PAYOUTS_ENABLED=true`、`REFUNDS_ENABLED=true`、`SETTLEMENT_CRON_SECRET`（≥16 字符），`SETTLEMENT_WINDOW_HOURS` 调小（如 0.01）
 6. 准备 `E2E_SESSION_TOKEN`（Vessel 会话）、`E2E_ADMIN_TOKEN`、`E2E_ACCEPTANCE_HASH`、一笔已上链的 `E2E_ESCROW_TX_HASH`
 7. 在 VPS 上跑 `node /root/e2e-settlement.mjs --live --base http://127.0.0.1:<影子端口>`（harness 必须在目标同机跑，本机探测 127.0.0.1 只会打到本机）
+
+### 3.10 主网影子实例与一键开跑脚本（2026-10-30）
+
+主网构建（build12，BUILD_ID `Wtx-BGJqBHb28du5tHEWw`）的同一份产物已部署为**非生产影子实例**，与生产完全隔离：
+
+| 项 | 值 |
+|---|---|
+| 路径 | `/root/web5-stage3/app`（build12 standalone 硬链接副本） |
+| 监听 | `127.0.0.1:3104`（不对外，无 TLS 无域名） |
+| 数据库 | `/root/web5-stage3/db/custom.db`（生产库 `sqlite3 .backup` 副本；演示单 8、`PayoutLedger` 0） |
+| 资金开关 | 三个全开；`SETTLEMENT_WINDOW_HOURS=0.01`（36 秒） |
+| 密钥 | 独立 `SETTLEMENT_CRON_SECRET` / `ADMIN_API_KEY`（`/root/web5-stage3/credentials.txt`，600） |
+| Telegram | `TG_BOT_TOKEN` 置空，影子实例不会发消息 |
+| 会话 | `mint-session.mjs` 铸造的 Vessel 会话（`/root/web5-stage3/session.token`，600，短时效） |
+| 生产 | **未改动**：build12 正常运行，三个开关仍为 false，`/api/cron/settle` 仍 503 |
+
+已完成的验证（全部为只读或必然失败的调用，**无资金移动**）：
+
+| 验证项 | 结果 |
+|---|---|
+| 影子 API 开关回显 | `moneyFlowsEnabled/escrowPayoutsEnabled/refundsEnabled = true` |
+| cron 鉴权（正确 secret） | 200，`settledCount:0`，`errors:[]`（无到期单，幂等空转） |
+| cron 鉴权（错误 / 缺失） | 401 `Invalid cron secret` |
+| harness 只读探测 | PASS 5 / FAIL 0 / SKIP 11 → “READY for --live” |
+| harness 缺 `E2E_ARWEAVE_HASH` 跑 `--live` | 退出码 2，拒绝空跑，不发送任何请求 |
+| 合成凭据探针（假 `escrowTxHash` + 假 43 位 Arweave id） | 会话 token 与路由全部通过，服务端在链上校验处正确拒绝 `Transaction not found on Arc Mainnet [ESCROW_INVALID]`；探针前后 `TaskOrder` 8 条、`PayoutLedger` 0 条不变 |
+| 一次性私钥配置脚本 | `prepare-treasury.sh` 能推导地址、写 600 的 .env、重启 3104、打印余额；验证后已回滚覆盖项 |
+
+探针结论：**写入发生在链上校验之后**（假 tx 无法留下订单），并且会话/管理/cron 三条鉴权链路已真实打通；剩下的唯一未知量就是真实资金。
+
+`/root/web5.blog/ops-stage3/` 脚本：
+
+| 脚本 | 作用 |
+|---|---|
+| `new-treasury.sh` | 生成一次性热钱包私钥（只写进 600 的 .env，不打印），配置 `TREASURY_ADDRESS`/`ESCROW_VAULT_ADDRESS`/上限并重启 3104 |
+| `prepare-treasury.sh <0x私钥> [vault]` | 用已有私钥配置（推导地址、写 env、重启、打印地址与余额） |
+| `run-live.sh <escrowTx> <arweaveTxid\|auto> [bounty]` | 铸造会话、组装 env、跑 `--live` 并把报告写到 `/root/web5-stage3/reports/`；`auto` 会先检查 Irys 余额，为 0 直接退出 |
+| `status.sh` | 实例 / 开关 / 地址 / 余额 / Irys 余额概览 |
+| `derive.mjs` `balance.mjs` `irys-balance.mjs` `upload-arweave.mjs` | 底层工具；需在 `/root/web5.blog` 下执行（那里才有 viem 与 `@irys/upload`） |
+| `plumbing-test.sh` `plumb2.sh` | 合成凭据探针，**只用于验证接线，不可作为结算证据** |
+
+主网直跑的地址与金额（Arc 主网 5042，USDC 18 位小数，USDC 即 gas）：
+
+- 托管/金库地址：`0xCA36335845E382129167fC44243F07A76827bA22`（若改用 `new-treasury.sh`，以它打印的新地址为准）
+- 托管付款方：必须是 prime `0x10687368eF1be3f178de0fCCf5EdfF49e1C258B1` 或其 Vessel 智能账户，否则 `ESCROW_WRONG_SENDER`
+- 金额必须**精确等于** bounty（默认 1 USDC，18 位小数），≥3 确认，tx hash 全局唯一
+- 出款由 treasury 私钥对应地址签名；热钱包需留少量 gas（同为 USDC）
+
+仍缺的外部输入：
+
+1. treasury 私钥，或授权用 `new-treasury.sh` 新建一次性热钱包
+2. 一笔从 prime 钱包发往托管地址、金额精确、≥3 确认的真实 escrow tx hash
+3. Arweave txid —— Irys 钱包 `0x7317198acd164594f87017a3a148bf3c8b6144f7` 当前 **0 POL**，`auto` 上传必然失败；要么充少量 POL，要么直接给一个已有 txid
+4. 明确的真实资金授权（单笔 1 USDC；上限 5/25 已把爆炸半径锁死）
+
+**测试网不是必须**：同一套代码、同一套断言、同一份 harness，只是链 id / RPC / 水龙头不同。主网 1 USDC 的一次性彩排同样能拿到 E1–E5，且更贴近真实环境；上限 5/25 与精确金额校验把风险限制在 1–2 USDC。测试网产物已在本地构建（`NEXT_PUBLIC_ACTIVE_CHAIN=arc-testnet`），需要时可另起 3105，但它同样卡在水龙头资金上，不解除任何阻塞。
+
+已知显示瑕疵（不影响结算）：`GET /api/commerce/tasks` 里 `settlementWindowHours` 用 `Math.max(1, …)` 夹到 1，所以影子实例显示 1 而实际窗口是 36 秒；真实窗口由 `commerce.ts` 的 `settlementWindowMs()` 计算。下次构建一并修正为实际值。
 
 ## 4. 主网灰度（阶段 3 全绿后才开）
 
