@@ -674,6 +674,16 @@ async function driveFlow(opts, env) {
   if (!env.cronSecret) {
     record('F5', 'cron settle', 'FAIL', 'SETTLEMENT_CRON_SECRET (or E2E_CRON_SECRET) is unset; POST would be rejected');
   } else {
+    // Each order carries its own settlement window. When the harness reaches
+    // cron faster than that window, waiting is the honest move; posting early
+    // only produces a WINDOW_OPEN no-op that looks like a settlement failure.
+    const dueMs = liveOrder?.settlementDueAt ?? 0;
+    const waitMs = dueMs - Date.now() + 1500;
+    if (liveOrder?.status === 'VERIFIED' && waitMs > 0) {
+      const capped = Math.min(waitMs, intEnv('E2E_SETTLE_MAX_WAIT_MS', 180000));
+      console.log(`  wait ${pad('window', 10)} sleeping ${capped}ms until settlement window elapses`);
+      await sleep(capped);
+    }
     const res = await http(opts.base, 'POST', '/api/cron/settle', {
       headers: { 'x-cron-secret': env.cronSecret },
       body: {},
