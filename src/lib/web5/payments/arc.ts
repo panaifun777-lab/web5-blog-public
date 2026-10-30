@@ -8,7 +8,7 @@ import {
   parseGwei,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { TREASURY, getActiveChain } from '@/lib/web5/contracts/addresses';
+import { getActiveChain, getTreasuryAddress } from '@/lib/web5/contracts/addresses';
 import { db } from '@/lib/db';
 
 const ACTIVE_CHAIN = getActiveChain();
@@ -125,7 +125,7 @@ export function getPayoutAccount() {
   }
   try {
     const account = privateKeyToAccount(key as `0x${string}`);
-    if (account.address.toLowerCase() !== TREASURY.toLowerCase()) {
+    if (account.address.toLowerCase() !== getTreasuryAddress().toLowerCase()) {
       return {
         ok: false as const,
         reason: 'Payout key does not belong to the treasury address',

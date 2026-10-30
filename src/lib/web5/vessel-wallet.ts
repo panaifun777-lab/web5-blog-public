@@ -9,12 +9,14 @@
 
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { createWalletClient, createPublicClient, http, parseGwei, keccak256 } from 'viem';
+import { PUBLIC_CHAIN } from './chain-public';
 
+// 链参数来自构建期配置，默认仍为主网 5042
 const ARC_CHAIN = {
-  id: 5042,
-  name: 'Arc Mainnet',
+  id: PUBLIC_CHAIN.id,
+  name: PUBLIC_CHAIN.name,
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: ['https://rpc.mainnet.arc.io'] } },
+  rpcUrls: { default: { http: [PUBLIC_CHAIN.rpcUrl] } },
 } as const;
 
 const WALLET_PK_KEY = 'web5_vessel_wallet_pk';

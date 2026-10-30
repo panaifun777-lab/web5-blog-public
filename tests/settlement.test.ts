@@ -32,8 +32,8 @@ const AGENT = '0x1111111111111111111111111111111111111111';
 const FEE = '0xffffffffffffffffffffffffffffffffffffffff';
 const USDC = 10n ** 18n;
 
-function txHash(seed: string) {
-  return `0x${seed.repeat(64).slice(0, 64)}`;
+function txHash(seed: string): `0x${string}` {
+  return `0x${seed.repeat(64).slice(0, 64)}` as `0x${string}`;
 }
 
 function baseOrder(overrides: Record<string, any> = {}) {

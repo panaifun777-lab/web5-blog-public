@@ -7,7 +7,7 @@
 import { db } from '@/lib/db';
 import { parseArcUsdc } from '@/lib/web5/auth/eip712-types';
 import { verifyNativeTransfer } from '@/lib/web5/payments/arc';
-import { TREASURY } from '@/lib/web5/contracts/addresses';
+import { getTreasuryAddress } from '@/lib/web5/contracts/addresses';
 
 export type EvidenceId = 'E1' | 'E2' | 'E3' | 'E4' | 'E5';
 
@@ -123,7 +123,7 @@ export async function auditOrderEvidence(
     if (agentRow) {
       const payoutCheck = await verifyNativeTransfer({
         txHash: agentRow.txHash as string,
-        from: TREASURY,
+        from: getTreasuryAddress(),
         to: agentRow.address,
         minValueWei: BigInt(agentRow.amountWei),
         exactValueWei: BigInt(agentRow.amountWei),
@@ -135,7 +135,7 @@ export async function auditOrderEvidence(
     if (feeRow) {
       const feeCheck = await verifyNativeTransfer({
         txHash: feeRow.txHash as string,
-        from: TREASURY,
+        from: getTreasuryAddress(),
         to: feeRow.address,
         minValueWei: BigInt(feeRow.amountWei),
         exactValueWei: BigInt(feeRow.amountWei),
@@ -147,7 +147,7 @@ export async function auditOrderEvidence(
     if (refundRow) {
       const refundCheck = await verifyNativeTransfer({
         txHash: refundRow.txHash as string,
-        from: TREASURY,
+        from: getTreasuryAddress(),
         to: refundRow.address,
         minValueWei: BigInt(refundRow.amountWei),
         exactValueWei: BigInt(refundRow.amountWei),

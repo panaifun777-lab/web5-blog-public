@@ -5,7 +5,7 @@
 >
 > 状态标记：`[x]` 代码完成并存于仓库 · `[~]` 代码完成但需真实链上资金/时长验证 · `[ ]` 未完成 · `[!]` 阻塞（需要外部输入）
 >
-> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 20 项单测，已部署 build9；阶段 3 需测试网资金，阶段 4 需主网灰度）
+> 最近更新：2026-10-30（阶段 1、2、5 代码落地 + P0 加固与 26 项单测，已部署 build9；阶段 3 完成无资金预演（见 3.9），真实链路仍待测试网资金/私钥；阶段 4 需主网灰度）
 
 ---
 
@@ -75,6 +75,32 @@ SETTLEMENT_CRON_SECRET=... \
 node scripts/e2e-settlement.mjs --live --base https://web5.blog
 ```
 
+### 3.9 预演结果（2026-10-30，无真实资金）
+
+链配置在**构建时内联**（`NEXT_PUBLIC_ACTIVE_CHAIN`），主网产物里测试网分支会被 DCE 掉，因此阶段 3 必须**单独构建测试网产物**，不能拿主网 build 直接测。本地用测试网构建（独立 `BUILD_ID`）+ 端口 3103 影子实例 + 临时 SQLite 副本跑了一遍预演：
+
+| 预演项 | 结果 |
+|---|---|
+| 测试网构建可启动，`/` 与页面 200 | PASS |
+| 资金开关在 API 暴露为 true（`MONEY_FLOWS_ENABLED`/`ESCROW_PAYOUTS_ENABLED`/`REFUNDS_ENABLED`） | PASS |
+| `/api/cron/settle` 鉴权：无 secret → 401、错误 secret → 401、正确 secret → 200 且返回 `recovered` | PASS |
+| 预算接口匿名访问 → 403 | PASS |
+| harness 只读探测：PASS 5 / FAIL 0 / SKIP 11，判定 “READY for --live” | PASS |
+| harness 缺参数 `--live` → 退出码 2（拒绝空跑） | PASS |
+| harness 伪造凭据 `--live` → 退出码 1；F1 FAIL，E1–E5 全部 SKIP（不伪造链上证据） | PASS |
+
+以上证明了“测试网产物 + 开关 + cron 鉴权 + harness 诚实性”这一段可用；**仍未验证**的是任何真实链上步骤（托管上链、Arweave 永久存证、80/20 两笔落账、E1–E5 证据），这些必须等外部输入。
+
+**开跑阶段 3 的前置清单**：
+
+1. 测试网 USDC：给 treasury 地址从 [Arc testnet faucet](https://faucet.testnet.arc.io) 领水
+2. 一次性测试网 treasury 私钥（`TREASURY_PAYOUT_PRIVATE_KEY`，与主网 treasury 完全隔离）+ 对应的 `PLATFORM_FEE_ADDRESS` 与 `TREASURY_ADDRESS`
+3. 单独构建：`NEXT_PUBLIC_ACTIVE_CHAIN=arc-testnet npm run build`（构建后 `NEXT_PUBLIC_ESCROW_VAULT_ADDRESS` 也要指向测试网托管地址；`getEscrowVaultAddress()`/`getTreasuryAddress()` 支持运行期 `ESCROW_VAULT_ADDRESS`/`TREASURY_ADDRESS` 覆盖，无需再改代码）
+4. 部署到**非生产**实例（VPS 影子端口或独立容器），`DATABASE_URL` 指向测试网用的库，**绝不能碰** `/root/web5.blog/prisma/db/custom.db`
+5. 显式打开 `MONEY_FLOWS_ENABLED=true`、`ESCROW_PAYOUTS_ENABLED=true`、`REFUNDS_ENABLED=true`、`SETTLEMENT_CRON_SECRET`（≥16 字符），`SETTLEMENT_WINDOW_HOURS` 调小（如 0.01）
+6. 准备 `E2E_SESSION_TOKEN`（Vessel 会话）、`E2E_ADMIN_TOKEN`、`E2E_ACCEPTANCE_HASH`、一笔已上链的 `E2E_ESCROW_TX_HASH`
+7. 在 VPS 上跑 `node /root/e2e-settlement.mjs --live --base http://127.0.0.1:<影子端口>`（harness 必须在目标同机跑，本机探测 127.0.0.1 只会打到本机）
+
 ## 4. 主网灰度（阶段 3 全绿后才开）
 
 - [x] **4.1** 限额双保险：服务端硬上限（5 / 25）+ BudgetFence 配置只允许更低
@@ -90,13 +116,14 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 
 ## 6. 本地单测（不依赖测试网资金）
 
-Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**20 项全部通过**：
+Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**26 项全部通过**：
 
 | 文件 | 覆盖 |
 |---|---|
 | `tests/settlement.test.ts` | 80/20 分账；重试时已付的 agent 份额不再重发；超限不发 tx 且订单留在 `VERIFIED`；acceptanceHash 三态（`SUBMITTED`/`VERIFIED`/`REJECTED`）；demo 订单拒绝结算/退款；结算调度器排除 demo；抢锁失败返回在途订单；分账与窗口计算的边界 |
 | `tests/caps.test.ts` | 单笔上限、恰好等于上限放行、24h 滚动窗口（23h 计入 / 26h 不计入）、`RETAINED` 不占额度 |
 | `tests/token-session.test.ts` | 存活会话通过；无会话行 / 已吊销 / 已过期 / 伪造签名一律拒绝 |
+| `tests/chain-config.test.ts` | 默认主网地址；`TREASURY_ADDRESS`/`ESCROW_VAULT_ADDRESS` 运行期覆盖；仅 treasury 覆盖时托管回退；非法地址被忽略；链默认 5042 / 测试网 5042002 与 RPC |
 
 ```bash
 npm test            # vitest run
@@ -132,7 +159,7 @@ npm test            # vitest run
 ```bash
 # 本地单测 / 类型检查 / 构建
 npm test
-npm run typecheck
+npx tsc --noEmit   # 仓库无 typecheck 脚本；examples/ 与 scripts/verify-subtask1.ts 有历史遗留无关报错
 npm run build
 
 # 影子实例冒烟（不写链）

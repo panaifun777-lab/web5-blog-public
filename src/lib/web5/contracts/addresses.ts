@@ -10,7 +10,23 @@ export const TREASURY = '0xCA36335845E382129167fC44243F07A76827bA22' as const;
 
 // 托管收款地址：订单押金只能转入这里。服务端不接受调用方自选地址，
 // 否则一笔普通转账（甚至自转）就能伪造"已托管"。
-export const ESCROW_VAULT_ADDRESS = TREASURY;
+// 测试网彩排时用 ESCROW_VAULT_ADDRESS / TREASURY_ADDRESS 覆盖为一次性地址，
+// 不要复用主网金库私钥。
+
+function envAddress(name: string): `0x${string}` | null {
+  const raw = (process.env[name] || '').trim();
+  return /^0x[0-9a-fA-F]{40}$/.test(raw) ? (raw as `0x${string}`) : null;
+}
+
+/** 当前生效的金库地址（运行时可覆盖，默认主网 TREASURY） */
+export function getTreasuryAddress(): `0x${string}` {
+  return envAddress('TREASURY_ADDRESS') ?? TREASURY;
+}
+
+/** 当前生效的托管地址（运行时可覆盖，默认等于金库地址） */
+export function getEscrowVaultAddress(): `0x${string}` {
+  return envAddress('ESCROW_VAULT_ADDRESS') ?? getTreasuryAddress();
+}
 
 // ━━ Circle ARC Mainnet (正式主网 Chain ID: 5042) ━━
 export const ARC_MAINNET = {
