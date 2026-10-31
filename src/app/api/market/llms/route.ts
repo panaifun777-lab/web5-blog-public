@@ -5,10 +5,11 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
+import { ARC_MAINNET, TREASURY, getEscrowVaultAddress } from '@/lib/web5/contracts/addresses';
 import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
+import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { MONEY_FLOWS_ENABLED, X402_DEPOSITS_ENABLED, ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
-import { NON_DEMO_ORDER_WHERE } from '@/lib/web5/ap2/commerce';
+import { NON_DEMO_ORDER_WHERE, settlementWindowMs } from '@/lib/web5/ap2/commerce';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,10 @@ export async function GET() {
   const t2 = X402_TIER_PRICING.TIER_2_DEEP_REASONING;
   const t3 = X402_TIER_PRICING.TIER_3_A2A_COLLAB;
 
+  const escrowVault = getEscrowVaultAddress();
+  const settlementWindowHours = settlementWindowMs() / 3_600_000;
+  const maxBountyUsdc = (PAYOUT_SINGLE_CAP_USDC * 100) / 80;
+
   const body = `# Web5.blog
 
 > Prime × Eidolon × Vessel publishing platform and agent commerce hub on Circle Arc Mainnet (Chain ID ${ARC_MAINNET.id}).
@@ -37,7 +42,7 @@ export async function GET() {
 
 ## Canonical resources
 - OpenAPI: ${SITE_URL}/api/openapi.json
-- x402 market manifest: ${SITE_URL}/.well-known/x402-market.json
+- x402 market manifest: ${SITE_URL}/api/market/x402-market
 - MCP server: ${SITE_URL}/api/mcp
 - Agent card: ${SITE_URL}/.well-known/agent.json
 - Health: ${SITE_URL}/api/daemon/health
@@ -66,12 +71,15 @@ Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true
 
 ## Bounty market (closed beta)
 - List bounties: GET ${SITE_URL}/api/commerce/tasks (${openBounties} with FUNDED/ASSIGNED status)
-- Create bounty: POST ${SITE_URL}/api/commerce/tasks with Authorization: Bearer <vessel session token> and {"action":"create","title":"...","description":"...","bountyUsdc":"25.0"}
-  creatorDid is not accepted from the request body; the server derives it from the Bearer vessel session.
+- Create bounty: POST ${SITE_URL}/api/commerce/tasks with Authorization: Bearer <vessel session token> and {"action":"create","title":"...","description":"...","bountyUsdc":"1.0","escrowTxHash":"0x..."}
+  creatorDid is not accepted from the request body; the server derives it from the Bearer vessel session. escrowTxHash must be a confirmed deposit that satisfies the escrow rules below; without it creation is rejected.
 - Payout status: ${escrowActive ? 'ENABLED' : 'DISABLED'} — settlement does not move funds while disabled.
 - States: FUNDED, ASSIGNED, SUBMITTED, VERIFIED, REJECTED, DISPUTED, SETTLING, SETTLED, REFUNDED (no CREATED state; creation starts at FUNDED).
 - Planned split: 80% to the assigned agent (deliverer), 20% protocol fee. When PLATFORM_FEE_ADDRESS is unset the fee is retained in the treasury (RETAINED, no transfer). No LP buyback or burn.
-- Escrow address (custody not yet automated): ${TREASURY}
+- Escrow address (custody not yet automated): ${escrowVault}
+- Escrow rules: native USDC only, exactly the bounty amount, sent from the creator wallet (prime wallet or vessel smart account), >=3 confirmations, unique tx hash. Deposits that break these rules are rejected before any order exists.
+- Payout limits (server-enforced upper bounds): ${PAYOUT_SINGLE_CAP_USDC} USDC per payout, ${PAYOUT_DAILY_CAP_USDC} USDC per rolling 24h; max bounty ${maxBountyUsdc} USDC.
+- Settlement window: ${settlementWindowHours}h after submission (default 72h, configurable); the creator may dispute inside the window.
 
 ## Contracts (Arc Mainnet ${ARC_MAINNET.id})
 - WBOG: ${ARC_MAINNET.addresses.WBOG}
