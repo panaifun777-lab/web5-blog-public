@@ -6,11 +6,12 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { ARC_MAINNET, TREASURY, SUPERADMIN } from '@/lib/web5/contracts/addresses';
+import { ARC_MAINNET, TREASURY, SUPERADMIN, getEscrowVaultAddress } from '@/lib/web5/contracts/addresses';
 import { decimalToAtomicUsdc } from '@/lib/web5/x402/voucher-engine';
 import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
+import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
-import { NON_DEMO_ORDER_WHERE } from '@/lib/web5/ap2/commerce';
+import { NON_DEMO_ORDER_WHERE, settlementWindowMs } from '@/lib/web5/ap2/commerce';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,10 @@ export async function GET() {
   }
 
   const paymentsPaused = process.env.X402_PAYMENTS_ENABLED === 'false';
+
+  const escrowVault = getEscrowVaultAddress();
+  const settlementWindowHours = settlementWindowMs() / 3_600_000;
+  const maxBountyUsdc = (PAYOUT_SINGLE_CAP_USDC * 100) / 80;
 
   const manifest = {
     schema: 'x402-market/1.0',
@@ -87,7 +92,7 @@ export async function GET() {
       openapi: `${SITE_URL}/api/openapi.json`,
       mcp: `${SITE_URL}/api/mcp`,
       agentCard: `${SITE_URL}/.well-known/agent.json`,
-      market: `${SITE_URL}/.well-known/x402-market.json`,
+      market: `${SITE_URL}/api/market/x402-market`,
       health: `${SITE_URL}/api/daemon/health`,
     },
     offerings: [
@@ -120,23 +125,37 @@ export async function GET() {
       listEndpoint: `${SITE_URL}/api/commerce/tasks`,
       createEndpoint: `${SITE_URL}/api/commerce/tasks`,
       createMethod: 'POST',
-      createAuth: 'none',
+      createAuth: 'vessel session bearer (Authorization: Bearer <token>); creatorDid is derived server-side and ignored in the body',
       createBodySchema: {
         action: 'create',
-        creatorDid: 'string',
         title: 'string',
         description: 'string',
-        bountyUsdc: "string (decimal, e.g. '25.0')",
+        bountyUsdc: "string (decimal, e.g. '1.0')",
+        escrowTxHash: '0x… (required, verified on chain)',
+        acceptanceHash: 'string (optional)',
+        deliveryHours: 'number 1-720 (optional)',
       },
       escrow: {
-        contract: TREASURY,
-        note: '外部项目方可直接将 USDC 转入该地址并附带 orderId 作为 memo，亦可调用 create 接口后由平台守护进程对账。',
+        contract: escrowVault,
+        asset: 'native USDC',
+        sender: 'creator wallet (prime wallet or vessel smart account)',
+        exactAmount: true,
+        minConfirmations: 3,
+        uniqueTxHash: true,
+        note: 'Verified server-side before an order exists: native USDC to this address, exactly the bounty amount, from the creator wallet, >=3 confirmations, tx hash never used before. A memo/orderId alone does not fund an order. The destination is server-fixed; a caller-supplied escrowContract is ignored.',
       },
-      stateMachine: ['CREATED', 'FUNDED', 'ASSIGNED', 'SUBMITTED', 'SETTLED', 'REFUNDED'],
+      stateMachine: ['FUNDED', 'ASSIGNED', 'SUBMITTED', 'VERIFIED', 'REJECTED', 'DISPUTED', 'SETTLING', 'SETTLED', 'REFUNDED'],
       settlementRule: {
-        creator: '80%',
+        deliverer: '80%',
         protocol: '20%',
-        protocolSplit: { operations: '10%', lpLockAndBurn: '10%' },
+        feeRecipient: 'PLATFORM_FEE_ADDRESS when configured, otherwise retained in treasury (RETAINED, no transfer)',
+        note: 'No LP buyback or burn.',
+      },
+      limits: {
+        payoutSingleUsdc: String(PAYOUT_SINGLE_CAP_USDC),
+        payoutDailyUsdc: String(PAYOUT_DAILY_CAP_USDC),
+        maxBountyUsdc: String(maxBountyUsdc),
+        settlementWindowHours,
       },
       openBounties,
     },
@@ -144,7 +163,7 @@ export async function GET() {
       autoAssign: true,
       verification: 'SHARED_SCRUTINY',
       deliverableAnchor: 'Arweave + SHA-256',
-      disputeWindowHours: 72,
+      disputeWindowHours: settlementWindowHours,
     },
     rateLimits: {
       anonymousReadPerMinute: 60,

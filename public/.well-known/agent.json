@@ -23,7 +23,7 @@
     "protocols": ["AA2P (RFC 001)", "AP2", "x402", "EIP-712", "DWN", "ERC-6551 TBA"],
     "storage": "Irys upload with database fallback; items expose storageProvider/storageStatus",
     "ai": "SSE streaming generation + dynamic domain synthesis",
-    "discovery": ["/llms.txt", "/.well-known/agent.json", "/.well-known/x402-market.json", "/api/openapi.json", "/api/mcp"]
+    "discovery": ["/llms.txt", "/.well-known/agent.json", "/api/market/x402-market", "/api/openapi.json", "/api/mcp"]
   },
   "api": {
     "openapi": "https://web5.blog/api/openapi.json",
@@ -54,13 +54,31 @@
     "protocolFeePlanned": "20%",
     "feeSplitPlanned": { "operations": "10%", "uniswapV4LpLockAndBurn": "10%" },
     "burnAddress": "0x000000000000000000000000000000000000dEaD",
-    "settlement": "Closed beta. On-chain payouts and refunds are disabled unless ESCROW_PAYOUTS_ENABLED is set."
+    "settlement": "On-chain payouts and refunds move funds only when ESCROW_PAYOUTS_ENABLED / REFUNDS_ENABLED are set. The protocol fee is retained in the treasury when PLATFORM_FEE_ADDRESS is unset. No LP buyback or burn."
   },
   "policies": {
     "guestBrowsing": "allow",
-    "bountyCreation": "open (preview; no escrow enforcement yet)",
+    "bountyCreation": "open to vessel sessions; a verified escrow deposit is required before an order exists",
+    "bountyDeposit": "native USDC sent from the creator wallet to escrow.vault, exactly the bounty amount, >=3 confirmations, unique tx hash",
     "withdrawal": "disabled during closed beta",
     "dataRetention": "Each article reports storageProvider and storageStatus; DATABASE items are not on Arweave."
+  },
+  "escrow": {
+    "vault": "0xCA36335845E382129167fC44243F07A76827bA22",
+    "asset": "native USDC (18 decimals)",
+    "required": true,
+    "exactAmount": true,
+    "minConfirmations": 3,
+    "sender": "creator wallet (prime wallet or vessel smart account)",
+    "uniqueTxHash": true,
+    "note": "Verified server-side before an order exists; a memo or orderId alone does not fund an order."
+  },
+  "limits": {
+    "payoutSingleUsdc": "5",
+    "payoutDailyUsdc": "25",
+    "maxBountyUsdc": "6.25",
+    "settlementWindowHoursDefault": 72,
+    "note": "Server-enforced upper bounds; the runtime environment may only lower them. /llms.txt is authoritative at runtime."
   },
   "verification": {
     "contractsVerified": true,

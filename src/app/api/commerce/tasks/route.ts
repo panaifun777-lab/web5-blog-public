@@ -17,6 +17,7 @@ import {
   settleOrder,
   refundOrder,
   auditOrder,
+  settlementWindowMs,
   CommerceError,
   type CommerceTaskOrder,
   type SettlementActor,
@@ -104,7 +105,7 @@ export async function GET(req: NextRequest) {
         moneyFlowsEnabled: MONEY_FLOWS_ENABLED,
         escrowPayoutsEnabled: ESCROW_PAYOUTS_ENABLED,
         refundsEnabled: REFUNDS_ENABLED,
-        settlementWindowHours: Math.max(1, Number(process.env.SETTLEMENT_WINDOW_HOURS || 72)),
+        settlementWindowHours: settlementWindowMs() / 3_600_000,
         orders: orders.map(publicOrder),
       },
       { headers: NO_STORE }

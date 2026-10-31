@@ -129,6 +129,8 @@ class FakeDb {
       findFirst: async ({ where }: { where: Row }) => clone(this.findOrder(where) ?? null),
       findMany: async ({ where }: { where: Row } = { where: {} }) =>
         this.orders.filter((row) => matchWhere(row, where)).map((row) => clone(row)),
+      count: async ({ where }: { where: Row } = { where: {} }) =>
+        this.orders.filter((row) => matchWhere(row, where)).length,
       create: async ({ data }: { data: Row }) => {
         if (data.escrowTxHash && this.orders.some((row) => row.escrowTxHash === data.escrowTxHash)) {
           throw uniqueError();
