@@ -90,13 +90,7 @@ jobs:
             }
 
             if (existing) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: existing.number,
-                body: `Still failing. Probe run: ${runUrl}`,
-              });
-              core.info(`Commented on incident #${existing.number}`);
+              core.info(`Incident #${existing.number} is already open, leaving it untouched.`);
             } else {
               const { data: created } = await github.rest.issues.create({
                 owner: context.repo.owner,
