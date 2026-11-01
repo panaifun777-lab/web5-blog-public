@@ -194,7 +194,6 @@ async function runVerification() {
   const withdrawRes = await processWithdrawSettlement({
     message: withdrawMessage,
     signature: withdrawSig,
-    txHash: '0xmockchainarcsettlementtx0000000000000000000000000000000000000001',
   });
   console.log('提现处理返回:', withdrawRes);
   if (withdrawRes.amountFormatted !== '120.5') {

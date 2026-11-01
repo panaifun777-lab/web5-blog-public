@@ -8,6 +8,7 @@
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "budget": "node scripts/check-bundle-budget.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
