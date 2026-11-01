@@ -93,9 +93,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[reach/crawl] Error:', err);
-    return NextResponse.json(
-      { error: err?.message || '抓取失败' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

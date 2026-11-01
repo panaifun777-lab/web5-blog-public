@@ -7,15 +7,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAp2Treasury } from '@/lib/web5/ap2/engine';
 import { serializeForJson } from '@/lib/web5/types';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function GET(req: NextRequest) {
   try {
     const vesselDid = req.headers.get('x-vessel-did');
     if (!vesselDid) {
-      return NextResponse.json(
-        { error: 'Vessel DID required (x-vessel-did header)' },
-        { status: 401 }
-      );
+      return apiError('VESSEL_DID_REQUIRED', { request: req });
     }
 
     // Module 1: Vessel Status
@@ -24,7 +22,7 @@ export async function GET(req: NextRequest) {
       include: { eidolon: true, prime: true },
     });
     if (!vessel) {
-      return NextResponse.json({ error: 'Vessel not found' }, { status: 404 });
+      return apiError('VESSEL_NOT_FOUND', { request: req });
     }
 
     const vesselStatus = {
@@ -73,8 +71,7 @@ export async function GET(req: NextRequest) {
       totalYield: totalYield._sum.yieldAmount || 0n,
     }));
   } catch (err) {
-    const e = err as Error;
-    console.error('[dashboard] Error:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[dashboard] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

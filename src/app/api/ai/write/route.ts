@@ -8,7 +8,7 @@ import { streamWrite } from '@/lib/web5/ai/eidolon-writer';
 import { inspectPromptWithTDPO } from '@/lib/web5/security/tdpo';
 import { buildOutlinePrompt, buildArticleExpansionPrompt } from '@/lib/web5/ai/free-pool';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
-import { apiError } from '@/lib/web5/api/errors';
+import { apiError, apiErrorMessage, requestLocale } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,10 +34,7 @@ export async function POST(req: NextRequest) {
     } = await req.json();
 
     if (!prompt || typeof prompt !== 'string') {
-      return new Response(JSON.stringify({ error: 'prompt is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError('MISSING_PROMPT', { request: req });
     }
 
     // ── TDPO 认知安全前置审计 ──
@@ -99,10 +96,15 @@ export async function POST(req: NextRequest) {
             if (chunk.done) break;
           }
         } catch (err) {
-          const e = err as Error;
+          // 不向客户端暴露内部错误细节，只给稳定 code + 本地化文案
+          console.error('[ai/write] stream failed:', err);
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ error: e.message, done: true })}\n\n`
+              `data: ${JSON.stringify({
+                error: apiErrorMessage('INTERNAL_ERROR', requestLocale(req)),
+                code: 'INTERNAL_ERROR',
+                done: true,
+              })}\n\n`
             )
           );
         } finally {
@@ -120,10 +122,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err) {
-    const e = err as Error;
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error('[ai/write] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

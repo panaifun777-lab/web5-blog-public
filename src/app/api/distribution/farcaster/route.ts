@@ -13,28 +13,29 @@ import {
 } from '@/lib/web5/distribution/farcaster';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   const identity = authorizeAdmin(req);
   if (!identity.ok) {
-    return NextResponse.json(
-      { error: identity.error || 'Unauthorized' },
-      { status: identity.status || 401 }
-    );
+    return apiError('ADMIN_AUTH_REQUIRED', {
+      request: req,
+      status: identity.status || 401,
+    });
   }
 
   const limited = rateLimit(`farcaster-distribute:${clientIp(req)}`, 5, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
     const { vesselId, contentArweaveHash } = await req.json();
     if (!vesselId || !contentArweaveHash) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return apiError('MISSING_FIELDS', { request: req });
     }
     const result = await distributeToFarcaster(vesselId, contentArweaveHash);
     return NextResponse.json({
@@ -45,7 +46,8 @@ export async function POST(req: NextRequest) {
         : 'ℹ 已记录分发（仿真模式）',
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[distribution/farcaster] distribute failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
@@ -86,6 +88,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[distribution/farcaster] read failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

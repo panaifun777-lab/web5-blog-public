@@ -3,10 +3,11 @@
 // Content NFT 市场 — 列出可交易的 NFT
 // ════════════════════════════════════════════════════════════════
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { apiError } from '@/lib/web5/api/errors';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const nfts = await db.content.findMany({
       where: { tokenId: { not: null }, nftStatus: 'MINTED' },
@@ -40,6 +41,7 @@ export async function GET() {
       chain: 'Arc Mainnet',
     });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[marketplace/list] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

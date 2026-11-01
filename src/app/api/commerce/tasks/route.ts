@@ -31,6 +31,7 @@ import {
   moneyFlowBlocked,
 } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,23 +41,21 @@ function bearer(req: NextRequest): string {
   return (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
 }
 
-function fail(message: string, status: number, code?: string) {
-  return NextResponse.json(
-    code ? { error: message, code } : { error: message },
-    { status, headers: NO_STORE }
-  );
-}
-
-function toFailure(err: any, requestId: string) {
+function toFailure(err: any, requestId: string, req: NextRequest) {
   if (err instanceof CommerceError) {
     if (err.status >= 500) console.error('[commerce/tasks] Error:', err.message);
-    return fail(err.message, err.status, err.code);
+    // CommerceError 自带稳定 code，直接透传，保持响应结构不变
+    return NextResponse.json(
+      { error: err.message, code: err.code },
+      { status: err.status, headers: NO_STORE }
+    );
   }
   console.error(`[commerce/tasks] Unhandled error (requestId=${requestId}):`, err);
-  return NextResponse.json(
-    { success: false, error: 'Internal error', requestId },
-    { status: 500, headers: NO_STORE }
-  );
+  return apiError('INTERNAL_ERROR', {
+    request: req,
+    headers: NO_STORE,
+    extra: { success: false, requestId },
+  });
 }
 
 const ORDER_ID_RE = /^[A-Za-z0-9._:-]{1,100}$/;
@@ -81,11 +80,17 @@ export async function GET(req: NextRequest) {
   try {
     if (action === 'audit') {
       const admin = authorizeAdmin(req);
-      if (!admin.ok) return fail('Admin authorization required for audits', 403);
+      if (!admin.ok) {
+        return apiError('ADMIN_AUTH_REQUIRED', { request: req, status: 403, headers: NO_STORE });
+      }
 
       const orderId = url.searchParams.get('orderId');
-      if (!orderId) return fail('orderId is required', 400);
-      if (!isOrderId(orderId)) return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
+      if (!orderId) {
+        return apiError('ORDER_ID_REQUIRED', { request: req, headers: NO_STORE });
+      }
+      if (!isOrderId(orderId)) {
+        return apiError('INVALID_ORDER_ID', { request: req, headers: NO_STORE });
+      }
 
       const result = await auditOrder(orderId, {
         chain: url.searchParams.get('chain') !== 'false',
@@ -111,7 +116,7 @@ export async function GET(req: NextRequest) {
       { headers: NO_STORE }
     );
   } catch (err: any) {
-    return toFailure(err, requestId);
+    return toFailure(err, requestId, req);
   }
 }
 
@@ -119,10 +124,10 @@ export async function POST(req: NextRequest) {
   const requestId = randomUUID();
   const limited = rateLimit(`commerce-tasks:${clientIp(req)}`, 20, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -143,12 +148,12 @@ export async function POST(req: NextRequest) {
       action === 'settle' ||
       action === 'refund';
     if (needsOrderId && !isOrderId(body.orderId)) {
-      return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
+      return apiError('INVALID_ORDER_ID', { request: req, headers: NO_STORE });
     }
 
     // Optional on create; validate only when supplied.
     if (action === 'create' && body.orderId !== undefined && !isOrderId(body.orderId)) {
-      return fail('Invalid orderId', 400, 'INVALID_ORDER_ID');
+      return apiError('INVALID_ORDER_ID', { request: req, headers: NO_STORE });
     }
 
     const reason =
@@ -156,7 +161,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'create') {
       if (!session || session.accessMode !== 'vessel' || !session.primeDid) {
-        return fail('Connect a Vessel session to publish a bounty', 401);
+        return apiError('VESSEL_SESSION_REQUIRED', { request: req, headers: NO_STORE });
       }
 
       const rawDeliveryHours = Number(body.deliveryHours);
@@ -185,18 +190,22 @@ export async function POST(req: NextRequest) {
       const existing = await db.taskOrder.findUnique({
         where: { orderId: body.orderId },
       });
-      if (!existing) return fail('Task order not found', 404);
+      if (!existing) {
+        return apiError('TASK_ORDER_NOT_FOUND', { request: req, headers: NO_STORE });
+      }
 
       const isCreator = session?.primeDid === existing.creatorDid;
       if (!admin.ok && !isCreator) {
-        return fail('Only the task creator or an admin can assign this task', 403);
+        return apiError('ORDER_ASSIGN_FORBIDDEN', { request: req, headers: NO_STORE });
       }
 
       const agentDid =
         typeof body.agentDid === 'string' && body.agentDid.trim()
           ? body.agentDid.trim()
           : session?.vesselDid;
-      if (!agentDid) return fail('agentDid is required', 400);
+      if (!agentDid) {
+        return apiError('AGENT_DID_REQUIRED', { request: req, headers: NO_STORE });
+      }
 
       const order = await assignAgentToOrder(body.orderId, agentDid);
       return NextResponse.json({ success: true, order });
@@ -206,12 +215,14 @@ export async function POST(req: NextRequest) {
       const existing = await db.taskOrder.findUnique({
         where: { orderId: body.orderId },
       });
-      if (!existing) return fail('Task order not found', 404);
+      if (!existing) {
+        return apiError('TASK_ORDER_NOT_FOUND', { request: req, headers: NO_STORE });
+      }
 
       const isAssignee =
         session?.vesselDid && session.vesselDid === existing.assignedAgentDid;
       if (!admin.ok && !isAssignee) {
-        return fail('Only the assigned vessel or an admin can submit this task', 403);
+        return apiError('ORDER_SUBMIT_FORBIDDEN', { request: req, headers: NO_STORE });
       }
 
       const order = await submitOrder(
@@ -230,13 +241,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'verify') {
-      if (!admin.ok) return fail('Admin authorization required for verification', 403);
+      if (!admin.ok) {
+        return apiError('ADMIN_AUTH_REQUIRED', { request: req, status: 403, headers: NO_STORE });
+      }
       const order = await verifyOrder(body.orderId);
       return NextResponse.json({ success: true, order });
     }
 
     if (action === 'dispute') {
-      if (!session?.primeDid) return fail('Connect a Vessel session to dispute', 401);
+      if (!session?.primeDid) {
+        return apiError('VESSEL_SESSION_REQUIRED', { request: req, headers: NO_STORE });
+      }
       const order = await disputeOrder(body.orderId, session.primeDid, reason);
       return NextResponse.json({ success: true, order });
     }
@@ -245,7 +260,9 @@ export async function POST(req: NextRequest) {
       const existing = await db.taskOrder.findUnique({
         where: { orderId: body.orderId },
       });
-      if (!existing) return fail('Task order not found', 404);
+      if (!existing) {
+        return apiError('TASK_ORDER_NOT_FOUND', { request: req, headers: NO_STORE });
+      }
 
       let actor: SettlementActor;
       if (admin.ok) {
@@ -258,11 +275,7 @@ export async function POST(req: NextRequest) {
         // Only a session linked to the order creator may settle as orchestrator.
         actor = { kind: 'orchestrator', did: session.vesselDid };
       } else {
-        return fail(
-          'Admin or orchestrator authorization required for settlement',
-          403,
-          'NOT_ORCHESTRATOR'
-        );
+        return apiError('NOT_ORCHESTRATOR', { request: req, headers: NO_STORE });
       }
 
       const order = await settleOrder(body.orderId, actor, {
@@ -278,7 +291,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'refund') {
-      if (!admin.ok) return fail('Admin authorization required for refunds', 403);
+      if (!admin.ok) {
+        return apiError('ADMIN_AUTH_REQUIRED', { request: req, status: 403, headers: NO_STORE });
+      }
       const order = await refundOrder(body.orderId, { kind: 'admin' }, reason);
       return NextResponse.json({
         success: true,
@@ -288,8 +303,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return fail('Invalid action', 400);
+    return apiError('UNKNOWN_ACTION', { request: req, headers: NO_STORE });
   } catch (err: any) {
-    return toFailure(err, requestId);
+    return toFailure(err, requestId, req);
   }
 }

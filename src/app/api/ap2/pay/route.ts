@@ -9,6 +9,7 @@ import { toTokenUnits, serializeForJson, type AP2Category } from '@/lib/web5/typ
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,10 +18,10 @@ export async function POST(req: NextRequest) {
 
   const limited = rateLimit(`ap2-pay:${clientIp(req)}`, 30, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     const session = await resolveVesselSessionFromToken(token);
 
     if (!session || session.accessMode !== 'vessel') {
-      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+      return apiError('VESSEL_SESSION_REQUIRED', { request: req });
     }
 
     const { to, amount, category, ref } = await req.json() as {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (!to || !amount || !category) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return apiError('MISSING_FIELDS', { request: req });
     }
 
     const result = await ap2Pay({
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(serializeForJson(result));
   } catch (err) {
-    const e = err as Error;
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[ap2/pay] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

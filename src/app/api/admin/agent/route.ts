@@ -9,26 +9,28 @@ import { db } from '@/lib/db';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import { setAgentDiscoveryHeaders, AGENT_META } from '@/lib/admin/agent-discovery';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
-function unauthorized(identity: ReturnType<typeof authorizeAdmin>) {
-  return NextResponse.json(
-    { error: identity.error || 'Unauthorized' },
-    { status: identity.status || 401, headers: { 'Cache-Control': 'no-store' } }
-  );
+function unauthorized(req: NextRequest, identity: ReturnType<typeof authorizeAdmin>) {
+  return apiError('ADMIN_AUTH_REQUIRED', {
+    request: req,
+    status: identity.status || 401,
+    headers: { 'Cache-Control': 'no-store' },
+  });
 }
 
 export async function GET(req: NextRequest) {
   const identity = authorizeAdmin(req);
-  if (!identity.ok) return unauthorized(identity);
+  if (!identity.ok) return unauthorized(req, identity);
 
   const limited = rateLimit(`admin-agent:${clientIp(req)}`, 60, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   const [userCount, contentCount, vesselCount, interactionCount, recentContent, recentUsers, invites] =
@@ -103,14 +105,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const identity = authorizeAdmin(req);
-  if (!identity.ok) return unauthorized(identity);
+  if (!identity.ok) return unauthorized(req, identity);
 
   const limited = rateLimit(`admin-agent-post:${clientIp(req)}`, 20, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -142,7 +144,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ users, articles, vessels });
     }
     default:
-      return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+      return apiError('UNKNOWN_ACTION', { request: req });
   }
 }
 

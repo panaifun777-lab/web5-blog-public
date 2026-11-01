@@ -9,16 +9,18 @@ import { db } from '@/lib/db';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import { setAgentDiscoveryHeaders } from '@/lib/admin/agent-discovery';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const identity = authorizeAdmin(req);
   if (!identity.ok) {
-    return NextResponse.json(
-      { error: identity.error || 'Unauthorized' },
-      { status: identity.status || 401, headers: { 'Cache-Control': 'no-store' } }
-    );
+    return apiError('ADMIN_AUTH_REQUIRED', {
+      request: req,
+      status: identity.status || 401,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 
   const eidolons = await db.eidolon.findMany({
@@ -37,29 +39,30 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const identity = authorizeAdmin(req);
   if (!identity.ok) {
-    return NextResponse.json(
-      { error: identity.error || 'Unauthorized' },
-      { status: identity.status || 401, headers: { 'Cache-Control': 'no-store' } }
-    );
+    return apiError('ADMIN_AUTH_REQUIRED', {
+      request: req,
+      status: identity.status || 401,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 
   const limited = rateLimit(`admin-avatar:${clientIp(req)}`, 30, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   const body = await req.json().catch(() => ({}));
   const { did, status } = body;
   if (!did || typeof did !== 'string') {
-    return NextResponse.json({ error: 'DID required' }, { status: 400 });
+    return apiError('MISSING_DID', { request: req });
   }
 
   const allowedStatus = new Set(['ACTIVE', 'INACTIVE', 'REVOKED', 'FROZEN']);
   if (status !== undefined && !allowedStatus.has(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    return apiError('INVALID_STATUS', { request: req });
   }
 
   await db.eidolon.updateMany({

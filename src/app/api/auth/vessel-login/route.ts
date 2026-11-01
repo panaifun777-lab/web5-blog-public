@@ -13,6 +13,7 @@ import { verifyAA2PSignature, queryPrimeDelegation } from '@/lib/web5/vessel-ver
 import { issueVesselToken } from '@/lib/web5/token-issuer';
 import { createVesselWallet } from '@/lib/web5/circle/client';
 import { createHash } from 'crypto';
+import { apiError } from '@/lib/web5/api/errors';
 
 // ━━ 全局 BigInt JSON 序列化修复 ━━
 if (typeof BigInt !== 'undefined' && !(BigInt.prototype as any).toJSON) {
@@ -30,44 +31,29 @@ export async function POST(req: NextRequest) {
     };
 
     if (!challenge || !aa2pClaim || !vesselDid || !eidolonDid) {
-      return NextResponse.json(
-        { error: 'Missing required fields: challenge, aa2pClaim, vesselDid, eidolonDid' },
-        { status: 400 }
-      );
+      return apiError('MISSING_VESSEL_LOGIN_FIELDS', { request: req });
     }
 
     const now = Date.now();
 
     // ━━ Challenge 校验 ━━
     if (now - challenge.timestamp > RFC_CONSTANTS.CHALLENGE_TTL_MS) {
-      return NextResponse.json(
-        { error: 'Challenge expired' },
-        { status: 401 }
-      );
+      return apiError('CHALLENGE_EXPIRED', { request: req });
     }
     if (challenge.permissions.length === 0) {
-      return NextResponse.json(
-        { error: 'No permissions requested' },
-        { status: 400 }
-      );
+      return apiError('NO_PERMISSIONS_REQUESTED', { request: req });
     }
 
     // ━━ Step 3a: 验证 AA2P 签名 ━━
     const isValidSig = await verifyAA2PSignature(aa2pClaim, vesselDid);
     if (!isValidSig) {
-      return NextResponse.json(
-        { error: 'Invalid AA2P signature' },
-        { status: 401 }
-      );
+      return apiError('AA2P_SIGNATURE_INVALID', { request: req });
     }
 
     // ━━ Step 3b: 查询 Prime 授权 ━━
     const delegation = await queryPrimeDelegation(vesselDid, eidolonDid);
     if (!delegation.authorized) {
-      return NextResponse.json(
-        { error: 'Prime delegation not found or revoked' },
-        { status: 403 }
-      );
+      return apiError('PRIME_DELEGATION_MISSING', { request: req });
     }
 
     // ━━ Step 4: 签发 Vessel Session Token ━━
@@ -172,9 +158,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[vessel-login] Error:', err);
-    return NextResponse.json(
-      { error: 'Vessel authentication failed' },
-      { status: 500 }
-    );
+    return apiError('VESSEL_AUTH_FAILED', { request: req });
   }
 }

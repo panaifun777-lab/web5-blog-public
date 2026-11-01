@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ADDRESSES, CHAIN, SUPERADMIN, CONTRACTS_DEPLOYED } from '@/lib/web5/contracts/addresses';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function GET(req: NextRequest) {
   try {
@@ -139,10 +140,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ error: 'Invalid section' }, { status: 400 });
+    return apiError('INVALID_SECTION', { request: req });
   } catch (err) {
-    const e = err as Error;
-    console.error('[explore] Error:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[explore] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

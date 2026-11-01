@@ -8,6 +8,7 @@ import { getAddress, isAddress, verifyMessage } from 'viem';
 import { db } from '@/lib/db';
 import { X402_DEPOSITS_ENABLED, featureDisabled } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,10 +34,10 @@ export async function POST(req: NextRequest) {
 
   const limited = rateLimit(`x402-register:${clientIp(req)}`, 10, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -47,13 +48,13 @@ export async function POST(req: NextRequest) {
     const signature = typeof body?.signature === 'string' ? body.signature : '';
 
     if (!isAddress(address) || !/^\d+$/.test(nonce) || !/^\d+$/.test(deadline)) {
-      return NextResponse.json({ error: 'Invalid address, nonce or deadline' }, { status: 400 });
+      return apiError('INVALID_REGISTRATION_PARAMS', { request: req });
     }
     if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
-      return NextResponse.json({ error: 'Valid signature required' }, { status: 400 });
+      return apiError('SIGNATURE_REQUIRED', { request: req, status: 400 });
     }
     if (BigInt(deadline) < BigInt(Math.floor(Date.now() / 1000))) {
-      return NextResponse.json({ error: 'Signature expired' }, { status: 400 });
+      return apiError('SIGNATURE_EXPIRED', { request: req });
     }
 
     const normalized = getAddress(address).toLowerCase();
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest) {
       signature: signature as `0x${string}`,
     });
     if (!valid) {
-      return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 });
+      return apiError('SIGNATURE_INVALID', { request: req });
     }
 
     const result = await db.$transaction(async (tx) => {
@@ -100,12 +101,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     if (err?.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'This signature or nonce was already used' },
-        { status: 409 }
-      );
+      return apiError('NONCE_ALREADY_USED', { request: req });
     }
     console.error('[x402/register] Error:', err);
-    return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
+    return apiError('REGISTRATION_FAILED', { request: req });
   }
 }

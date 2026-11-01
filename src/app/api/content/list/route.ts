@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function GET(req: NextRequest) {
   try {
@@ -95,8 +96,7 @@ export async function GET(req: NextRequest) {
       hasMore: offset + enriched.length < total,
     });
   } catch (err) {
-    const e = err as Error;
-    console.error('[content/list] Error:', e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[content/list] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

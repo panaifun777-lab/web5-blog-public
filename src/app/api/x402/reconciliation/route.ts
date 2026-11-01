@@ -7,16 +7,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import { formatArcUsdc } from '@/lib/web5/auth/eip712-types';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const identity = authorizeAdmin(req);
   if (!identity.ok) {
-    return NextResponse.json(
-      { error: identity.error || 'Unauthorized' },
-      { status: identity.status || 401, headers: { 'Cache-Control': 'no-store' } }
-    );
+    return apiError('ADMIN_AUTH_REQUIRED', {
+      request: req,
+      status: identity.status || 401,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 
   const wallets = await db.backupWallet.findMany({

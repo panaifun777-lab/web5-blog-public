@@ -37,15 +37,16 @@ export async function POST(req: NextRequest) {
       uploadSize: Number(result.uploadSize || 0),
     });
   } catch (err) {
-    const e = err as Error;
-    console.error('[content/publish] Error:', e);
+    console.error('[content/publish] Error:', err);
     // 永久存证失败属于不可降级的发布失败，返回 422
-    const status = e instanceof ArweavePermanenceError ? 422 : 500;
-    return NextResponse.json({ error: e.message }, { status });
+    if (err instanceof ArweavePermanenceError) {
+      return apiError('ARWEAVE_PERMANENCE_FAILED', { request: req });
+    }
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL('http://x');
     const contents = await import('@/lib/web5/content/publisher').then(m => m.listContents({
@@ -54,7 +55,7 @@ export async function GET() {
     }));
     return NextResponse.json({ success: true, contents });
   } catch (err) {
-    const e = err as Error;
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[content/publish] list failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

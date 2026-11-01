@@ -12,15 +12,16 @@ import {
   readAdminChallenge,
 } from '@/lib/admin/session';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
   const limited = rateLimit(`admin-verify:${ip}`, 10, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -30,21 +31,18 @@ export async function POST(req: NextRequest) {
     typeof body.challengeToken === 'string' ? body.challengeToken : '';
 
   if (!isAddress(address) || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
-    return NextResponse.json({ error: 'Invalid address or signature' }, { status: 400 });
+    return apiError('INVALID_ADDRESS_OR_SIGNATURE', { request: req });
   }
   if (!isSuperadmin(address)) {
-    return NextResponse.json({ error: 'Wallet is not authorized' }, { status: 403 });
+    return apiError('WALLET_NOT_AUTHORIZED', { request: req });
   }
 
   const challenge = readAdminChallenge(challengeToken);
   if (!challenge) {
-    return NextResponse.json(
-      { error: 'Challenge expired or invalid. Please retry.' },
-      { status: 401 }
-    );
+    return apiError('ADMIN_CHALLENGE_INVALID', { request: req });
   }
   if (challenge.address !== address.toLowerCase()) {
-    return NextResponse.json({ error: 'Challenge address mismatch' }, { status: 401 });
+    return apiError('ADMIN_CHALLENGE_MISMATCH', { request: req });
   }
 
   const message = buildAdminChallengeMessage(
@@ -64,7 +62,7 @@ export async function POST(req: NextRequest) {
     valid = false;
   }
   if (!valid) {
-    return NextResponse.json({ error: 'Signature verification failed' }, { status: 401 });
+    return apiError('SIGNATURE_INVALID', { request: req });
   }
 
   try {
@@ -79,13 +77,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     if (err?.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'This signature has already been used. Please retry.' },
-        { status: 409 }
-      );
+      return apiError('SIGNATURE_ALREADY_USED', { request: req });
     }
     console.error('[admin/verify] Nonce persistence failed:', err);
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+    return apiError('ADMIN_LOGIN_FAILED', { request: req });
   }
 
   const sessionToken = issueAdminSession(address);

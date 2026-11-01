@@ -48,19 +48,19 @@ export async function POST(req: NextRequest) {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     const session = await resolveVesselSessionFromToken(token);
     if (!session || session.accessMode !== 'vessel') {
-      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+      return apiError('VESSEL_SESSION_REQUIRED', { request: req });
     }
 
     const body = await req.json();
     const { txHash, toDid, amountUsdc, fromAddress, ref, contentHash } = body;
 
     if (!txHash || !toDid || !amountUsdc) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return apiError('MISSING_FIELDS', { request: req });
     }
 
     const amount = Number(amountUsdc);
     if (!amount || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+      return apiError('INVALID_AMOUNT', { request: req });
     }
 
     // ━━ 1. 链上验证交易真实性 ━━
@@ -216,6 +216,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[ap2/settle] Error:', err);
-    return NextResponse.json({ error: err.message || '结算失败' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

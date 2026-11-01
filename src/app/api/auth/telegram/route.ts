@@ -16,6 +16,7 @@ import { issueVesselToken } from '@/lib/web5/token-issuer';
 import { createVesselWallet } from '@/lib/web5/circle/client';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
 import { serializeForJson, RFC_CONSTANTS } from '@/lib/web5/types';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,17 +57,17 @@ export async function POST(req: NextRequest) {
   try {
     const { initData } = await req.json();
     if (!initData) {
-      return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
+      return apiError('TELEGRAM_INIT_DATA_MISSING', { request: req });
     }
 
     const botToken = process.env.TG_BOT_TOKEN;
     if (!botToken) {
-      return NextResponse.json({ error: 'Telegram auth not configured' }, { status: 503 });
+      return apiError('TELEGRAM_AUTH_NOT_CONFIGURED', { request: req });
     }
     const { valid, user } = verifyTelegramWebAppData(initData, botToken);
 
     if (!valid || !user || !user.id) {
-      return NextResponse.json({ error: 'Invalid or forged Telegram WebApp signature' }, { status: 401 });
+      return apiError('TELEGRAM_SIGNATURE_INVALID', { request: req });
     }
 
     const tgUserId = String(user.id);
@@ -179,6 +180,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[Telegram Login API] Error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

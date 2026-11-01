@@ -8,42 +8,43 @@ import { handleX402PaymentGate, X402_TIER_PRICING } from '@/lib/web5/x402/middle
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`content-comment:${clientIp(req)}`, 10, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
     const session = await resolveVesselSessionFromToken(token);
     if (!session || session.accessMode !== 'vessel') {
-      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+      return apiError('VESSEL_SESSION_REQUIRED', { request: req });
     }
 
     const { arweaveHash, comment } = await req.json();
     const text = typeof comment === 'string' ? comment.trim() : '';
     if (!arweaveHash || !text) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return apiError('MISSING_FIELDS', { request: req });
     }
     if (text.length > 2000) {
-      return NextResponse.json({ error: 'Comment too long (max 2000)' }, { status: 400 });
+      return apiError('COMMENT_TOO_LONG', { request: req, params: { max: 2000 } });
     }
     const vesselDid = session.vesselDid;
     const content = await db.content.findUnique({ where: { arweaveHash } });
     if (!content) {
-      return NextResponse.json({ error: 'Content not found' }, { status: 404 });
+      return apiError('CONTENT_NOT_FOUND', { request: req });
     }
     const vessel = await db.vessel.findUnique({
       where: { did: vesselDid },
       include: { prime: true },
     });
     if (!vessel) {
-      return NextResponse.json({ error: 'Vessel not found' }, { status: 404 });
+      return apiError('VESSEL_NOT_FOUND', { request: req });
     }
 
     const interaction = await db.interaction.create({
@@ -59,8 +60,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, interactionId: interaction.id });
   } catch (err) {
-    const e = err as Error;
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[content/detail] comment failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
     const arweaveHash = url.searchParams.get('hash');
 
     if (!arweaveHash) {
-      return NextResponse.json({ error: 'hash required' }, { status: 400 });
+      return apiError('MISSING_HASH', { request: req });
     }
 
     const content = await db.content.findUnique({
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!content) {
-      return NextResponse.json({ error: 'Content not found' }, { status: 404 });
+      return apiError('CONTENT_NOT_FOUND', { request: req });
     }
 
     // ── x402 外部智能体微支付检测 (Tier 1 摘要 / Tier 2 完整长文，deep=true 升级) ──
@@ -165,7 +166,7 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (err) {
-    const e = err as Error;
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[content/detail] read failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

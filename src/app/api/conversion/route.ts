@@ -4,8 +4,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { apiError } from '@/lib/web5/api/errors';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     // 统计 Observer Mode 用户（无 Vessel 的 Prime）
     const observerCount = await db.prime.count({
@@ -76,8 +77,8 @@ export async function GET() {
       timeline: conversionTimeline.slice(0, 20),
     });
   } catch (err) {
-    const e = err as Error;
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error('[conversion] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
