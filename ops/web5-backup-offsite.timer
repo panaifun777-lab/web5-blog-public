@@ -1,0 +1,17 @@
+[Unit]
+Description=Daily offsite backup of the Web5.blog SQLite database
+
+[Timer]
+# 03:40, twenty minutes after the existing local 03:20 cron backup at
+# /root/ops/backup-web5.sh, so the two never compete for the database lock.
+OnCalendar=*-*-* 03:40:00
+# A host that was down at 03:40 still runs the backup shortly after boot.
+Persistent=true
+# Spread start by up to 5 minutes so this does not collide with other 03:xx
+# jobs on the same VPS.
+RandomizedDelaySec=300
+AccuracySec=1min
+Unit=web5-backup-offsite.service
+
+[Install]
+WantedBy=timers.target

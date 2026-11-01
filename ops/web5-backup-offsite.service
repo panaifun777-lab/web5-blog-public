@@ -1,0 +1,58 @@
+[Unit]
+Description=Web5.blog offsite SQLite backup
+Documentation=file:///root/web5.blog/docs/BACKUP.md
+# The archive is only credible if it leaves the machine, so the unit needs a
+# working route out (rclone/aws/scp) and DNS for it.
+After=network-online.target
+Wants=network-online.target
+# Not ordered after web5-backup-local.timer's 03:20 run on purpose: the timer
+# schedule (03:40) keeps the two apart, and a stale local backup must not block
+# the offsite one.
+#
+# Alerting: left commented out because it needs a unit that exists on this
+# host. Uncomment once /etc/systemd/system/web5-alert@.service is installed.
+# See "Alerting" in docs/BACKUP.md.
+#OnFailure=web5-alert@%n.service
+
+[Service]
+Type=oneshot
+# Installed from the repo with: install -m 700 scripts/backup-offsite.sh /root/ops/backup-offsite.sh
+ExecStart=/root/ops/backup-offsite.sh
+Environment=ENV_FILE=/root/ops/backup.env
+# Deliberately empty: this is not a daemon, and failures must be visible as a
+# failed unit (systemctl --failed), never retried away silently.
+Restart=no
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+# ── hardening ──────────────────────────────────────────────────────────
+# ProtectSystem=full makes /usr, /boot and /etc read-only while leaving the
+# paths this job needs writable: /root/web5.blog (database + retention dir),
+# /root/ops (env file) and /var/log/web5 (status log).
+# ProtectHome must stay off: the database and the env file both live under
+# /root, which systemd treats as a home directory.
+ProtectSystem=full
+ProtectHome=false
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+UMask=0077
+# Explicit so the paths survive a future switch to ProtectSystem=strict.
+# The leading '-' makes each path optional: a missing log dir must not make the
+# unit fail to start (the script creates it), and systemd < 253 errors out on
+# non-existent ReadWritePaths entries.
+ReadWritePaths=-/root/web5.blog/backups/offsite -/var/log/web5
+# Not enabled by default: @system-service can clash with interpreters used by
+# rclone/aws-cli wrappers. If you want it, test with:
+#   systemd-run --property=SystemCallFilter=@system-service /root/ops/backup-offsite.sh --dry-run
+#SystemCallFilter=@system-service
