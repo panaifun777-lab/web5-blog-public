@@ -1,4 +1,4 @@
-import { Metadata, ResolvingMetadata } from 'next';
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
@@ -12,12 +12,13 @@ import {
 import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
-import { getT } from '@/lib/i18n/server';
+import { DEFAULT_LOCALE } from '@/lib/i18n/config';
+import { createT } from '@/lib/i18n/translate';
 
 export const revalidate = 300;
 
-interface Props {
-  params: Promise<{ id: string }>;
+export interface ArticleViewProps {
+  id: string;
 }
 
 async function getContent(idOrHash: string) {
@@ -53,11 +54,7 @@ async function getContent(idOrHash: string) {
   return content;
 }
 
-export async function generateMetadata(
-  { params }: Props,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  const { id } = await params;
+export async function articleMetadata(id: string): Promise<Metadata> {
   const content = await getContent(id);
 
   if (!content) {
@@ -103,9 +100,9 @@ export async function generateMetadata(
   };
 }
 
-export default async function ArticlePage({ params }: Props) {
-  const { id } = await params;
-  const [content, t] = await Promise.all([getContent(id), getT()]);
+export default async function ArticlePage({ id }: ArticleViewProps) {
+  const content = await getContent(id);
+  const t = createT(DEFAULT_LOCALE);
 
   if (!content) {
     notFound();

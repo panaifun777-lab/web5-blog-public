@@ -30,6 +30,7 @@ import {
   type LocaleMeta,
 } from './config';
 import { createT } from './translate';
+import { localeDirection } from './routing';
 import type { TFunction } from './types';
 
 export { LOCALES, LOCALE_LIST, DEFAULT_LOCALE, isLocaleCode };
@@ -69,15 +70,18 @@ export function I18nProvider({
 }) {
   const [locale, setLocaleState] = useState<LocaleCode>(initialLocale);
 
-  // Safety net: if the server could not resolve the cookie (e.g. a static
-  // shell), adopt it right after mount instead of serving the wrong locale.
+  // The URL owns the locale. Keep the cookies in sync so route handlers
+  // (API error messages, legacy DOM readers) resolve the same language as
+  // the page the visitor is looking at.
   useEffect(() => {
-    const fromCookie = readCookieLocale();
-    if (fromCookie && fromCookie !== locale) setLocaleState(fromCookie);
-  }, [locale]);
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') document.documentElement.lang = locale;
+    if (typeof document === 'undefined') return;
+    if (readCookieLocale() !== locale) {
+      const attrs = `path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
+      document.cookie = `${LOCALE_COOKIE}=${locale}; ${attrs}`;
+      document.cookie = `${LEGACY_LOCALE_COOKIE}=${locale}; ${attrs}`;
+    }
+    document.documentElement.lang = locale;
+    document.documentElement.dir = localeDirection(locale);
   }, [locale]);
 
   const setLocale = useCallback((code: LocaleCode) => {

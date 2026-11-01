@@ -8,6 +8,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import React, { useEffect } from 'react';
+import { useI18n } from '@/lib/i18n/index';
 
 // 9 大语言核心专业词汇对照词典 (涵盖 Web5、密码学、致辞与博客流)
 const DICTIONARY: Record<string, Record<string, string>> = {
@@ -246,15 +247,13 @@ function translateDOM(root: Node, dict: Record<string, string>) {
 }
 
 export function GlobalTranslator() {
-  useEffect(() => {
-    const executeTranslation = () => {
-      const cookieLocale = (document.cookie.match(/NEXT_LOCALE=([^;]+)/) || [])[1];
-      const locale = cookieLocale || localStorage.getItem('web5_locale') || 'zh-CN';
-      if (locale === 'zh-CN' || !DICTIONARY[locale]) return;
+  const { locale } = useI18n();
 
-      const dict = DICTIONARY[locale];
-      translateDOM(document.body, dict);
-    };
+  useEffect(() => {
+    if (locale === 'zh-CN' || !DICTIONARY[locale]) return;
+    const dict = DICTIONARY[locale];
+
+    const executeTranslation = () => translateDOM(document.body, dict);
 
     // 延迟 50ms 与 300ms 双重触发，确保 React hydration 渲染完成后立刻深度遍历替换
     const t1 = setTimeout(executeTranslation, 50);
@@ -264,7 +263,7 @@ export function GlobalTranslator() {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [locale]);
 
   return null;
 }

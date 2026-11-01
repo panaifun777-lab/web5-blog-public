@@ -25,6 +25,7 @@ import {
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { getOrCreateVesselWallet, signVesselLoginMessage } from '@/lib/web5/vessel-wallet';
 import { useI18n, useT, type MessageKey, type TFunction } from '@/lib/i18n/index';
+import { localizePath } from '@/lib/i18n/routing';
 
 const PanelLoading = ({ label }: { label: string }) => (
   <div className="flex items-center justify-center py-16 text-xs font-mono text-[#555]">{label}</div>
@@ -825,12 +826,13 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 function RitualLanding({ loginMethod, setLoginMethod, vesselAuth, onVesselLogin, onWalletLogin, loginBusy, loginError, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0 }: any) {
   const t = useT();
+  const { locale } = useI18n();
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
       {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
       <div className="fixed top-5 right-5 sm:right-8 z-50 flex items-center gap-2.5">
         <a
-          href="/founder"
+          href={localizePath('/founder', locale)}
           className="text-xs text-[#888] hover:text-[#FFCC00] font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.08] bg-black/60 backdrop-blur-xl shadow-lg hover:border-[#FFCC00]/40 transition-all"
         >
           <Quote className="w-3.5 h-3.5 text-[#FFCC00]" />

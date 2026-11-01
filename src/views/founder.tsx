@@ -11,6 +11,7 @@ import { ArrowLeft, Quote, Cpu, Globe, Zap, Sparkles, Shield, Bot, Coins, Networ
 import Link from 'next/link';
 import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import { useI18n } from '@/lib/i18n/index';
+import { localizePath } from '@/lib/i18n/routing';
 
 export default function FounderPage() {
   const { locale } = useI18n();
@@ -23,7 +24,7 @@ export default function FounderPage() {
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-12">
         {/* Back & Language */}
         <div className="flex items-center justify-between mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-[#555] hover:text-[#00FFCC] text-sm transition-colors font-mono">
+          <Link href={localizePath('/', locale)} className="inline-flex items-center gap-2 text-[#555] hover:text-[#00FFCC] text-sm transition-colors font-mono">
             <ArrowLeft className="w-4 h-4" /> {isEn ? 'Back to W · B · O · G' : '返回 W · B · O · G'}
           </Link>
           <LanguageSwitcher />

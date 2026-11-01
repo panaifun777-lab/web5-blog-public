@@ -2,13 +2,14 @@
 
 // ════════════════════════════════════════════════════════════════
 // src/components/web5/i18n/language-switcher.tsx
-// 全球多语言切换器 — 点击直接强制执行 window.location.reload()
-// 确保 Cookie 与 localStorage 立即穿透全局，页面 100% 刷新重载并应用新语言
+// 全球多语言切换器 — 切换到目标语言的同路径 URL（/en/...），整页加载
+// 确保 <html lang> 与服务端渲染文案随之改变
 // ════════════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react';
 import { Globe, Check } from 'lucide-react';
 import { useI18n, LOCALES, type LocaleCode } from '@/lib/i18n/index';
+import { localizePath, parseLocalizedPath } from '@/lib/i18n/routing';
 
 const locales = Object.values(LOCALES);
 
@@ -29,16 +30,15 @@ export function LanguageSwitcher() {
   }, []);
 
   const switchLocale = (code: LocaleCode) => {
-    try {
-      localStorage.setItem('web5_locale', code);
-      document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; SameSite=Lax`;
-    } catch {}
-    i18n.setLocale(code);
     setOpen(false);
-    // 强制全局刷新，确保所有服务端组件、静态文本与 DOM 节点 100% 重载为目标语言
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
+    i18n.setLocale(code);
+    if (typeof window === 'undefined') return;
+    // The URL is the source of truth: move to the same page under the new
+    // prefix. A full document load is intended — zh and the other locales
+    // live in different root layouts, so the <html lang> must be re-rendered.
+    const { pathname, search, hash } = window.location;
+    const target = `${localizePath(parseLocalizedPath(pathname).path, code)}${search}${hash}`;
+    if (target !== `${pathname}${search}${hash}`) window.location.assign(target);
   };
 
   const current = locales.find((l) => l.code === locale) || locales[0];
