@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ export async function GET() {
     bountyIncentives: {
       refuteToEarnUsdc: '0.10',
       refuteToEarnWbog: '500',
-      agentAdmissionCapUsdc: '0.10',
+      agentAdmissionCapUsdc: X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc,
       burnRatePercent: '50%',
     },
   });

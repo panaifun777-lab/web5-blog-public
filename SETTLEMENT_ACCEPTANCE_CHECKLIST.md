@@ -48,6 +48,7 @@
 - [x] **2.8 列表不泄露验收材料**：任务列表投影剔除 `deliverableContent` 与 `acceptanceHash`，验收哈希只在审计/管理路径可见。
 - [x] **2.9 对外发现层与结算代码同源**：`/llms.txt`、`/api/market/x402-market`、`/.well-known/agent.json` 三处一律读同一批常量（托管地址、3 确认、唯一 tx、单笔/24h 上限、争议窗口、80/20 + RETAINED），并声明「先有已确认的托管存款才有订单」「`creatorDid` 由 Bearer 会话推导、请求体不接受」。`tests/discovery.test.ts` 逐条比对实时常量，防止再次漂移。
 - [x] **2.10 结算错误可机读**：`apiError(code, ...)` 统一返回 `{ error, code }`，`code` 稳定（`TX_NOT_FOUND` / `RECIPIENT_MISMATCH` / `AMOUNT_MISMATCH` / `REPLAY` 等），`error` 按 `Accept-Language` 返回中/英文（无 header 的机器调用方拿英文），响应带 `Vary: Accept-Language`。`tests/api-errors.test.ts` 覆盖 locale 解析、插值与状态码。
+- [x] **2.11 定价单一来源**：三级 x402 价格只存在于 `X402_TIER_PRICING`，市场清单、`/api/content/detail`、`/api/aa2p/discover` 与 AA2P RPC 回执全部引用同一常量；Tier 2（完整长文）锚定 x402「单篇文章 $0.25」的公开量级，Tier 1 / Tier 3 分别为 $0.05 / $0.50，WBOG 折算由 `WBOG_BASE_PRICE_USDC` 计算。`tests/pricing.test.ts` 与 `tests/discovery.test.ts` 防止价格与清单再次漂移。
 
 ## 3. 测试网端到端（Arc Testnet 5042002）
 
