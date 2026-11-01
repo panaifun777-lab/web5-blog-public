@@ -1,10 +1,15 @@
+'use client';
+
 // ════════════════════════════════════════════════════════════════
 // src/components/web5/footer.tsx — 站底（合约地址、版权、社交）
+// Client component: rendered from both the RSC article page and the
+// client home shell, so it reads the shared i18n context.
 // ════════════════════════════════════════════════════════════════
 
 import { ExternalLink, Github, Twitter, Send } from 'lucide-react';
 import Link from 'next/link';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { useT } from '@/lib/i18n';
 
 const ADDRS = {
   '$WBOG Token': ARC_MAINNET.addresses.WBOG,
@@ -16,6 +21,8 @@ const ADDRS = {
 const SOURCE_URL = process.env.NEXT_PUBLIC_SOURCE_URL || '';
 
 export function Footer() {
+  const t = useT();
+
   return (
     <footer className="relative z-10 border-t border-white/[0.04] bg-[#050508] px-6 py-10 mt-24">
       <div className="max-w-[1440px] mx-auto">
@@ -25,15 +32,15 @@ export function Footer() {
           <div>
             <div className="font-bold text-sm text-white mb-3">Web5.blog</div>
             <div className="text-[11px] text-[#555] leading-relaxed">
-              Prime × Eidolon × Vessel 三层生命架构。
+              {t('footer.tagline1')}
               <br />
-              Circle ARC 稳定币原生公链首个分身博客平台。
+              {t('footer.tagline2')}
             </div>
           </div>
 
           {/* Contracts */}
           <div>
-            <div className="font-bold text-sm text-white mb-3">Arc Mainnet 合约</div>
+            <div className="font-bold text-sm text-white mb-3">{t('footer.contractsTitle')}</div>
             <div className="space-y-1.5">
               {Object.entries(ADDRS).map(([name, addr]) => (
                 <a
@@ -53,22 +60,22 @@ export function Footer() {
 
           {/* Social */}
           <div>
-            <div className="font-bold text-sm text-white mb-3">关注我们</div>
+            <div className="font-bold text-sm text-white mb-3">{t('footer.follow')}</div>
             <div className="flex gap-3">
               {SOURCE_URL ? (
                 <a
                   href={SOURCE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title="GitHub 源码"
+                  title={t('footer.github')}
                   className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
                 >
                   <Github className="w-4 h-4" />
                 </a>
               ) : (
                 <div
-                  title="源码位于私有仓库，需授权后访问"
-                  aria-label="源码位于私有仓库，需授权后访问"
+                  title={t('footer.privateRepo')}
+                  aria-label={t('footer.privateRepo')}
                   className="w-8 h-8 rounded-lg border border-white/[0.04] flex items-center justify-center text-[#333] cursor-not-allowed"
                 >
                   <Github className="w-4 h-4" />
@@ -98,7 +105,7 @@ export function Footer() {
                 href="https://t.me/Web5blog_bot"
                 target="_blank"
                 rel="noopener noreferrer"
-                title="Telegram 官方机器人"
+                title={t('footer.telegram')}
                 className="w-8 h-8 rounded-lg border border-white/[0.06] flex items-center justify-center hover:border-[#00FFCC]/30 hover:text-[#00FFCC] transition-all text-[#555]"
               >
                 <Send className="w-4 h-4" />
@@ -114,7 +121,7 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] text-[#444]">
           <span>© 2026 Web5.blog. Built with Prime × Eidolon × Vessel.</span>
           <Link href="/security" className="hover:text-[#00CC99] transition-colors">
-            安全披露
+            {t('footer.security')}
           </Link>
           <span className="font-mono text-[#333]">0xW5::piaoshu</span>
         </div>

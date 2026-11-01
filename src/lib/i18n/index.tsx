@@ -1,94 +1,109 @@
-// ════════════════════════════════════════════════════════════════
-// src/lib/i18n/index.tsx — 全球多语言上下文与 Cookie 穿透引擎
-// ════════════════════════════════════════════════════════════════
-
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import zhCN from './locales/zh-CN';
-import en from './locales/en';
-import ja from './locales/ja';
-import ko from './locales/ko';
-import es from './locales/es';
-import type { Translations } from './locales/zh-CN';
+// ════════════════════════════════════════════════════════════════
+// src/lib/i18n/index.tsx — client entry point (provider + hooks)
+//
+// The provider is seeded by the root layout with the server-resolved
+// locale, so SSR markup and the first client render agree. Switching
+// writes the `locale` cookie (and the legacy `NEXT_LOCALE`) and reloads,
+// so the next request is server-rendered in the new language.
+// ════════════════════════════════════════════════════════════════
 
-export type LocaleCode = 'zh-CN' | 'en' | 'ja' | 'ko' | 'es' | 'fr' | 'de' | 'ru' | 'ar';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import {
+  DEFAULT_LOCALE,
+  LEGACY_LOCALE_COOKIE,
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  LOCALE_LIST,
+  LOCALES,
+  isLocaleCode,
+  type LocaleCode,
+  type LocaleMeta,
+} from './config';
+import { createT } from './translate';
+import type { TFunction } from './types';
 
-export interface LocaleDef {
-  code: LocaleCode;
-  label: string;
-  nativeLabel: string;
-  flag: string;
-  translations: Translations;
+export { LOCALES, LOCALE_LIST, DEFAULT_LOCALE, isLocaleCode };
+export type { LocaleCode, LocaleMeta, TFunction };
+export type { MessageKey, TVars } from './types';
+
+/** Legacy key read by the DOM translator; kept in sync for compatibility. */
+const LEGACY_STORAGE_KEY = 'web5_locale';
+
+function readCookieLocale(): LocaleCode | null {
+  if (typeof document === 'undefined') return null;
+  const match =
+    document.cookie.match(new RegExp(`(?:^|;\\s*)${LOCALE_COOKIE}=([^;]+)`)) ??
+    document.cookie.match(new RegExp(`(?:^|;\\s*)${LEGACY_LOCALE_COOKIE}=([^;]+)`));
+  const value = match ? decodeURIComponent(match[1]) : null;
+  return isLocaleCode(value) ? value : null;
 }
 
-export const LOCALES: Record<LocaleCode, LocaleDef> = {
-  'zh-CN': { code: 'zh-CN', label: 'Chinese',    nativeLabel: '简体中文', flag: '🇨🇳', translations: zhCN },
-  'en':    { code: 'en',    label: 'English',    nativeLabel: 'English',  flag: '🇺🇸', translations: en as unknown as Translations },
-  'ja':    { code: 'ja',    label: 'Japanese',   nativeLabel: '日本語',   flag: '🇯🇵', translations: ja as unknown as Translations },
-  'ko':    { code: 'ko',    label: 'Korean',     nativeLabel: '한국어',   flag: '🇰🇷', translations: ko as unknown as Translations },
-  'es':    { code: 'es',    label: 'Spanish',    nativeLabel: 'Español',  flag: '🇪🇸', translations: es as unknown as Translations },
-  'fr':    { code: 'fr',    label: 'French',     nativeLabel: 'Français', flag: '🇫🇷', translations: en as unknown as Translations },
-  'de':    { code: 'de',    label: 'German',     nativeLabel: 'Deutsch',  flag: '🇩🇪', translations: en as unknown as Translations },
-  'ru':    { code: 'ru',    label: 'Russian',    nativeLabel: 'Русский',  flag: '🇷🇺', translations: en as unknown as Translations },
-  'ar':    { code: 'ar',    label: 'Arabic',     nativeLabel: 'العربية',  flag: '🇦🇪', translations: en as unknown as Translations },
-};
-
-function detectLocale(): LocaleCode {
-  if (typeof window === 'undefined') return 'zh-CN';
-  const cookieMatch = document.cookie.match(/NEXT_LOCALE=([^;]+)/);
-  if (cookieMatch && LOCALES[cookieMatch[1] as LocaleCode]) {
-    return cookieMatch[1] as LocaleCode;
-  }
-  const stored = localStorage.getItem('web5_locale') as LocaleCode | null;
-  if (stored && LOCALES[stored]) return stored;
-  const browserLang = navigator.language?.slice(0, 2);
-  if (browserLang === 'en') return 'en';
-  if (browserLang === 'ja') return 'ja';
-  if (browserLang === 'ko') return 'ko';
-  if (browserLang === 'es') return 'es';
-  if (browserLang === 'fr') return 'fr';
-  if (browserLang === 'de') return 'de';
-  if (browserLang === 'ru') return 'ru';
-  if (browserLang === 'ar') return 'ar';
-  return 'zh-CN';
-}
-
-interface I18nContextValue {
+export interface I18nContextValue {
   locale: LocaleCode;
   setLocale: (code: LocaleCode) => void;
-  t: Translations;
-  locales: LocaleDef[];
+  /** Typed translator: unknown keys are a compile error. */
+  t: TFunction;
+  locales: LocaleMeta[];
+  /** True when the active locale falls back to `en` for some keys. */
+  isPartial: boolean;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<LocaleCode>('zh-CN');
+export function I18nProvider({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: {
+  children: ReactNode;
+  initialLocale?: LocaleCode;
+}) {
+  const [locale, setLocaleState] = useState<LocaleCode>(initialLocale);
+
+  // Safety net: if the server could not resolve the cookie (e.g. a static
+  // shell), adopt it right after mount instead of serving the wrong locale.
+  useEffect(() => {
+    const fromCookie = readCookieLocale();
+    if (fromCookie && fromCookie !== locale) setLocaleState(fromCookie);
+  }, [locale]);
 
   useEffect(() => {
-    const initial = detectLocale();
-    setLocaleState(initial);
-  }, []);
+    if (typeof document !== 'undefined') document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((code: LocaleCode) => {
     setLocaleState(code);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('web5_locale', code);
-      // 写入全站 Cookie 穿透至服务端与所有子组件
-      document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000; SameSite=Lax`;
-      window.dispatchEvent(new CustomEvent('web5_language_changed', { detail: { language: code } }));
+    if (typeof document === 'undefined') return;
+    const attrs = `path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax`;
+    document.cookie = `${LOCALE_COOKIE}=${code}; ${attrs}`;
+    document.cookie = `${LEGACY_LOCALE_COOKIE}=${code}; ${attrs}`;
+    try {
+      window.localStorage.setItem(LEGACY_STORAGE_KEY, code);
+    } catch {
+      // private mode: the cookie is the source of truth anyway
     }
+    document.documentElement.lang = code;
+    window.dispatchEvent(new CustomEvent('web5_language_changed', { detail: { language: code } }));
   }, []);
 
-  const t = LOCALES[locale]?.translations || LOCALES['zh-CN'].translations;
-  const locales = Object.values(LOCALES);
+  const t = useMemo(() => createT(locale), [locale]);
+  const isPartial = LOCALES[locale].status === 'partial' || LOCALES[locale].status === 'fallback-en';
 
-  return (
-    <I18nContext.Provider value={{ locale, setLocale, t, locales }}>
-      {children}
-    </I18nContext.Provider>
+  const value = useMemo<I18nContextValue>(
+    () => ({ locale, setLocale, t, locales: LOCALE_LIST, isPartial }),
+    [locale, setLocale, t, isPartial],
   );
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n(): I18nContextValue {
@@ -97,6 +112,7 @@ export function useI18n(): I18nContextValue {
   return ctx;
 }
 
-export function useT() {
+/** Shorthand for the typed translator. */
+export function useT(): TFunction {
   return useI18n().t;
 }

@@ -24,7 +24,7 @@ import {
 
 import { useTma } from '@/components/web5/telegram/tma-provider';
 import { getOrCreateVesselWallet, signVesselLoginMessage } from '@/lib/web5/vessel-wallet';
-import { useI18n } from '@/lib/i18n/index';
+import { useI18n, useT, type MessageKey, type TFunction } from '@/lib/i18n/index';
 
 const PanelLoading = ({ label }: { label: string }) => (
   <div className="flex items-center justify-center py-16 text-xs font-mono text-[#555]">{label}</div>
@@ -85,12 +85,20 @@ type View = 'ritual' | 'app';
 type Tab = 'feed' | 'write' | 'vessels' | 'explore' | 'settings';
 type Module = 'tech' | 'humanities' | 'experts' | 'bounties' | 'crowdfunding';
 
-const MODULES: Record<Module, { label: string; icon: React.ReactNode; color: string }> = {
-  tech:          { label: '科技前沿', icon: <Cpu />,      color: '#00FFCC' },
-  humanities:    { label: '人文思辨', icon: <BookOpen />, color: '#FFCC00' },
-  experts:       { label: 'AI专家',   icon: <Bot />,      color: '#0066FF' },
-  bounties:      { label: '悬赏广场', icon: <Target />,   color: '#FF6633' },
-  crowdfunding:  { label: '创意众筹', icon: <Users />,    color: '#B080E8' },
+const MODULES: Record<Module, { icon: React.ReactNode; color: string }> = {
+  tech:          { icon: <Cpu />,      color: '#00FFCC' },
+  humanities:    { icon: <BookOpen />, color: '#FFCC00' },
+  experts:       { icon: <Bot />,      color: '#0066FF' },
+  bounties:      { icon: <Target />,   color: '#FF6633' },
+  crowdfunding:  { icon: <Users />,    color: '#B080E8' },
+};
+
+const MODULE_LABEL_KEYS: Record<Module, MessageKey> = {
+  tech: 'modules.tech',
+  humanities: 'modules.humanity',
+  experts: 'modules.experts',
+  bounties: 'modules.bounty',
+  crowdfunding: 'modules.crowd',
 };
 
 export default function Home() {
@@ -115,9 +123,8 @@ export default function Home() {
   const [trendingList, setTrendingList] = useState<any[]>([]);
   const [realStats, setRealStats] = useState({ posts: 0, vessels: 0, primes: 0 });
   const [curveReserve, setCurveReserve] = useState(0);
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const { isTma, user: tmaUser } = useTma();
-  const isEn = locale !== 'zh-CN';
 
   // 加载真实全局统计（Posts / Vessels / Primes）
   useEffect(() => {
@@ -169,7 +176,7 @@ export default function Home() {
               rank: idx + 1,
               title: c.title,
               views: c.stats?.reads || 0,
-              tag: '科技',
+              tag: t('home.trendingTag'),
               arweaveHash: c.arweaveHash,
             }));
             setTrendingList(mapped);
@@ -231,14 +238,6 @@ export default function Home() {
     }
   }, []);
 
-  const moduleLabels: Record<Module, string> = {
-    tech: isEn ? 'Technology' : (t?.modules?.tech || '科技前沿'),
-    humanities: isEn ? 'Humanities' : (t?.modules?.humanity || '人文思辨'),
-    experts: isEn ? 'AI Experts' : (t?.modules?.experts || t?.modules?.piaoshu || 'AI专家'),
-    bounties: isEn ? 'Bounties & Tasks' : (t?.modules?.bounty || '悬赏广场'),
-    crowdfunding: isEn ? 'Crowdfunding' : (t?.modules?.crowd || '创意众筹'),
-  };
-
   const handleRitualSuccess = (s: VesselSession) => {
     setSession(s);
     setView('app');
@@ -265,9 +264,9 @@ export default function Home() {
       setLoginMethod('vessel');
     } catch (err: any) {
       console.warn('[Web5] Vessel awakening error:', err);
-      setLoginError(isEn
-        ? 'Vessel awakening failed: ' + (err?.message || 'please retry')
-        : '容器唤醒失败：' + (err?.message || '请重试'));
+      setLoginError(t('home.error.vesselAwakenFailed', {
+        message: err?.message || t('home.error.retry'),
+      }));
     } finally {
       setLoginBusy(null);
     }
@@ -277,6 +276,7 @@ export default function Home() {
     if (loginBusy) return;
     setLoginError(null);
     await connectWallet(
+      t,
       setSession,
       setView,
       setTab,
@@ -309,8 +309,6 @@ export default function Home() {
       {showSplash && <SplashAwakening onFinished={() => setShowSplash(false)} />}
       {view === 'ritual' ? (
         <RitualLanding
-          t={t}
-          moduleLabels={moduleLabels}
           loginMethod={loginMethod}
           setLoginMethod={setLoginMethod}
           vesselAuth={vesselAuth}
@@ -327,7 +325,6 @@ export default function Home() {
           onOpenCurve={() => setCurveModalOpen(true)}
           onOpenWalletGuide={() => setWalletGuideOpen(true)}
           curveReserve={curveReserve}
-          isEn={isEn}
         />
       ) : (
         <main className="min-h-screen bg-[#050508] text-white flex flex-col" suppressHydrationWarning>
@@ -376,7 +373,7 @@ export default function Home() {
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={isEn ? "Search articles, contracts, DID..." : "搜索文章、合约、用户..."}
+              placeholder={t('nav.search')}
               className="w-full h-9 pl-9 pr-3 rounded-lg bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder-[#555] outline-none focus:border-[#00FFCC]/30 focus:bg-white/[0.06] transition-all"
             />
           </div>
@@ -391,7 +388,7 @@ export default function Home() {
                   backgroundColor: activeModule === key ? `${m.color}10` : 'transparent',
                   borderLeft: activeModule === key ? `2px solid ${m.color}` : '2px solid transparent',
                 }}
-              >{m.icon}<span>{moduleLabels[key as Module] || m.label}</span></button>
+              >{m.icon}<span>{t(MODULE_LABEL_KEYS[key as Module])}</span></button>
             ))}
             {/* Language switcher */}
             <LanguageSwitcher />
@@ -406,14 +403,14 @@ export default function Home() {
               className="bg-gradient-to-r from-[#FFCC00]/15 to-[#FF66AA]/15 border border-[#FFCC00]/30 text-[#FFCC00] hover:bg-[#FFCC00]/25 text-xs h-8 px-2.5 font-mono"
             >
               <Gift className="w-3.5 h-3.5 mr-1 text-[#FFCC00] animate-bounce" />
-              <span className="hidden sm:inline">{isEn ? 'Genesis 1,000 $WBOG' : '创世空投 1,000 $WBOG'}</span>
-              <span className="sm:hidden">{isEn ? 'Airdrop' : '空投'}</span>
+              <span className="hidden sm:inline">{t('nav.airdrop')}</span>
+              <span className="sm:hidden">{t('nav.airdropShort')}</span>
             </Button>
 
             {/* 写作按钮 */}
             <Button size="sm" variant="ghost" onClick={() => setTab('write')}
               className={`text-xs h-8 hidden sm:flex ${tab === 'write' ? 'bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40' : 'text-[#00FFCC] hover:text-[#00FFCC]/80'}`}>
-              <Zap className="w-3.5 h-3.5 mr-1" />{isEn ? 'Write' : '写作'}
+              <Zap className="w-3.5 h-3.5 mr-1" />{t('nav.write')}
             </Button>
 
             {session ? (
@@ -421,13 +418,13 @@ export default function Home() {
                 <Badge
                   onClick={() => setTab('vessels')}
                   className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/20 text-[10px] h-6 cursor-pointer hover:bg-[#B080E8]/25 hover:border-[#B080E8]/50 transition-all flex items-center gap-1 select-none"
-                  title={isEn ? "Click to open My Avatar Matrix & Vault" : "点击一键直达我的分身矩阵与资产看板"}
+                  title={t('nav.vesselBadgeTitle')}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#B080E8] mr-1.5 animate-pulse" />
                   VESSEL
                 </Badge>
                 <Button size="sm" variant="ghost" onClick={handleLogout}
-                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0" title={isEn ? "Logout Session" : "退出会话"}><LogOut className="w-3.5 h-3.5" /></Button>
+                  className="text-[#555] hover:text-[#FF66AA] h-8 w-8 p-0" title={t('nav.logoutTitle')}><LogOut className="w-3.5 h-3.5" /></Button>
               </div>
             ) : null}
           </div>
@@ -442,11 +439,11 @@ export default function Home() {
             {/* 子功能导航 Tab (常驻顶端) */}
             <div className="flex items-center gap-2 p-1.5 mb-6 rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-x-auto">
               {[
-                { id: 'vessels', label: isEn ? '🧬 Avatar Matrix' : '🧬 我的分身矩阵', icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
-                { id: 'feed', label: isEn ? 'Blog Stream' : '博客流', icon: <FileText className="w-3.5 h-3.5" /> },
-                { id: 'write', label: isEn ? '✍️ AI Stream Write' : '✍️ AI 流式写作', icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
-                { id: 'explore', label: isEn ? '🔍 Explorer & DEX' : '🔍 探索面板与市场', icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
-                { id: 'settings', label: isEn ? '⚙️ Settings' : '⚙️ 系统设置', icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
+                { id: 'vessels', label: t('nav.tabs.vessels'), icon: <Activity className="w-3.5 h-3.5 text-[#B080E8]" /> },
+                { id: 'feed', label: t('nav.tabs.feed'), icon: <FileText className="w-3.5 h-3.5" /> },
+                { id: 'write', label: t('nav.tabs.write'), icon: <Zap className="w-3.5 h-3.5 text-[#00FFCC]" /> },
+                { id: 'explore', label: t('nav.tabs.explore'), icon: <Shield className="w-3.5 h-3.5 text-[#0066FF]" /> },
+                { id: 'settings', label: t('nav.tabs.settings'), icon: <Bot className="w-3.5 h-3.5 text-[#FF66AA]" /> },
               ].map(tItem => (
                 <button
                   key={tItem.id}
@@ -469,8 +466,8 @@ export default function Home() {
                 <span style={{ color: MODULES[activeModule].color, filter: `drop-shadow(0 0 6px ${MODULES[activeModule].color}40)` }}>
                   {MODULES[activeModule].icon}
                 </span>
-                <h2 className="text-lg font-bold">{moduleLabels[activeModule] || MODULES[activeModule].label}</h2>
-                <span className="text-xs text-[#555] hidden sm:inline">{isEn ? '— Web5 Curated Matrix' : '— Web5 专题聚合'}</span>
+                <h2 className="text-lg font-bold">{t(MODULE_LABEL_KEYS[activeModule])}</h2>
+                <span className="text-xs text-[#555] hidden sm:inline">{t('home.moduleMatrixSuffix')}</span>
               </div>
               <Button
                 size="sm"
@@ -478,7 +475,7 @@ export default function Home() {
                 className="bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/20 text-xs h-7 px-2.5 flex items-center"
               >
                 <Zap className="w-3 h-3 mr-1" />
-                <span>{isEn ? '✍️ Compose in Category' : '✍️ 创作此专题博文'}</span>
+                <span>{t('home.composeInCategory')}</span>
               </Button>
             </div>
 
@@ -540,7 +537,7 @@ export default function Home() {
                     className="h-6 px-2 text-[10px] text-[#FFCC00] hover:bg-[#FFCC00]/15 flex items-center gap-1 border border-[#FFCC00]/30"
                   >
                     <Sparkles className="w-2.5 h-2.5" />
-                    <span>{isEn ? '+ Sponsor' : '+ 赞助榜首'}</span>
+                    <span>{t('home.sponsorCta')}</span>
                   </Button>
                 </div>
                 <div className="px-2 py-1">
@@ -555,11 +552,11 @@ export default function Home() {
                         }
                       }}
                       className="my-1.5 p-2.5 rounded-lg border border-[#FFCC00]/40 bg-gradient-to-r from-[#FFCC00]/15 via-[#00FFCC]/05 to-transparent cursor-pointer hover:border-[#FFCC00]/70 transition-all group"
-                      title={isEn ? "Sponsored Hot Topic - Click to view" : "商业热搜置顶 - 点击直达"}
+                      title={t('home.sponsorTooltip')}
                     >
                       <div className="flex items-center justify-between text-[9px] mb-1">
                         <span className="text-[#FFCC00] font-bold font-mono flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-[#FFCC00] animate-pulse" /> SPONSORED · 官方推荐
+                          <Sparkles className="w-3 h-3 text-[#FFCC00] animate-pulse" /> {t('home.sponsoredLabel')}
                         </span>
                         <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[8px] py-0 h-3.5 border-none">
                           TOP #1
@@ -574,29 +571,29 @@ export default function Home() {
                     </div>
                   )}
 
-                  {trendingList.map((t) => (
+                  {trendingList.map((item) => (
                     <div
-                      key={t.rank + '-' + (t.arweaveHash || t.title)}
+                      key={item.rank + '-' + (item.arweaveHash || item.title)}
                       onClick={() => {
                         setTab('feed');
-                        if (t.arweaveHash) {
-                          setTargetPostHash(t.arweaveHash);
+                        if (item.arweaveHash) {
+                          setTargetPostHash(item.arweaveHash);
                         } else {
-                          setSearchQuery(t.title.slice(0, 10));
+                          setSearchQuery(item.title.slice(0, 10));
                         }
                       }}
                       className="flex items-start gap-3 px-2 py-2.5 rounded-lg hover:bg-white/[0.04] transition-all cursor-pointer group hover:scale-[1.01]"
-                      title={isEn ? "Click to open and read full article" : "点击立即阅读此文章"}
+                      title={t('home.trendingReadTitle')}
                     >
-                      <span className={`text-xs font-mono w-5 text-center mt-0.5 ${t.rank <= 3 ? 'font-bold' : 'text-[#444]'}`}
-                        style={{ color: t.rank <= 3 ? COLORS.prime : undefined }}
-                      >{t.rank}</span>
+                      <span className={`text-xs font-mono w-5 text-center mt-0.5 ${item.rank <= 3 ? 'font-bold' : 'text-[#444]'}`}
+                        style={{ color: item.rank <= 3 ? COLORS.prime : undefined }}
+                      >{item.rank}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-[#ccc] group-hover:text-[#00FFCC] transition-colors truncate">{t.title}</div>
+                        <div className="text-xs text-[#ccc] group-hover:text-[#00FFCC] transition-colors truncate">{item.title}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] text-[#555]">{t.views} views</span>
-                          <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${MODULES[t.tag as keyof typeof MODULES]?.color || '#555'}15`, color: MODULES[t.tag as keyof typeof MODULES]?.color || '#555' }}>
-                            {t.tag}
+                          <span className="text-[9px] text-[#555]">{item.views} views</span>
+                          <span className="text-[8px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${MODULES[item.tag as keyof typeof MODULES]?.color || '#555'}15`, color: MODULES[item.tag as keyof typeof MODULES]?.color || '#555' }}>
+                            {item.tag}
                           </span>
                         </div>
                       </div>
@@ -611,17 +608,17 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Gift className="w-4 h-4 text-[#FFCC00]" />
-                    <span className="text-xs font-bold uppercase text-[#FFCC00]">{isEn ? 'Genesis Airdrop' : '创世先锋空投'}</span>
+                    <span className="text-xs font-bold uppercase text-[#FFCC00]">{t('home.airdropTitle')}</span>
                   </div>
                   <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] border-none text-[9px] h-4">
-                    {isEn ? '10k Slots' : '10,000 名'}
+                    {t('home.airdropSlots')}
                   </Badge>
                 </div>
                 <div className="font-mono text-base font-bold text-white mb-1">
-                  1,000 $WBOG <span className="text-xs text-[#888] font-normal">{isEn ? '/ User' : '/ 人'}</span>
+                  1,000 $WBOG <span className="text-xs text-[#888] font-normal">{t('home.perUser')}</span>
                 </div>
                 <div className="text-[10px] text-[#aaa] leading-relaxed">
-                  {isEn ? 'Complete 5 badges to claim tokens & Genesis NFT badge. Click to inspect →' : '完成 5 项任务即可领取原生代币与 Genesis NFT 徽章。点击查看进度 →'}
+                  {t('home.airdropBody')}
                 </div>
               </div>
 
@@ -633,10 +630,10 @@ export default function Home() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Rocket className="w-4 h-4 text-[#00FFCC] animate-pulse" />
-                    <span className="text-xs font-bold uppercase text-[#00FFCC]">{isEn ? 'Angel Vault 3k Cap' : '创世金库 3000U 冲刺'}</span>
+                    <span className="text-xs font-bold uppercase text-[#00FFCC]">{t('home.vaultTitle')}</span>
                   </div>
                   <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] h-4 font-mono">
-                    {isEn ? 'LP Lock Vault' : '锁池倒计时'}
+                    {t('home.vaultBadge')}
                   </Badge>
                 </div>
                 <div className="font-mono text-base font-bold text-white mb-1 flex items-center justify-between">
@@ -645,7 +642,7 @@ export default function Home() {
                 </div>
                 <Progress value={Math.min(100, (curveReserve / 3000) * 100)} className="h-1.5 bg-white/[0.08] mb-2" />
                 <div className="text-[10px] text-[#aaa] leading-relaxed flex items-center justify-between">
-                  <span>{isEn ? 'Max 20U/tx · 100% Locked on Cap' : '单笔限额 20U 防鲸 · 满额丢弃权限'}</span>
+                  <span>{t('home.vaultNote')}</span>
                   <ArrowRight className="w-3 h-3 text-[#00FFCC] group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -657,26 +654,26 @@ export default function Home() {
                     <span>W</span><span className="text-[#00FFCC]">•</span>
                     <span>B</span><span className="text-[#FFCC00]">•</span>
                     <span>O</span><span className="text-[#B080E8]">•</span>
-                    <span>G</span> 矩阵
+                    <span>G</span> {t('home.matrixSuffix')}
                   </span>
                   <span className="text-[9px] text-[#666] font-mono">ONTOLOGY</span>
                 </div>
                 <div className="space-y-1.5 text-[10px] font-mono">
                   <div className="flex items-start gap-1.5">
                     <span className="text-[#00FFCC] font-bold">[W]</span>
-                    <span className="text-[#aaa]"><b className="text-white">Web5</b>: 终极个体主权 (DID+DWN)</span>
+                    <span className="text-[#aaa]"><b className="text-white">Web5</b>: {t('home.ontology.web5')}</span>
                   </div>
                   <div className="flex items-start gap-1.5">
                     <span className="text-[#FFCC00] font-bold">[B]</span>
-                    <span className="text-[#aaa]"><b className="text-white">Blog</b>: 深度思想母体与长程推演</span>
+                    <span className="text-[#aaa]"><b className="text-white">Blog</b>: {t('home.ontology.blog')}</span>
                   </div>
                   <div className="flex items-start gap-1.5">
                     <span className="text-[#B080E8] font-bold">[O]</span>
-                    <span className="text-[#aaa]"><b className="text-white">Ontology</b>: 数字本体论 × 语义知识</span>
+                    <span className="text-[#aaa]"><b className="text-white">Ontology</b>: {t('home.ontology.ontology')}</span>
                   </div>
                   <div className="flex items-start gap-1.5">
                     <span className="text-[#FF66AA] font-bold">[G]</span>
-                    <span className="text-[#aaa]"><b className="text-white">Gateway</b>: Arc x402 智能体商贸网关</span>
+                    <span className="text-[#aaa]"><b className="text-white">Gateway</b>: {t('home.ontology.gateway')}</span>
                   </div>
                 </div>
               </div>
@@ -686,19 +683,19 @@ export default function Home() {
                 <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#00FFCC] animate-ping" />
-                    <span className="text-xs font-bold text-white font-mono">Uniswap v4 价格参考</span>
+                    <span className="text-xs font-bold text-white font-mono">{t('home.uniswap.title')}</span>
                   </div>
                   <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] border-none text-[9px] py-0 h-4 font-mono">
                     #304322
                   </Badge>
                 </div>
                 <div className="flex items-baseline justify-between font-mono">
-                  <span className="text-[11px] text-[#888]">$WBOG 单价 (示例):</span>
+                  <span className="text-[11px] text-[#888]">{t('home.uniswap.unit')}</span>
                   <span className="text-base font-bold text-[#00FFCC]">$0.000080 USDC</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[#666] font-mono">
-                  <span>示例汇率 1 USDC = 12,500 WBOG</span>
-                  <span className="text-[#888]">○ 静态示例价 · 未接入实时报价</span>
+                  <span>{t('home.uniswap.rate')}</span>
+                  <span className="text-[#888]">{t('home.uniswap.static')}</span>
                 </div>
                 <div className="pt-2 border-t border-white/[0.04] grid grid-cols-2 gap-2">
                   <a
@@ -707,7 +704,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-1 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-[#aaa] font-mono transition-all"
                   >
-                    <span>查看 LP 仓位</span>
+                    <span>{t('home.uniswap.position')}</span>
                     <ArrowUpRight className="w-2.5 h-2.5" />
                   </a>
                   <a
@@ -716,7 +713,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-1 py-1 rounded bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[10px] text-[#00FFCC] font-bold font-mono transition-all"
                   >
-                    <span>去 Uniswap 交易</span>
+                    <span>{t('home.uniswap.trade')}</span>
                     <ArrowUpRight className="w-2.5 h-2.5" />
                   </a>
                 </div>
@@ -771,15 +768,15 @@ export default function Home() {
                             },
                           });
                         } catch (err: any) {
-                          alert('添加代币取消或失败: ' + err?.message);
+                          alert(t('home.wallet.addTokenFailed', { message: err?.message ?? '' }));
                         }
                       } else {
-                        alert('请先安装 MetaMask / OKX Web3 钱包插件。');
+                        alert(t('home.wallet.installWallet'));
                       }
                     }}
                     className="w-full text-[10px] border-[#00FFCC]/30 text-[#00FFCC] hover:bg-[#00FFCC]/10 h-7"
                   >
-                    🦊 {isEn ? 'Add $WBOG to Web3 Wallet' : '一键添加 $WBOG 至 Web3 钱包'}
+                    🦊 {t('home.wallet.addToken')}
                   </Button>
                 </div>
               </div>
@@ -826,7 +823,8 @@ export default function Home() {
 // ════════════════════════════════════════════════════════════════
 // RitualLanding — Unauthenticated Entry
 // ════════════════════════════════════════════════════════════════
-function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAuth, onVesselLogin, onWalletLogin, loginBusy, loginError, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0, isEn }: any) {
+function RitualLanding({ loginMethod, setLoginMethod, vesselAuth, onVesselLogin, onWalletLogin, loginBusy, loginError, handleRitualSuccess, setSession, setView, setTab, setActiveModule, onOpenAirdrop, onOpenCurve, onOpenWalletGuide, curveReserve = 0 }: any) {
+  const t = useT();
   return (
     <main className="min-h-screen bg-[#050508] text-white overflow-hidden relative" suppressHydrationWarning>
       {/* ━━ 顶部右上角常驻工具栏：语言切换 + 分身致辞 ━━ */}
@@ -836,7 +834,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
           className="text-xs text-[#888] hover:text-[#FFCC00] font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/[0.08] bg-black/60 backdrop-blur-xl shadow-lg hover:border-[#FFCC00]/40 transition-all"
         >
           <Quote className="w-3.5 h-3.5 text-[#FFCC00]" />
-          <span>{t?.nav?.founder || '分身致辞'}</span>
+          <span>{t('nav.founder')}</span>
         </a>
         <div className="p-1 rounded-xl border border-white/[0.08] bg-black/60 backdrop-blur-xl shadow-lg">
           <LanguageSwitcher />
@@ -883,7 +881,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                     Web5 Blog Ontology Gateway
                   </div>
                   <div className="text-[9px] text-[#666] tracking-wider mt-0.5">
-                    {isEn ? 'Ontology Verification · Cognitive Matrix · Agent Gateway' : '存在论确权 · 思想母体 · 智能体价值网关'}
+                    {t('home.hero.brandSub')}
                   </div>
                 </div>
               </div>
@@ -891,20 +889,18 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
               {/* Tagline — 说人话：人话在前，协议在后 */}
               <h1 className="text-3xl sm:text-5xl font-black leading-tight mb-3 tracking-tight">
                 <span className="text-white">
-                  {isEn ? 'Write Once, ' : '写一次，'}
+                  {t('home.hero.writeOnce')}
                 </span>
                 <span className="text-[#00FFCC]" style={{ textShadow: '0 0 40px rgba(0,255,204,0.3)' }}>
-                  {isEn ? 'Long-term Archive.' : '长期存档。'}
+                  {t('home.hero.archive')}
                 </span>
                 <br />
                 <span className="text-white/90 text-2xl sm:text-4xl mt-1.5 block font-bold">
-                  {isEn ? 'Readable by Humans & AI · Transparent Provenance' : 'AI 和人类都能读，存证状态透明。'}
+                  {t('home.hero.readable')}
                 </span>
               </h1>
               <p className="text-[#888] text-xs sm:text-sm mb-6 leading-relaxed max-w-xl">
-                {isEn
-                  ? 'Built with distributed storage (Arweave when confirmed) and Circle ARC USDC settlement rails. Every essay publishes its storage and provenance status, is discoverable by AI agents, and follows transparent revenue rules. Real payments and payouts remain in closed beta.'
-                  : '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。真实打赏与结算通道内测中，暂不开放打款。'}
+                {t('home.hero.intro')}
               </p>
 
               {/* 首屏核心行动 CTA 按钮组 (收敛至获客与赚钱主干) */}
@@ -914,21 +910,21 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                   className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#00FFCC]/25 hover:scale-[1.02] transition-all"
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>{isEn ? '📖 Read Curated Articles' : '📖 立即阅读思想博文'}</span>
+                  <span>{t('home.hero.ctaRead')}</span>
                 </button>
                 <button
                   onClick={() => { setView('app'); setTab('feed'); setActiveModule('bounties'); }}
                   className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#FFCC00] to-[#FF6633] text-black font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-[#FFCC00]/25 hover:scale-[1.02] transition-all"
                 >
                   <Target className="w-4 h-4" />
-                  <span>{isEn ? '🎯 Bounty Plaza (Preview)' : '🎯 悬赏任务大厅 (内测展示)'}</span>
+                  <span>{t('home.hero.ctaBounty')}</span>
                 </button>
                 <button
                   onClick={() => { setView('app'); setTab('write'); }}
                   className="px-4 py-3 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.15] font-bold text-xs flex items-center gap-1.5 transition-all"
                 >
                   <Zap className="w-4 h-4 text-[#FFCC00]" />
-                  <span>{isEn ? '✍️ Start Writing' : '✍️ 开启 AI 写作'}</span>
+                  <span>{t('home.hero.ctaWrite')}</span>
                 </button>
                 <a
                   href="/api/openapi.json"
@@ -937,7 +933,7 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                   className="px-3.5 py-3 rounded-xl border border-white/[0.08] bg-black/40 text-[#888] hover:text-[#00FFCC] hover:border-[#00FFCC]/30 font-mono text-xs flex items-center gap-1.5 transition-all"
                 >
                   <Bot className="w-4 h-4 text-[#00FFCC]" />
-                  <span>{isEn ? '🤖 Agent API' : '🤖 接入 Agent API'}</span>
+                  <span>{t('home.hero.ctaAgent')}</span>
                 </a>
               </div>
 
@@ -952,13 +948,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis 1,000 $WBOG Airdrop Preview' : '创世先锋 $WBOG 空投预告'}</span>
+                      <span>{t('home.hero.airdropTitle')}</span>
                       <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] text-[9px] py-0 h-4">
-                        {isEn ? 'Not Open' : '未开放'}
+                        {t('home.hero.notOpen')}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? 'Planned allocation · Claim not yet open' : '方案展示 · 领取暂未开放，请勿打款'}
+                      {t('home.hero.airdropBody')}
                     </div>
                   </div>
                 </div>
@@ -976,13 +972,13 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                   </div>
                   <div>
                     <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>{isEn ? 'Genesis Curve Angel Vault (Preview)' : 'GenesisCurve 创世金库（内测展示）'}</span>
+                      <span>{t('home.hero.vaultTitle')}</span>
                       <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 h-4 font-mono">
-                        {isEn ? 'Not Open' : '未开放'}
+                        {t('home.hero.notOpen')}
                       </Badge>
                     </div>
                     <div className="text-[10px] text-[#888] mt-0.5">
-                      {isEn ? 'Subscription and custody are not open · Do not send funds' : '认购与资金托管尚未开放 · 请勿打款'}
+                      {t('home.hero.vaultBody')}
                     </div>
                   </div>
                 </div>
@@ -999,21 +995,21 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
                   )}
                   <LoginBtn
                     icon={<Sparkles className="w-5 h-5" />}
-                    title={isEn ? "Vessel Container Awakening" : (t?.login?.vessel || 'Vessel 容器登录')}
-                    desc={isEn ? "AP2/AA2P Protocol — 4-step cryptographic handshake to awaken your unique avatar" : "AP2/AA2P 协议 — 四步握手唤醒专属分身，首次自动生成唯一恒定 DID"}
+                    title={t('login.vessel')}
+                    desc={t('login.vesselDesc')}
                     color={COLORS.eidolon} onClick={onVesselLogin} busy={loginBusy === 'vessel'}
                   />
                   <LoginBtn
                     icon={<Wallet className="w-5 h-5" />}
-                    title={isEn ? "Web3 Wallet Connect" : (t?.login?.wallet || '数字钱包登录')}
-                    desc={isEn ? "MetaMask / OKX / Web3 Wallet — Direct on-chain container binding & signing" : "MetaMask / OKX / Web3 钱包 — 链上签名绑定容器，直接开启完整创作权限"}
+                    title={t('login.wallet')}
+                    desc={t('login.walletDesc')}
                     color={COLORS.prime} onClick={onWalletLogin} busy={loginBusy === 'wallet'}
                   />
                 </div>
               ) : loginMethod === 'vessel' ? (
                 <div className="animate-in fade-in">
                   <button onClick={() => setLoginMethod(null)} className="text-[#444] hover:text-[#00FFCC] text-sm mb-4 flex items-center gap-1 transition-colors">
-                    ← {isEn ? 'Back to Login Options' : '返回选择登录方式'}
+                    ← {t('home.hero.backToLogin')}
                   </button>
                   <ScanRitual auth={vesselAuth} onSuccess={handleRitualSuccess} onError={(e) => console.error(e)} seed="web5-ritual-constant" />
                 </div>
@@ -1034,30 +1030,32 @@ function RitualLanding({ t, moduleLabels, loginMethod, setLoginMethod, vesselAut
 // ━━ Components ━━
 
 /** 模块简介 — 显示当前选中模块的描述 */
-const MODULE_DESCS: Record<string, { title: string; desc: string }> = {
-  tech:          { title: '科技前沿', desc: 'AI 模型、Web5 协议、智能合约与数字分身的最新技术进展。' },
-  humanities:    { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
-  humanity:      { title: '人文思辨', desc: '科技与人文的交叉地带——碳基与硅基文明的对话。' },
-  experts:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
-  piaoshu:       { title: 'AI 专家智库', desc: '直连 4 大核心领域智能体专家，提供深度研报与 x402 付费会诊。' },
-  bounties:      { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
-  bounty:        { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
-  crowdfunding:  { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
-  crowd:         { title: '创意众筹', desc: '社区驱动的创意融资。支持前瞻性实验，获取早期生态权益。' },
-  crowdsourcing: { title: '悬赏与任务广场', desc: '做任务赚 USDC！认领去中心化任务，分身自主推进，托管 + 72 小时争议窗口后结算，资金开关默认关闭。' },
+const MODULE_DESC_KEYS: Record<string, { title: MessageKey; desc: MessageKey }> = {
+  tech:          { title: 'moduleDescs.tech.title', desc: 'moduleDescs.tech.desc' },
+  humanities:    { title: 'moduleDescs.humanities.title', desc: 'moduleDescs.humanities.desc' },
+  humanity:      { title: 'moduleDescs.humanities.title', desc: 'moduleDescs.humanities.desc' },
+  experts:       { title: 'moduleDescs.experts.title', desc: 'moduleDescs.experts.desc' },
+  piaoshu:       { title: 'moduleDescs.experts.title', desc: 'moduleDescs.experts.desc' },
+  bounties:      { title: 'moduleDescs.bounties.title', desc: 'moduleDescs.bounties.desc' },
+  bounty:        { title: 'moduleDescs.bounties.title', desc: 'moduleDescs.bounties.desc' },
+  crowdfunding:  { title: 'moduleDescs.crowdfunding.title', desc: 'moduleDescs.crowdfunding.desc' },
+  crowd:         { title: 'moduleDescs.crowdfunding.title', desc: 'moduleDescs.crowdfunding.desc' },
+  crowdsourcing: { title: 'moduleDescs.bounties.title', desc: 'moduleDescs.bounties.desc' },
 };
 function ModuleDesc({ module }: { module: string }) {
-  const info = MODULE_DESCS[module] || MODULE_DESCS.tech;
+  const t = useT();
+  const info = MODULE_DESC_KEYS[module] || MODULE_DESC_KEYS.tech;
   return (
     <div className="mb-4 text-xs text-[#666] leading-relaxed">
-      <span className="font-semibold text-[#888]">{info.title}</span>
+      <span className="font-semibold text-[#888]">{t(info.title)}</span>
       <span className="mx-1.5">·</span>
-      {info.desc}
+      {t(info.desc)}
     </div>
   );
 }
 
 function LoginBtn({ icon, title, desc, color, onClick, busy }: any) {
+  const t = useT();
   return (
     <button onClick={onClick} disabled={busy}
       aria-busy={busy || undefined}
@@ -1070,7 +1068,7 @@ function LoginBtn({ icon, title, desc, color, onClick, busy }: any) {
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm">{title}</div>
         <div className="text-[11px] text-[#555] mt-0.5">
-          {busy ? '处理中，请在弹出的钱包窗口确认…' : desc}
+          {busy ? t('home.hero.loginBusy') : desc}
         </div>
       </div>
       {busy
@@ -1081,9 +1079,9 @@ function LoginBtn({ icon, title, desc, color, onClick, busy }: any) {
 }
 
 // ━━ Auth helpers ━━
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string, tr: TFunction): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${label} 超时（${Math.round(ms / 1000)}s），请检查钱包插件或网络后重试`)), ms);
+    const timer = setTimeout(() => reject(new Error(tr('home.error.timeout', { label, seconds: Math.round(ms / 1000) }))), ms);
     promise.then(
       (value) => { clearTimeout(timer); resolve(value); },
       (err) => { clearTimeout(timer); reject(err); },
@@ -1092,14 +1090,15 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 }
 
 async function connectWallet(
-  s: any, v: any, t: any,
+  tr: TFunction,
+  s: any, v: any, setTab: any,
   openGuide?: () => void,
   onBusy?: (busy: boolean) => void,
   onError?: (msg: string | null) => void,
 ) {
   const ethereum = (window as any).ethereum;
   if (!ethereum) {
-    onError?.('未检测到浏览器钱包。请安装 MetaMask / OKX Web3 插件（或在内置浏览器中打开），也可以先用「Vessel 容器登录」免插件进入。');
+    onError?.(tr('home.error.noWallet'));
     openGuide?.();
     return;
   }
@@ -1111,13 +1110,13 @@ async function connectWallet(
     const chainIdHex = '0x13b2';
     try {
       const current: string = await withTimeout(
-        ethereum.request({ method: 'eth_chainId' }), 8000, '读取钱包网络',
+        ethereum.request({ method: 'eth_chainId' }), 8000, tr('home.error.step.readChain'), tr,
       );
       if (current?.toLowerCase() !== chainIdHex) {
         try {
           await withTimeout(
             ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }),
-            12000, '切换 Arc 网络',
+            12000, tr('home.error.step.switchChain'), tr,
           );
         } catch (switchError: any) {
           if (switchError?.code === 4902) {
@@ -1130,7 +1129,7 @@ async function connectWallet(
                 rpcUrls: ['https://rpc.mainnet.arc.io'],
                 blockExplorerUrls: ['https://explorer.arc.io'],
               }],
-            }), 12000, '添加 Arc 网络');
+            }), 12000, tr('home.error.step.addChain'), tr);
           } else if (switchError?.code !== 4001) {
             console.warn('[Web5] Chain switch skipped:', switchError);
           }
@@ -1142,17 +1141,17 @@ async function connectWallet(
 
     // ━━ 2. 获取钱包地址 ━━
     const accounts = await withTimeout(
-      ethereum.request({ method: 'eth_requestAccounts' }), 60000, '等待钱包授权',
+      ethereum.request({ method: 'eth_requestAccounts' }), 60000, tr('home.error.step.waitAuth'), tr,
     );
     const addr = accounts?.[0];
-    if (!addr) throw new Error('钱包未返回账户地址');
+    if (!addr) throw new Error(tr('home.error.noAccount'));
 
     // ━━ 3. 个人签名（证明钱包所有权，弹窗确认） ━━
     const vessel = getOrCreateVesselWallet();
     const signMsg = `Web5.blog Sovereign Login\n\nWallet: ${addr}\nVessel: ${vessel.address}\nChain: Arc Mainnet (5042)\nTimestamp: ${Date.now()}`;
     const signature = await withTimeout(
       ethereum.request({ method: 'personal_sign', params: [signMsg, addr] }),
-      180000, '等待钱包签名',
+      180000, tr('home.error.step.waitSign'), tr,
     );
 
     // ━━ 4. 后端钱包登录（完整权限，非 Observer 只读；主钱包身份 + 专用钱包容器） ━━
@@ -1160,7 +1159,7 @@ async function connectWallet(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletAddress: addr, vesselAddress: vessel.address, signature, message: signMsg }),
-    }), 30000, '服务器验证签名');
+    }), 30000, tr('home.error.step.verify'), tr);
     const data = await res.json();
 
     if (data.success && data.session) {
@@ -1168,16 +1167,18 @@ async function connectWallet(
       persistVesselSession(session);
       s(session);
       v('app');
-      t('vessels');
+      setTab('vessels');
     } else {
-      onError?.(data.error || '钱包登录失败，请重试');
+      onError?.(data.error || tr('home.error.loginFailed'));
     }
   } catch (err: any) {
     console.warn('[Web5] Wallet login error:', err);
     if (err?.code === 4001) {
-      onError?.('已取消签名，登录未完成。');
+      onError?.(tr('home.error.signRejected'));
     } else {
-      onError?.('钱包登录失败：' + (err?.message || '请在钱包中确认签名后重试'));
+      onError?.(tr('home.error.loginFailedDetail', {
+        message: err?.message || tr('home.error.confirmSignature'),
+      }));
     }
   } finally {
     onBusy?.(false);

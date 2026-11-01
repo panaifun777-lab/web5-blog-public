@@ -1,6 +1,12 @@
 // ════════════════════════════════════════════════════════════════
-// src/lib/i18n/locales/ko.ts — 한국어
+// src/lib/i18n/locales/ko.ts — 한국어（부분 번역 / PARTIAL）
+//
+// status: 'partial' (see src/lib/i18n/config.ts).
+// Missing keys fall back per key to `en` at runtime.
 // ════════════════════════════════════════════════════════════════
+
+import type { DeepPartial } from '../types';
+import type { Dictionary } from './zh-CN';
 
 const ko = {
   app: {
@@ -52,6 +58,6 @@ const ko = {
     manifesto2: '페이지, 사람, 자산, 에이전트로의 연결 — 각 패러다임 전환은 생산성의 폭발을 동반했습니다.',
     closing: '모든 개인이 디지털 트윈을 가지게 될 때, 진정한 자유는 이제 막 시작되었습니다.',
   },
-};
+} satisfies DeepPartial<Dictionary>;
 
 export default ko;

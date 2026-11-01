@@ -12,6 +12,7 @@ import {
 import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { getT } from '@/lib/i18n/server';
 
 export const revalidate = 300;
 
@@ -104,7 +105,7 @@ export async function generateMetadata(
 
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
-  const content = await getContent(id);
+  const [content, t] = await Promise.all([getContent(id), getT()]);
 
   if (!content) {
     notFound();
@@ -154,7 +155,7 @@ export default async function ArticlePage({ params }: Props) {
               className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#00FFCC] transition-colors font-mono py-1 px-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>返回主站</span>
+              <span>{t('article.backHome')}</span>
             </Link>
             <div className="h-4 w-px bg-white/[0.1] hidden sm:block" />
             <Link href="/" className="items-center gap-1.5 font-mono text-sm font-black hidden sm:flex">
@@ -162,7 +163,7 @@ export default async function ArticlePage({ params }: Props) {
               <span>B</span><span className="text-[#FFCC00]">•</span>
               <span>O</span><span className="text-[#B080E8]">•</span>
               <span>G</span>
-              <span className="text-[10px] text-[#666] font-normal ml-2">Vessel 原生博客</span>
+              <span className="text-[10px] text-[#666] font-normal ml-2">{t('article.brandSub')}</span>
             </Link>
           </div>
 
@@ -180,14 +181,14 @@ export default async function ArticlePage({ params }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] font-mono text-[#00FFCC] hover:underline flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#00FFCC]/10 border border-[#00FFCC]/20"
-                title="在 Irys 网关查验原始 JSON"
+                title={t('article.gatewayTitle')}
               >
-                <span className="hidden sm:inline">Permaweb 网关</span>
+                <span className="hidden sm:inline">{t('article.permaweb')}</span>
                 <span>Arweave ↗</span>
               </a>
             ) : (
               <span className="text-[10px] font-mono text-[#777] px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.08]">
-                数据库存证 · 未上链
+                {t('article.dbOnly')}
               </span>
             )}
             <Link
@@ -195,7 +196,7 @@ export default async function ArticlePage({ params }: Props) {
               className="text-xs bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1"
             >
               <Zap className="w-3 h-3" />
-              <span>✍️ 我也要写</span>
+              <span>{t('article.writeToo')}</span>
             </Link>
           </div>
         </div>
@@ -236,7 +237,7 @@ export default async function ArticlePage({ params }: Props) {
               <div>
                 <div className="font-bold text-sm text-white flex items-center gap-1.5">
                   <span>{authorName}</span>
-                  <span className="text-[10px] text-[#00FFCC] font-mono font-normal">● 确权作者</span>
+                  <span className="text-[10px] text-[#00FFCC] font-mono font-normal">{t('article.authorVerified')}</span>
                 </div>
                 <div className="text-[11px] text-[#666] font-mono truncate max-w-xs sm:max-w-md">
                   {content.authorDid}
@@ -250,7 +251,7 @@ export default async function ArticlePage({ params }: Props) {
                 <span>{new Date(content.publishedAt).toLocaleDateString()}</span>
               </div>
               <div className="text-[#555] text-[10px] mt-0.5">
-                版税: {(content.royaltyRate / 100).toFixed(1)}% · {content.license}
+                {t('article.royalty', { rate: (content.royaltyRate / 100).toFixed(1), license: content.license })}
               </div>
             </div>
           </div>
@@ -268,7 +269,7 @@ export default async function ArticlePage({ params }: Props) {
           <div className="text-[#888] font-bold text-xs flex items-center justify-between border-b border-white/[0.04] pb-2">
             <span className="flex items-center gap-1.5 text-white">
               <Shield className="w-3.5 h-3.5 text-[#00FFCC]" />
-              内容存证与确权状态
+              {t('article.provenanceTitle')}
             </span>
             <span className={isArweaveConfirmed ? 'text-[#00FFCC]' : 'text-[#777]'}>
               {isArweaveConfirmed ? 'ARWEAVE CONFIRMED' : 'DATABASE ONLY'}
@@ -277,7 +278,7 @@ export default async function ArticlePage({ params }: Props) {
 
           <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
             <div>
-              <span className="text-[#666]">内容哈希: </span>
+              <span className="text-[#666]">{t('article.hashLabel')}</span>
               {isArweaveConfirmed ? (
                 <a href={arweaveUrl} target="_blank" rel="noopener noreferrer" className="text-[#00FFCC] hover:underline font-bold">
                   {content.arweaveHash.slice(0, 16)}...{content.arweaveHash.slice(-8)} ↗
@@ -289,12 +290,12 @@ export default async function ArticlePage({ params }: Props) {
               )}
             </div>
             <div>
-              <span className="text-[#666]">文章链接: </span>
+              <span className="text-[#666]">{t('article.linkLabel')}</span>
               <span className="text-[#aaa] select-all break-all">{permalink}</span>
             </div>
             {content.arpVcId && isNftMinted && (
               <div>
-                <span className="text-[#666]">平台确权记录 ID: </span>
+                <span className="text-[#666]">{t('article.vcLabel')}</span>
                 <span className="text-[#B080E8]">{content.arpVcId}</span>
               </div>
             )}
@@ -312,9 +313,9 @@ export default async function ArticlePage({ params }: Props) {
               </div>
             ) : (
               <div>
-                <span className="text-[#666]">NFT 状态: </span>
+                <span className="text-[#666]">{t('article.nftStatusLabel')}</span>
                 <span className="text-[#777]">
-                  {content.nftStatus === 'FAILED' ? '铸造失败，仅数据库记录' : '未铸造，仅数据库记录'}
+                  {content.nftStatus === 'FAILED' ? t('article.nftFailed') : t('article.nftNotMinted')}
                 </span>
               </div>
             )}
@@ -326,13 +327,13 @@ export default async function ArticlePage({ params }: Props) {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-[#00FFCC]" />
-              <span className="font-bold text-sm text-white font-mono">策展分享</span>
+              <span className="font-bold text-sm text-white font-mono">{t('article.curateTitle')}</span>
               <Badge className="bg-white/[0.08] text-[#999] border-none text-[9px] font-mono">
-                返佣尚未开放
+                {t('article.curateBadge')}
               </Badge>
             </div>
             <p className="text-xs text-[#aaa] max-w-lg">
-              一键分享本深度长文。策展分佣规则与自动结算尚未上线，内测期间不计任何收益。
+              {t('article.curateBody')}
             </p>
           </div>
           <CurateShareButton
@@ -349,20 +350,20 @@ export default async function ArticlePage({ params }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Coins className="w-4 h-4 text-[#FFCC00]" />
-              <span className="font-bold text-sm text-white">支持作者 · AP2 打赏</span>
+              <span className="font-bold text-sm text-white">{t('article.tipTitle')}</span>
               <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px]">
-                内测展示，请勿打款
+                {t('article.tipBadge')}
               </Badge>
             </div>
             <span className="text-[10px] text-[#888] font-mono">
-              打赏进入平台金库；作者分账尚未自动出款
+              {t('article.tipNote')}
             </span>
           </div>
 
           <div className="pt-2 flex items-center justify-between text-[11px] text-[#888]">
-            <span>托管验证与自动分账上线前，打赏入口保持关闭。</span>
+            <span>{t('article.tipClosed')}</span>
             <Link href={`/?post=${content.arweaveHash}`} className="text-[#00FFCC] font-bold hover:underline flex items-center gap-1">
-              <span>前往主站阅读与评论</span>
+              <span>{t('article.readOnSite')}</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
@@ -373,7 +374,7 @@ export default async function ArticlePage({ params }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-[#00FFCC]" />
-              <h3 className="font-bold text-base text-white">AA2P 认知演武场 · 学术辩论与评审</h3>
+              <h3 className="font-bold text-base text-white">{t('article.arenaTitle')}</h3>
               <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] font-mono">
                 CONSTITUTIONAL ARENA
               </Badge>
@@ -383,18 +384,18 @@ export default async function ArticlePage({ params }: Props) {
               className="text-xs bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[#00FFCC] border border-[#00FFCC]/30 px-3 py-1 rounded-lg flex items-center gap-1 font-mono transition-all w-fit"
             >
               <Zap className="w-3 h-3" />
-              <span>⚔️ 前往主站参与评审</span>
+              <span>{t('article.arenaCta')}</span>
             </a>
           </div>
 
           <p className="text-[11px] text-[#888] leading-relaxed">
-            评论来自真实注册用户。内测期间不产生质押或悬赏资金。
+            {t('article.arenaNote')}
           </p>
 
           <div className="space-y-3">
             {content.interactions.length === 0 && (
               <div className="p-4 rounded-xl border border-dashed border-white/[0.08] text-center text-[11px] text-[#666]">
-                暂无评论。
+                {t('article.noComments')}
               </div>
             )}
             {content.interactions.map((i) => {
@@ -407,7 +408,7 @@ export default async function ArticlePage({ params }: Props) {
                         {i.prime?.displayName || `${i.vesselDid.slice(0, 16)}...`}
                       </span>
                       <Badge className={isHuman ? "bg-[#10B981]/20 text-[#10B981] border-none text-[8px] py-0" : "bg-[#0066FF]/20 text-[#0066FF] border-none text-[8px] py-0"}>
-                        {isHuman ? '👤 人类创作者' : '🤖 评议 Agent'}
+                        {isHuman ? t('article.humanCreator') : t('article.agentReviewer')}
                       </Badge>
                     </div>
                     <span className="text-[10px] text-[#555] font-mono">

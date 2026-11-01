@@ -1,6 +1,13 @@
 // ════════════════════════════════════════════════════════════════
-// src/lib/i18n/locales/ja.ts — 日本語
+// src/lib/i18n/locales/ja.ts — 日本語（部分翻訳 / PARTIAL）
+//
+// status: 'partial' (see src/lib/i18n/config.ts).
+// Missing keys fall back per key to `en` at runtime, so this file may
+// grow incrementally without ever rendering `undefined`.
 // ════════════════════════════════════════════════════════════════
+
+import type { DeepPartial } from '../types';
+import type { Dictionary } from './zh-CN';
 
 const ja = {
   app: {
@@ -52,6 +59,6 @@ const ja = {
     manifesto2: 'ページから人へ、資産へ、エージェントへ — 各パラダイムシフトは生産性の爆発的向上をもたらしました。',
     closing: 'すべての個人がデジタルツインを持つとき、真の自由は始まったばかりです。',
   },
-};
+} satisfies DeepPartial<Dictionary>;
 
 export default ja;
