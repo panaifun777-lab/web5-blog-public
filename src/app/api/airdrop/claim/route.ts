@@ -20,6 +20,7 @@ import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 import { arcChain } from '@/lib/web5/payments/arc';
 import { AIRDROP_ENABLED, featureDisabled } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,10 +51,10 @@ function claimMessage(address: string, timestamp: number) {
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`airdrop:${clientIp(req)}`, 5, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   if (!AIRDROP_ENABLED) {
@@ -67,16 +68,10 @@ export async function POST(req: NextRequest) {
     const signature = typeof body.signature === 'string' ? body.signature : '';
 
     if (!isAddress(walletAddress) || !/^0x[0-9a-fA-F]{130}$/.test(signature)) {
-      return NextResponse.json(
-        { error: '钱包地址与签名必填' },
-        { status: 400 }
-      );
+      return apiError('CLAIM_PARAMS_REQUIRED', { request: req });
     }
     if (!Number.isSafeInteger(timestamp) || Math.abs(Date.now() - timestamp) > 5 * 60_000) {
-      return NextResponse.json(
-        { error: '签名已过期，请重新签名' },
-        { status: 401 }
-      );
+      return apiError('CLAIM_SIGNATURE_EXPIRED', { request: req });
     }
 
     const normalized = walletAddress.toLowerCase();
@@ -93,7 +88,7 @@ export async function POST(req: NextRequest) {
       valid = false;
     }
     if (!valid) {
-      return NextResponse.json({ error: '签名验证失败' }, { status: 401 });
+      return apiError('CLAIM_SIGNATURE_INVALID', { request: req });
     }
 
     const deployerPk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
@@ -173,16 +168,10 @@ export async function POST(req: NextRequest) {
     } catch (err: any) {
       await db.authNonce.delete({ where: { id: claimRecordId } }).catch(() => {});
       console.error('[Airdrop Claim Error]:', err);
-      return NextResponse.json(
-        { error: '空投划拨失败，请稍后重试' },
-        { status: 500 }
-      );
+      return apiError('CLAIM_TRANSFER_FAILED', { request: req });
     }
   } catch (err: any) {
     console.error('[Airdrop Claim Error]:', err);
-    return NextResponse.json(
-      { error: err.message || '空投划拨失败' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

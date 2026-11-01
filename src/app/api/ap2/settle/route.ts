@@ -11,6 +11,7 @@ import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,10 +37,10 @@ export async function POST(req: NextRequest) {
 
   const limited = rateLimit(`ap2-settle:${clientIp(req)}`, 20, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -67,24 +68,27 @@ export async function POST(req: NextRequest) {
     try {
       receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
     } catch (e) {
-      return NextResponse.json({ error: '无法在 Arc 主网查询到该交易，请确认交易已上链' }, { status: 400 });
+      return apiError('TX_NOT_FOUND', { request: req });
     }
 
     if (!receipt || receipt.status !== 'success') {
-      return NextResponse.json({ error: '交易未确认或执行失败，请重试' }, { status: 400 });
+      return apiError('TX_NOT_CONFIRMED', { request: req });
     }
 
     const tx = await publicClient.getTransaction({ hash: txHash as `0x${string}` });
 
     // 校验收款方为平台金库
     if (!tx.to || tx.to.toLowerCase() !== TREASURY_ADDR) {
-      return NextResponse.json({ error: `收款方不匹配，应为平台金库 ${TREASURY_ADDR.slice(0, 10)}...` }, { status: 400 });
+      return apiError('RECIPIENT_MISMATCH', {
+        request: req,
+        params: { address: `${TREASURY_ADDR.slice(0, 10)}...` },
+      });
     }
 
     // 校验付款方（优先用前端传的专用钱包地址 fromAddress，其次会话主钱包）
     const expectedFrom = (fromAddress || session?.primeDid?.replace('did:plvtvs:', '') || '').toLowerCase();
     if (expectedFrom && tx.from.toLowerCase() !== expectedFrom) {
-      return NextResponse.json({ error: '付款方与当前会话身份不一致' }, { status: 400 });
+      return apiError('SENDER_MISMATCH', { request: req });
     }
 
     // 校验金额匹配（允许 ±0.5% 误差）
@@ -92,7 +96,7 @@ export async function POST(req: NextRequest) {
     const actualWei = BigInt(tx.value || 0n);
     const diff = actualWei > expectedWei ? actualWei - expectedWei : expectedWei - actualWei;
     if (diff > expectedWei / 200n) {
-      return NextResponse.json({ error: '链上金额与申报金额不一致，请重新核对' }, { status: 400 });
+      return apiError('AMOUNT_MISMATCH', { request: req });
     }
 
     // ━━ 2. 交易级防重放：同一 txHash 只允许入账一次 ━━
@@ -108,10 +112,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (err: any) {
       if (err?.code === 'P2002') {
-        return NextResponse.json(
-          { error: '该交易已入账，不能重复结算', code: 'REPLAY' },
-          { status: 409 }
-        );
+        return apiError('REPLAY', { request: req });
       }
       throw err;
     }

@@ -8,6 +8,7 @@ import { streamWrite } from '@/lib/web5/ai/eidolon-writer';
 import { inspectPromptWithTDPO } from '@/lib/web5/security/tdpo';
 import { buildOutlinePrompt, buildArticleExpansionPrompt } from '@/lib/web5/ai/free-pool';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,10 +16,10 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`ai-write:${clientIp(req)}`, 6, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: '请求过于频繁，请稍后再试。' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -42,12 +43,9 @@ export async function POST(req: NextRequest) {
     // ── TDPO 认知安全前置审计 ──
     const tdpoCheck = inspectPromptWithTDPO(prompt);
     if (!tdpoCheck.passed) {
-      return new Response(JSON.stringify({
-        error: `[TDPO 认知防火墙拦截] ${tdpoCheck.reason || '提示词包含未授权越狱或风险模式'}`,
-        riskScore: tdpoCheck.riskScore,
-      }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
+      return apiError('TDPO_BLOCKED', {
+        request: req,
+        extra: { reason: tdpoCheck.reason || undefined, riskScore: tdpoCheck.riskScore },
       });
     }
 
