@@ -6,36 +6,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordReferral, getReferralEarnings } from '@/lib/web5/arp/referral';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   try {
     const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
     const session = await resolveVesselSessionFromToken(token);
     if (!session || session.accessMode !== 'vessel') {
-      return NextResponse.json({ error: 'Vessel session required' }, { status: 401 });
+      return apiError('VESSEL_SESSION_REQUIRED', { request: req });
     }
 
     const { referrerDid, referredDid, contentArweaveHash } = await req.json();
     if (!referrerDid || !referredDid || !contentArweaveHash) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return apiError('MISSING_FIELDS', { request: req });
     }
     if (referredDid !== session.vesselDid) {
-      return NextResponse.json({ error: 'referredDid must match the session vessel' }, { status: 403 });
+      return apiError('REFERRAL_TARGET_MISMATCH', { request: req });
     }
     await recordReferral(referrerDid, referredDid, contentArweaveHash);
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[arp/referral] record failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
     const did = req.nextUrl.searchParams.get('did');
-    if (!did) return NextResponse.json({ error: 'Missing did' }, { status: 400 });
+    if (!did) return apiError('MISSING_DID', { request: req });
     const earnings = await getReferralEarnings(did);
     return NextResponse.json(earnings);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[arp/referral] read failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

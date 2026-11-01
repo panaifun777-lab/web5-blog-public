@@ -9,15 +9,13 @@ import { db } from '@/lib/db';
 import { createHash, randomBytes } from 'crypto';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
 import { serializeForJson, RFC_CONSTANTS } from '@/lib/web5/types';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   try {
     const { walletAddress } = await req.json();
     if (!walletAddress || !walletAddress.startsWith('0x')) {
-      return NextResponse.json(
-        { error: 'Invalid wallet address' },
-        { status: 400 }
-      );
+      return apiError('INVALID_WALLET_ADDRESS', { request: req });
     }
 
     // 创建/查找 Prime
@@ -57,9 +55,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[observer-login] Error:', err);
-    return NextResponse.json(
-      { error: 'Observer login failed' },
-      { status: 500 }
-    );
+    return apiError('LOGIN_FAILED', { request: req });
   }
 }

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { autonomousTick } from '@/lib/web5/autonomous/scheduler';
 import { AUTONOMOUS_AGENTS_ENABLED, featureDisabled } from '@/lib/launch/flags';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +29,14 @@ export async function POST(req: NextRequest) {
     req.headers.get('x-cron-secret') ||
     (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   if (provided !== secret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError('UNAUTHORIZED', { request: req });
   }
 
   try {
     const results = await autonomousTick();
     return NextResponse.json({ success: true, vesselCount: results.length, results });
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    console.error('[autonomous/tick] Error:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

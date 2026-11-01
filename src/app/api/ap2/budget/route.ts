@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { authorizeAdmin } from '@/lib/admin/guard';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
+import { apiError } from '@/lib/web5/api/errors';
 
 // 预算以 6 位精度 USDC 存储（与 toTokenUnits / BudgetFence 消费方一致）。
 const USDC_UNIT = 1_000_000n;
@@ -35,17 +36,14 @@ export async function POST(req: NextRequest) {
     if (!admin.ok) {
       const session = await resolveVesselSessionFromToken(bearerToken(req));
       if (!session?.vesselDid || session.accessMode !== 'vessel') {
-        return NextResponse.json(
-          { error: 'Admin or vessel session required for budget changes' },
-          { status: 403 }
-        );
+        return apiError('BUDGET_AUTH_REQUIRED', { request: req });
       }
       const own = await db.vessel.findUnique({
         where: { did: session.vesselDid },
         select: { id: true },
       });
       if (!own) {
-        return NextResponse.json({ error: 'Vessel not found' }, { status: 404 });
+        return apiError('VESSEL_NOT_FOUND', { request: req });
       }
       vesselId = own.id;
     }
@@ -53,19 +51,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const dailyLimit = parseLimit(body.dailyLimit);
     if (dailyLimit === null) {
-      return NextResponse.json(
-        { error: `dailyLimit must be an integer between ${MIN_LIMIT_USDC} and ${MAX_LIMIT_USDC} USDC` },
-        { status: 400 }
-      );
+      return apiError('BUDGET_LIMIT_OUT_OF_RANGE', {
+        request: req,
+        params: { field: 'dailyLimit', min: MIN_LIMIT_USDC, max: MAX_LIMIT_USDC },
+      });
     }
 
     const rawPerTxLimit = body.perTxLimit;
     const perTxLimit = rawPerTxLimit === undefined ? null : parseLimit(rawPerTxLimit);
     if (rawPerTxLimit !== undefined && perTxLimit === null) {
-      return NextResponse.json(
-        { error: `perTxLimit must be an integer between ${MIN_LIMIT_USDC} and ${MAX_LIMIT_USDC} USDC` },
-        { status: 400 }
-      );
+      return apiError('BUDGET_LIMIT_OUT_OF_RANGE', {
+        request: req,
+        params: { field: 'perTxLimit', min: MIN_LIMIT_USDC, max: MAX_LIMIT_USDC },
+      });
     }
 
     // 管理员未指定 vessel 时沿用 MVP 行为：第一个活跃 vessel。
@@ -73,21 +71,18 @@ export async function POST(req: NextRequest) {
       ? await db.vessel.findUnique({ where: { id: vesselId } })
       : await db.vessel.findFirst({ where: { status: 'ACTIVE' } });
     if (!vessel) {
-      return NextResponse.json({ error: 'No active vessel' }, { status: 404 });
+      return apiError('NO_ACTIVE_VESSEL', { request: req });
     }
 
     const budget = await db.aP2Budget.findFirst({ where: { vesselId: vessel.id } });
     if (!budget) {
-      return NextResponse.json({ error: 'No budget found' }, { status: 404 });
+      return apiError('BUDGET_NOT_FOUND', { request: req });
     }
 
     const effectivePerTxLimit =
       perTxLimit ?? Number(budget.perTxLimit) / Number(USDC_UNIT);
     if (effectivePerTxLimit > dailyLimit) {
-      return NextResponse.json(
-        { error: 'perTxLimit must not exceed dailyLimit' },
-        { status: 400 }
-      );
+      return apiError('PER_TX_EXCEEDS_DAILY_LIMIT', { request: req });
     }
 
     const updated = await db.aP2Budget.update({
@@ -104,6 +99,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[ap2/budget] Error:', err);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

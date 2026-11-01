@@ -160,7 +160,7 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 
 **测试网不是必须**：同一套代码、同一套断言、同一份 harness，只是链 id / RPC / 水龙头不同。主网 1 USDC 的一次性彩排同样能拿到 E1–E5，且更贴近真实环境；上限 5/25 与精确金额校验把风险限制在 1–2 USDC。测试网产物已在本地构建（`NEXT_PUBLIC_ACTIVE_CHAIN=arc-testnet`），需要时可另起 3105，但它同样卡在水龙头资金上，不解除任何阻塞。
 
-已知显示瑕疵（不影响结算）：`GET /api/commerce/tasks` 里 `settlementWindowHours` 用 `Math.max(1, …)` 夹到 1，所以影子实例显示 1 而实际窗口是 36 秒；真实窗口由 `commerce.ts` 的 `settlementWindowMs()` 计算。下次构建一并修正为实际值。
+已修正的显示瑕疵：`GET /api/commerce/tasks` 曾用 `Math.max(1, …)` 把 `settlementWindowHours` 夹到 1，影子实例显示 1 而实际窗口是 36 秒；build13 起改为 `settlementWindowMs() / 3_600_000`，子小时覆盖值可以正确显示。
 
 ## 4. 主网灰度（阶段 3 全绿后才开）
 
@@ -177,7 +177,7 @@ node scripts/e2e-settlement.mjs --live --base https://web5.blog
 
 ## 6. 本地单测（不依赖测试网资金）
 
-Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**29 项全部通过**：
+Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`sendNativeUsdc` 被 mock），**53 项全部通过**（8 个文件）：
 
 | 文件 | 覆盖 |
 |---|---|
@@ -186,12 +186,94 @@ Vitest + 内存假 Prisma（`@/lib/db` 被打桩），冻结链上调用（`send
 | `tests/token-session.test.ts` | 存活会话通过；无会话行 / 已吊销 / 已过期 / 伪造签名一律拒绝 |
 | `tests/chain-config.test.ts` | 默认主网地址；`TREASURY_ADDRESS`/`ESCROW_VAULT_ADDRESS` 运行期覆盖；仅 treasury 覆盖时托管回退；非法地址被忽略；链默认 5042 / 测试网 5042002 与 RPC |
 | `tests/commerce-authz.test.ts` | 匿名调用审计接口 403 且不泄露 E1–E5 证据；非创建者船体结算 403 `NOT_ORCHESTRATOR` 且资金未动；非受派船体提交 403 且订单状态不变 |
+| `tests/discovery.test.ts` | `/llms.txt`、`/api/market/x402-market`、`public/.well-known/agent.json` 与结算常量逐条比对（托管地址、3 确认、唯一 tx、5/25 上限、6.25 最大赏金、窗口、80/20 + RETAINED）；三处价格与 `X402_TIER_PRICING` 同源 |
+| `tests/pricing.test.ts` | Tier 2 锚定 $0.25；三级价格严格递增且落在 0.01–0.5 区间；WBOG 折算 = `round(price / 0.00008)` |
+| `tests/api-errors.test.ts` | `Accept-Language` 缺省取英文、`zh` 取中文；占位符插值；状态码覆盖；`Retry-After` 保留；`Vary: Accept-Language` |
 
 ```bash
 npm test            # vitest run
 ```
 
 ---
+
+## 7. 生产运维：IP 变更 / 源站失联 5 分钟恢复清单
+
+**先分清三种错误页，别一上来就重启服务**：
+
+| Cloudflare | 含义 | 处理方向 |
+|---|---|---|
+| 522 / 521 | 连不上源站（连接超时 / 被拒绝） | 先按下面第 1–3 步查 IP 与实例，**不要**动 PM2/nginx |
+| 502 | 连上了源站但反向代理上游挂了 | 登机查 `pm2 list`、`ss -lntp \| grep 3000` |
+| 520 / 526 | 源站返回非法响应 / 证书问题 | 查 nginx 与证书 |
+
+### 第 1 步（1 分钟）：从外部确认是"全网不通"还是"只有我这边不通"
+
+```bash
+for p in 22 80 443; do timeout 8 bash -c "</dev/tcp/<ORIGIN_IP>/$p" && echo "$p OPEN" || echo "$p filtered"; done
+ping -c 3 <ORIGIN_IP>
+```
+
+再从多个外部节点复核（比本机权威，能排除本地代理/运营商干扰）：
+`https://check-host.net/check-ping?host=<ORIGIN_IP>`、`https://check-host.net/check-http?host=https://web5.blog/`
+
+判读：**ICMP 和所有 TCP 同时静默 = 机器或 IP 没了**；只有 80/443 不通但 ICMP 通 = 服务/防火墙；全通但站点 5xx = 应用层。
+
+### 第 2 步（1 分钟）：确认实例当前公网 IP
+
+登录服务商控制台（该 IP 归属 PEG TECH INC / AROSSCLOUD，AS400619），核对三件事：实例状态是否 `Running`、**公网 IP 是否仍等于 Cloudflare 里配置的那个**、有无欠费/滥用/超流量通知。
+
+服务商可能在实例重启、迁移或重建后**悄悄换掉公网 IP**，此时旧 IP 永远无响应，而 BGP 前缀仍被上游持续公告——这正是 2026-11-01 那次故障的成因（`38.55.146.192` → `38.14.195.83`，数据与进程全部健在）。
+
+### 第 3 步（1 分钟）：改 Cloudflare 的 A 记录
+
+`https://dash.cloudflare.com/?to=/:account/web5.blog/dns/records` → 编辑这三条，把「内容」改成面板里的新 IP：
+
+| 名称 | 类型 | 内容 | 代理状态 |
+|---|---|---|---|
+| `web5.blog` | A | `<NEW_IP>` | 已代理 |
+| `www.web5.blog` | A | `<NEW_IP>` | 已代理 |
+| `panel.web5.blog` | A | `<NEW_IP>` | 已代理 |
+
+被代理（橙色云）的记录改完**立即生效**，不需要等 TTL。改完用 `curl -s -o /dev/null -w '%{http_code}' https://web5.blog/` 复核。
+
+### 第 4 步（2 分钟）：确认服务仍在，并按切换清单核对
+
+```bash
+ssh -i ~/.ssh/web5_vps_key root@<NEW_IP> 'pm2 list; ss -lntp | grep -E ":(80|443|3000)\b"; systemctl is-active nginx'
+```
+
+随后执行第 8 节的切换核对（200/503/400/价格/窗口/DB）。
+
+**注意**：源站 `ufw` 只放行 Cloudflare 回源网段，所以**从本机直连 80/443 探测失败是正常现象**，不要据此判断源站宕机——以 Cloudflare 的响应码和 check-host 的外部节点为准。
+
+### 本次案例时间线（2026-11-01）
+
+09:00 前后开始 522 → 本机与法/伊/日/荷节点 TCP 全超时、ICMP 全丢 → RIPEstat 显示 `38.55.146.0/24` 全程由 AS400619 公告、同段 `.1` 仍可 ping 通 → 判定为源站主机失联 → 用户在控制台登入 tty1 发现 `eth0` 已是 `38.14.195.83` → 改三条 A 记录 → 站点恢复 200（build13）→ 通过 web 控制台装回 `web5-ops-2026` 公钥 → SSH 恢复 → 切 build14。
+
+
+
+## 8. 每次切换 build 后的核对清单（逐项核对，缺一不可）
+
+```bash
+B=https://web5.blog
+curl -s -o /dev/null -w "/ %{http_code}\n"                          $B/
+curl -s -o /dev/null -w "/llms.txt %{http_code}\n"                  $B/llms.txt
+curl -s -o /dev/null -w "/security %{http_code}\n"                  $B/security
+curl -s -o /dev/null -w "/api/daemon/health %{http_code}\n"         $B/api/daemon/health
+curl -s -o /dev/null -w "cron %{http_code}\n" -X POST               $B/api/cron/settle
+curl -s -o /dev/null -w "tg %{http_code}\n" -X POST -H 'Content-Type: application/json' -d '{}' $B/api/auth/telegram
+curl -s $B/api/market/x402-market | python3 -c 'import json,sys;[print(o.get("priceUsdc")) for o in json.load(sys.stdin)["offerings"]]'
+```
+
+| 期望 | 说明 |
+|---|---|
+| 前四项 `200` | 页面、发现层、披露页、健康检查 |
+| `cron` = `503` | 资金开关必须仍是关的；出现 200 说明 `SETTLEMENT_CRON_SECRET` 被误配 |
+| `tg` = `400` | **出现 500 就是 Windows 构建丢掉的 `[externals]_node:fs` / `[externals]_node:path` 分块没补回** |
+| 价格 = `0.05 / 0.25 / 0.50` | 与 `X402_TIER_PRICING` 同源 |
+| 线上 `agent.json` 的 md5 = 仓库副本 | `curl -s $B/.well-known/agent.json \| md5sum` |
+| `GET /api/commerce/tasks` | `settlementWindowHours` 应为实际值（默认 72），三个资金开关全 `false` |
+| `sqlite3 custom.db "PRAGMA quick_check;"` | 返回 `ok`；切换前必须先 `.backup` 到 `backups/` |
 
 ## 环境变量
 

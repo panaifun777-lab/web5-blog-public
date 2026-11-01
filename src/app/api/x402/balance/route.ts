@@ -8,21 +8,22 @@ import { isAddress } from 'viem';
 import { db } from '@/lib/db';
 import { formatArcUsdc } from '@/lib/web5/auth/eip712-types';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const limited = rateLimit(`x402-balance:${clientIp(req)}`, 60, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   const address = (req.nextUrl.searchParams.get('address') || '').trim();
   if (!isAddress(address)) {
-    return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
+    return apiError('INVALID_ADDRESS', { request: req });
   }
 
   const wallet = await db.backupWallet.findUnique({

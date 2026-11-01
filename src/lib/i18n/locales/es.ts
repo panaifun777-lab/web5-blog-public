@@ -1,6 +1,12 @@
 // ════════════════════════════════════════════════════════════════
-// src/lib/i18n/locales/es.ts — Español
+// src/lib/i18n/locales/es.ts — Español（traducción parcial / PARTIAL）
+//
+// status: 'partial' (see src/lib/i18n/config.ts).
+// Missing keys fall back per key to `en` at runtime.
 // ════════════════════════════════════════════════════════════════
+
+import type { DeepPartial } from '../types';
+import type { Dictionary } from './zh-CN';
 
 const es = {
   app: {
@@ -52,6 +58,6 @@ const es = {
     manifesto2: 'De conectar páginas, a conectar personas, activos, agentes — cada cambio de paradigma trae una explosión de productividad.',
     closing: 'Cuando cada individuo tenga su gemelo digital, la verdadera libertad apenas habrá comenzado.',
   },
-};
+} satisfies DeepPartial<Dictionary>;
 
 export default es;

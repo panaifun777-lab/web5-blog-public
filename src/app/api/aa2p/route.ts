@@ -18,9 +18,11 @@ export async function POST(req: NextRequest) {
 
     const response = await handleAa2pRpc(body);
     return NextResponse.json(response);
-  } catch (err: any) {
+  } catch (err) {
+    // JSON-RPC 信封保持规范形状；不把内部异常细节回传给调用方
+    console.error('[aa2p] Internal error:', err);
     return NextResponse.json(
-      { jsonrpc: '2.0', error: { code: -32603, message: `Internal error: ${err?.message}` }, id: null },
+      { jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' }, id: null },
       { status: 500 }
     );
   }

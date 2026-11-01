@@ -14,26 +14,25 @@ import {
   refundOrder,
 } from '@/lib/web5/ap2/commerce';
 import { ESCROW_PAYOUTS_ENABLED, REFUNDS_ENABLED } from '@/lib/launch/flags';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
-function authorized(req: NextRequest): { ok: true } | { ok: false; status: number; error: string } {
+function authorized(
+  req: NextRequest
+): { ok: true } | { ok: false; code: 'CRON_NOT_CONFIGURED' | 'CRON_UNAUTHORIZED' } {
   const secret = process.env.SETTLEMENT_CRON_SECRET || '';
   if (secret.length < 16) {
     console.error('[cron/settle] SETTLEMENT_CRON_SECRET is missing or shorter than 16 chars');
-    return {
-      ok: false,
-      status: 503,
-      error: 'Cron is not configured',
-    };
+    return { ok: false, code: 'CRON_NOT_CONFIGURED' };
   }
   const provided = req.headers.get('x-cron-secret') || '';
   const a = Buffer.from(provided);
   const b = Buffer.from(secret);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    return { ok: false, status: 401, error: 'Invalid cron secret' };
+    return { ok: false, code: 'CRON_UNAUTHORIZED' };
   }
   return { ok: true };
 }
@@ -53,7 +52,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = authorized(req);
   if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status, headers: NO_STORE });
+    return apiError(auth.code, { request: req, headers: NO_STORE });
   }
 
   const settled: Array<{ orderId: string; payoutTxHash?: string | null }> = [];
@@ -78,7 +77,8 @@ export async function POST(req: NextRequest) {
           settled.push({ orderId: order.orderId, payoutTxHash: result.payoutTxHash });
         }
       } catch (err: any) {
-        errors.push({ orderId: order.orderId, stage: 'settle', error: err?.message || 'settle failed' });
+        console.error('[cron/settle] settle failed:', err?.message || err);
+        errors.push({ orderId: order.orderId, stage: 'settle', error: 'settle failed' });
       }
     }
   }
@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
           refunded.push({ orderId: order.orderId, refundTxHash: result.refundTxHash });
         }
       } catch (err: any) {
-        errors.push({ orderId: order.orderId, stage: 'refund', error: err?.message || 'refund failed' });
+        console.error('[cron/settle] refund failed:', err?.message || err);
+        errors.push({ orderId: order.orderId, stage: 'refund', error: 'refund failed' });
       }
     }
   }

@@ -14,6 +14,7 @@ import { parseArcUsdc, formatArcUsdc } from '@/lib/web5/auth/eip712-types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,14 +56,14 @@ export async function GET(req: NextRequest) {
     const backupWalletAddress = searchParams.get('backupWalletAddress');
 
     if (!bountyId) {
-      return NextResponse.json({ error: 'bountyId required' }, { status: 400 });
+      return apiError('BOUNTY_ID_REQUIRED', { request: req });
     }
 
     const order = await db.taskOrder.findFirst({
       where: { OR: [{ orderId: bountyId }, { id: bountyId }] },
     });
     if (!order) {
-      return NextResponse.json({ error: 'Task order not found' }, { status: 404 });
+      return apiError('TASK_ORDER_NOT_FOUND', { request: req });
     }
 
     let wallet: any = null;
@@ -103,17 +104,18 @@ export async function GET(req: NextRequest) {
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed' }, { status: 500 });
+    console.error('[instant-submit] lookup failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`instant-submit:${clientIp(req)}`, 10, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
@@ -124,10 +126,10 @@ export async function POST(req: NextRequest) {
       .trim();
     const session = await resolveVesselSessionFromToken(token);
     if (!session || session.accessMode !== 'vessel' || !session.vesselDid) {
-      return NextResponse.json(
-        { error: 'Connect a Vessel session first' },
-        { status: 401, headers: { 'Cache-Control': 'no-store' } }
-      );
+      return apiError('VESSEL_SESSION_REQUIRED', {
+        request: req,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -144,26 +146,26 @@ export async function POST(req: NextRequest) {
     };
 
     if (!bountyId) {
-      return NextResponse.json({ error: 'bountyId is required' }, { status: 400 });
+      return apiError('BOUNTY_ID_REQUIRED', { request: req });
     }
     if (!userThought || typeof userThought !== 'string' || !userThought.trim()) {
-      return NextResponse.json({ error: 'userThought is required' }, { status: 400 });
+      return apiError('USER_THOUGHT_REQUIRED', { request: req });
     }
     if (userThought.length > 5000) {
-      return NextResponse.json({ error: 'userThought is too long' }, { status: 400 });
+      return apiError('USER_THOUGHT_TOO_LONG', { request: req });
     }
 
     const order = await db.taskOrder.findFirst({
       where: { OR: [{ orderId: bountyId }, { id: bountyId }] },
     });
     if (!order) {
-      return NextResponse.json({ error: 'Task order not found' }, { status: 404 });
+      return apiError('TASK_ORDER_NOT_FOUND', { request: req });
     }
     if (isDemoOrder(order)) {
-      return NextResponse.json(
-        { error: 'Demo orders cannot be submitted', demo: true },
-        { status: 400 }
-      );
+      return apiError('DEMO_ORDER_NOT_SUBMITTABLE', {
+        request: req,
+        extra: { demo: true },
+      });
     }
 
     // The wallet must belong to this session; never credit an arbitrary address.
@@ -177,26 +179,17 @@ export async function POST(req: NextRequest) {
       select: { id: true, address: true },
     });
     if (!wallet) {
-      return NextResponse.json(
-        { error: 'No registered wallet for this session' },
-        { status: 400 }
-      );
+      return apiError('WALLET_NOT_REGISTERED', { request: req });
     }
     if (
       backupWalletAddress &&
       backupWalletAddress.toLowerCase() !== wallet.address.toLowerCase()
     ) {
-      return NextResponse.json(
-        { error: 'backupWalletAddress does not belong to this session' },
-        { status: 403 }
-      );
+      return apiError('WALLET_NOT_OWNED_BY_SESSION', { request: req });
     }
 
     if (!order.escrowTxHash) {
-      return NextResponse.json(
-        { error: 'Order has no verified escrow deposit' },
-        { status: 409 }
-      );
+      return apiError('ESCROW_DEPOSIT_MISSING', { request: req });
     }
     const escrow = await verifyNativeTransfer({
       txHash: order.escrowTxHash,
@@ -205,10 +198,10 @@ export async function POST(req: NextRequest) {
       minConfirmations: 3,
     });
     if (!escrow.ok) {
-      return NextResponse.json(
-        { error: `Escrow verification failed: ${escrow.reason}` },
-        { status: 409 }
-      );
+      return apiError('ESCROW_VERIFICATION_FAILED', {
+        request: req,
+        params: { reason: escrow.reason ?? 'unknown' },
+      });
     }
 
     let workingOrder = order;
@@ -218,17 +211,14 @@ export async function POST(req: NextRequest) {
         data: { assignedAgentDid: session.vesselDid, status: 'ASSIGNED' },
       });
     } else if (workingOrder.assignedAgentDid !== session.vesselDid) {
-      return NextResponse.json(
-        { error: 'This order is assigned to another vessel' },
-        { status: 403 }
-      );
+      return apiError('ORDER_ASSIGNED_TO_ANOTHER_VESSEL', { request: req });
     }
 
     if (workingOrder.status !== 'ASSIGNED') {
-      return NextResponse.json(
-        { error: `Cannot submit order in status: ${workingOrder.status}` },
-        { status: 409 }
-      );
+      return apiError('ORDER_STATUS_NOT_SUBMITTABLE', {
+        request: req,
+        params: { status: workingOrder.status },
+      });
     }
 
     const finalTitle = title?.trim() || order.title;
@@ -281,9 +271,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('[instant-submit] Error:', err);
-    return NextResponse.json(
-      { error: err.message || 'Submission failed' },
-      { status: 500 }
-    );
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }

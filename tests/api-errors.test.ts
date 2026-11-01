@@ -65,4 +65,71 @@ describe('apiError', () => {
   it('lets callers override the status', () => {
     expect(apiError('INTERNAL_ERROR', { status: 502 }).status).toBe(502);
   });
+
+  it('keeps extra fields alongside the stable code', async () => {
+    const res = apiError('DEMO_ORDER_NOT_SUBMITTABLE', { extra: { demo: true } });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Demo orders cannot be submitted.',
+      code: 'DEMO_ORDER_NOT_SUBMITTABLE',
+      demo: true,
+    });
+  });
+});
+
+describe('session and Vessel errors', () => {
+  it('defaults to English for a missing Vessel session', async () => {
+    const res = apiError('VESSEL_SESSION_REQUIRED');
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({
+      error: 'A Vessel session is required, please sign in first.',
+      code: 'VESSEL_SESSION_REQUIRED',
+    });
+  });
+
+  it('returns Chinese for an unconfigured Telegram login', async () => {
+    const res = apiError('TELEGRAM_AUTH_NOT_CONFIGURED', { request: req('zh-CN') });
+    expect(res.status).toBe(503);
+    await expect(res.json()).resolves.toEqual({
+      error: '服务端尚未配置 Telegram 登录。',
+      code: 'TELEGRAM_AUTH_NOT_CONFIGURED',
+    });
+  });
+
+  it('keeps English for a machine caller that sends en', async () => {
+    const res = apiError('PRIME_NOT_FOUND', { request: req('en-US,en;q=0.9') });
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({
+      error: 'No Prime identity is linked to this session.',
+      code: 'PRIME_NOT_FOUND',
+    });
+  });
+});
+
+describe('parameterised errors', () => {
+  it('interpolates the comment length limit in both locales', async () => {
+    const en = apiError('COMMENT_TOO_LONG', { params: { max: 2000 } });
+    await expect(en.json()).resolves.toMatchObject({
+      error: 'Comment is too long (max 2000 characters).',
+      code: 'COMMENT_TOO_LONG',
+    });
+
+    const zh = apiError('COMMENT_TOO_LONG', { request: req('zh-CN'), params: { max: 2000 } });
+    await expect(zh.json()).resolves.toMatchObject({
+      error: '评论过长（最多 2000 个字符）。',
+      code: 'COMMENT_TOO_LONG',
+    });
+  });
+
+  it('interpolates budget field names and bounds', async () => {
+    const res = apiError('BUDGET_LIMIT_OUT_OF_RANGE', {
+      request: req('zh-CN'),
+      params: { field: 'perTxLimit', min: 1, max: 100 },
+    });
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'perTxLimit 必须是 1 到 100 USDC 之间的整数。',
+      code: 'BUDGET_LIMIT_OUT_OF_RANGE',
+    });
+  });
 });

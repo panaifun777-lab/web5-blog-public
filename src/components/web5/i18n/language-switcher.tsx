@@ -18,6 +18,7 @@ export function LanguageSwitcher() {
   const i18n = useI18n();
 
   const locale = i18n.locale;
+  const t = i18n.t;
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -57,7 +58,7 @@ export function LanguageSwitcher() {
       {open && (
         <div className="absolute right-0 top-full mt-1.5 bg-[#0a0a0f] border border-white/[0.1] rounded-xl shadow-2xl z-[100] min-w-[160px] p-1.5 backdrop-blur-2xl">
           <div className="px-2 py-1 text-[9px] text-[#555] font-mono border-b border-white/[0.04] mb-1">
-            SELECT LANGUAGE / 选择语言
+            {t('nav.selectLanguage')}
           </div>
           <div className="max-h-64 overflow-y-auto space-y-0.5">
             {locales.map((l) => (

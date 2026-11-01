@@ -10,15 +10,16 @@ import { db } from '@/lib/db';
 import { createHash, randomBytes } from 'crypto';
 import { getDefaultBudget } from '@/lib/web5/vessel-verifier';
 import { serializeForJson, RFC_CONSTANTS } from '@/lib/web5/types';
+import { apiError } from '@/lib/web5/api/errors';
 
 export async function POST(req: NextRequest) {
   try {
     const { walletAddress, vesselAddress, signature, message } = await req.json();
     if (!walletAddress || !walletAddress.startsWith('0x')) {
-      return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
+      return apiError('INVALID_WALLET_ADDRESS', { request: req });
     }
     if (!signature || !message) {
-      return NextResponse.json({ error: 'Wallet signature required' }, { status: 401 });
+      return apiError('SIGNATURE_REQUIRED', { request: req });
     }
 
     const addr = walletAddress.toLowerCase();
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       !vesselMatch || vesselMatch[1].toLowerCase() !== vesselAddr ||
       !tsMatch || Math.abs(Date.now() - Number(tsMatch[1])) > 5 * 60 * 1000
     ) {
-      return NextResponse.json({ error: 'Login signature expired or mismatched' }, { status: 401 });
+      return apiError('LOGIN_SIGNATURE_EXPIRED', { request: req });
     }
 
     try {
@@ -43,10 +44,10 @@ export async function POST(req: NextRequest) {
         signature: signature as `0x${string}`,
       });
       if (!valid) {
-        return NextResponse.json({ error: 'Invalid wallet signature' }, { status: 401 });
+        return apiError('SIGNATURE_INVALID', { request: req });
       }
     } catch {
-      return NextResponse.json({ error: 'Invalid wallet signature' }, { status: 401 });
+      return apiError('SIGNATURE_INVALID', { request: req });
     }
 
     // 网站专用钱包地址（Vessel 容器），与主钱包地址区分开
@@ -148,6 +149,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error('[wallet-login] Error:', err);
-    return NextResponse.json({ error: 'Wallet login failed' }, { status: 500 });
+    return apiError('LOGIN_FAILED', { request: req });
   }
 }

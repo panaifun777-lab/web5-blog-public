@@ -12,16 +12,17 @@ import {
 import { WITHDRAWALS_ENABLED, featureDisabled, moneyFlowBlocked } from '@/lib/launch/flags';
 import { getPayoutAccount } from '@/lib/web5/payments/arc';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`withdraw:${clientIp(req)}`, 5, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   if (!WITHDRAWALS_ENABLED) return moneyFlowBlocked('WITHDRAWALS_DISABLED');
@@ -55,13 +56,7 @@ export async function POST(req: NextRequest) {
         nonce === undefined ||
         deadline === undefined
       ) {
-        return NextResponse.json(
-          {
-            error:
-              'Missing withdrawal fields: masterWalletAddress, backupWalletAddress, amountAtomic, nonce, deadline, signature',
-          },
-          { status: 400 }
-        );
+        return apiError('MISSING_WITHDRAWAL_FIELDS', { request: req });
       }
 
       message = {
@@ -75,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!body.signature || !/^0x[0-9a-fA-F]{130}$/.test(body.signature)) {
-      return NextResponse.json({ error: 'Valid signature required' }, { status: 400 });
+      return apiError('SIGNATURE_REQUIRED', { request: req, status: 400 });
     }
 
     const result = await processWithdrawSettlement({
@@ -86,9 +81,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err: any) {
     console.error('[withdraw] Error:', err);
-    return NextResponse.json(
-      { error: err.message || 'Withdrawal failed' },
-      { status: 400, headers: { 'Cache-Control': 'no-store' } }
-    );
+    return apiError('WITHDRAWAL_FAILED', {
+      request: req,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }

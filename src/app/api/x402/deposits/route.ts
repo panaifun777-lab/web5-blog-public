@@ -11,6 +11,7 @@ import { verifyNativeTransfer } from '@/lib/web5/payments/arc';
 import { ARC_MAINNET_CHAIN_ID, formatArcUsdc } from '@/lib/web5/auth/eip712-types';
 import { X402_DEPOSITS_ENABLED, featureDisabled } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,10 +26,10 @@ export async function POST(req: NextRequest) {
 
   const limited = rateLimit(`x402-deposit:${clientIp(req)}`, 10, 60_000);
   if (!limited.ok) {
-    return NextResponse.json(
-      { error: 'Too many requests' },
-      { status: 429, headers: { 'Retry-After': String(limited.retryAfter) } }
-    );
+    return apiError('RATE_LIMITED', {
+      request: req,
+      headers: { 'Retry-After': String(limited.retryAfter) },
+    });
   }
 
   try {
@@ -37,19 +38,16 @@ export async function POST(req: NextRequest) {
     const address = typeof body?.address === 'string' ? body.address.trim() : '';
 
     if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
-      return NextResponse.json({ error: 'Invalid txHash' }, { status: 400 });
+      return apiError('INVALID_TX_HASH', { request: req });
     }
     if (!isAddress(address)) {
-      return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
+      return apiError('INVALID_ADDRESS', { request: req });
     }
     const sender = address.toLowerCase();
 
     const existing = await db.chainDeposit.findUnique({ where: { txHash } });
     if (existing) {
-      return NextResponse.json(
-        { error: 'This deposit transaction was already credited' },
-        { status: 409 }
-      );
+      return apiError('DEPOSIT_ALREADY_CREDITED', { request: req });
     }
 
     // 必须是从付款地址发往平台金库的真实原生 USDC 转账
@@ -61,10 +59,10 @@ export async function POST(req: NextRequest) {
       minConfirmations: 3,
     });
     if (!verified.ok) {
-      return NextResponse.json(
-        { error: `Deposit verification failed: ${verified.reason}` },
-        { status: 400 }
-      );
+      return apiError('DEPOSIT_VERIFICATION_FAILED', {
+        request: req,
+        params: { reason: verified.reason ?? 'unknown' },
+      });
     }
 
     const amountWei = verified.transfer.valueWei;
@@ -138,18 +136,12 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     if (err?.code === 'P2002') {
-      return NextResponse.json(
-        { error: 'This deposit transaction was already credited' },
-        { status: 409 }
-      );
+      return apiError('DEPOSIT_ALREADY_CREDITED', { request: req });
     }
     if (err?.message === 'concurrent_deposit') {
-      return NextResponse.json(
-        { error: 'Concurrent deposit detected, please retry' },
-        { status: 409 }
-      );
+      return apiError('DEPOSIT_CONFLICT', { request: req });
     }
     console.error('[x402/deposits] Error:', err);
-    return NextResponse.json({ error: 'Deposit failed' }, { status: 500 });
+    return apiError('DEPOSIT_FAILED', { request: req });
   }
 }
