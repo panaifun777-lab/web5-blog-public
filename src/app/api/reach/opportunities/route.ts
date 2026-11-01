@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { createCommerceOrder } from '@/lib/web5/ap2/commerce';
 import { isProposedReward } from '@/lib/web5/reach/crawler';
+import { apiError } from '@/lib/web5/api/errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -63,19 +64,20 @@ export async function GET(req: NextRequest) {
       }),
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || '读取失败' }, { status: 500 });
+    console.error('[reach/opportunities] read failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { id } = await req.json();
-    if (!id) return NextResponse.json({ error: '缺少 id' }, { status: 400 });
+    if (!id) return apiError('MISSING_ID', { request: req });
 
     const op = await db.externalOpportunity.findUnique({ where: { id } });
-    if (!op) return NextResponse.json({ error: '机会不存在' }, { status: 404 });
+    if (!op) return apiError('OPPORTUNITY_NOT_FOUND', { request: req });
     if (op.status === 'IMPORTED') {
-      return NextResponse.json({ error: '该机会已导入' }, { status: 409 });
+      return apiError('OPPORTUNITY_ALREADY_IMPORTED', { request: req });
     }
     if (
       isProposedReward({
@@ -85,10 +87,7 @@ export async function POST(req: NextRequest) {
         tags: safeJson<string[]>(op.tags, []),
       })
     ) {
-      return NextResponse.json(
-        { error: '该机会的金额仍为提案（未确认），请确认后再创建悬赏' },
-        { status: 409 }
-      );
+      return apiError('BOUNTY_AMOUNT_UNCONFIRMED', { request: req });
     }
 
     const bounty = op.rewardUsdc && op.rewardUsdc > 0
@@ -114,7 +113,8 @@ export async function POST(req: NextRequest) {
       message: `已导入为站内悬赏（${bounty} USDC 托管）`,
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || '导入失败' }, { status: 500 });
+    console.error('[reach/opportunities] import failed:', err);
+    return apiError('INTERNAL_ERROR', { request: req });
   }
 }
 

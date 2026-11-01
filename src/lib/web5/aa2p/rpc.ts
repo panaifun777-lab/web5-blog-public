@@ -7,6 +7,7 @@
 
 import { db } from '@/lib/db';
 import { calculateResonanceScore } from '@/lib/web5/resonance/bb-engine';
+import { WBOG_BASE_PRICE_USDC, X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 
 export interface Aa2pRpcRequest {
   jsonrpc: '2.0';
@@ -85,9 +86,9 @@ export async function handleAa2pRpc(reqBody: Aa2pRpcRequest): Promise<Aa2pRpcRes
     // 计算分身辩驳与该文章的共鸣/异见度
     const resonance = calculateResonanceScore(post.id, sender_did || 'did:eidolon:external', counter_argument.length);
 
-    // 自动作为分身辩驳写入互动并计算 0.1 USDC 准入/调用扣费与 50% 销毁
-    const feeUsdc = 0.10;
-    const burnedTokens = (feeUsdc * 0.5 / 0.00008).toFixed(0);
+    // 自动作为分身辩驳写入互动，按 Tier 3 准入价扣费并销毁其中 50%
+    const feeUsdc = Number(X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc);
+    const burnedTokens = (feeUsdc * 0.5 / WBOG_BASE_PRICE_USDC).toFixed(0);
 
     const interaction = await db.interaction.create({
       data: {
@@ -108,7 +109,7 @@ export async function handleAa2pRpc(reqBody: Aa2pRpcRequest): Promise<Aa2pRpcRes
         interactionId: interaction.id,
         resonanceScore: resonance.score,
         tier: 'TIER_3_A2A_COLLAB',
-        feeSettledUsdc: '0.10',
+        feeSettledUsdc: X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc,
         wbogBurned: burnedTokens,
         settledOn: 'Arc Mainnet BudgetFence',
         timestamp: Date.now(),

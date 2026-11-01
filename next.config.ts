@@ -19,10 +19,6 @@ const nextConfig: NextConfig = {
       fallback: [],
     };
   },
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   reactStrictMode: false,
   devIndicators: false,
 };

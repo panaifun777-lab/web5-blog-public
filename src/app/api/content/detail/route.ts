@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { handleX402PaymentGate } from '@/lib/web5/x402/middleware';
+import { handleX402PaymentGate, X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
@@ -86,14 +86,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });
     }
 
-    // ── x402 外部智能体微支付检测 (Tier 1 基础数据 0.03 USDC，若请求带 deep=true 则升级至 Tier 2 0.05 USDC) ──
+    // ── x402 外部智能体微支付检测 (Tier 1 摘要 / Tier 2 完整长文，deep=true 升级) ──
     // 凭单必须绑定当前 arweaveHash 与作者 DID，并由 Treasury 收款。
     const isAgentCall = url.searchParams.get('agent') === 'true' || req.headers.get('accept')?.includes('application/vnd.x402');
     if (isAgentCall) {
       const isDeep = url.searchParams.get('deep') === 'true';
+      const tier = isDeep ? 'TIER_2_DEEP_REASONING' : 'TIER_1_SUMMARY';
       const gate = await handleX402PaymentGate(req, {
-        tier: isDeep ? 'TIER_2_DEEP_REASONING' : 'TIER_1_SUMMARY',
-        priceUsdc: isDeep ? '0.05' : '0.03',
+        tier,
+        priceUsdc: X402_TIER_PRICING[tier].priceUsdc,
         recipient: TREASURY,
         network: 'arc-mainnet',
         chainId: ARC_MAINNET.id,

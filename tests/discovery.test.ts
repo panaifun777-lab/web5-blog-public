@@ -12,6 +12,7 @@ import { GET as getMarket } from '@/app/api/market/x402-market/route';
 import { GET as getLlms } from '@/app/api/market/llms/route';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { settlementWindowMs } from '@/lib/web5/ap2/commerce';
+import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 
 // The machine-facing surfaces must describe the implementation, not an older
 // draft of it. These assertions read the same constants the settlement path
@@ -75,6 +76,20 @@ describe('x402 market manifest', () => {
     const m = await market();
     expect(m.discovery.market).toMatch(/\/api\/market\/x402-market$/);
     expect(m.acceptancePolicy.disputeWindowHours).toBe(WINDOW_HOURS);
+  });
+
+  it('prices every offering from the tier table', async () => {
+    const { offerings } = await market();
+    const byId = Object.fromEntries(offerings.map((o: any) => [o.id, o]));
+    expect(byId['knowledge.vector_shard'].priceUsdc).toBe(
+      X402_TIER_PRICING.TIER_1_SUMMARY.priceUsdc
+    );
+    expect(byId['knowledge.full_evidence'].priceUsdc).toBe(
+      X402_TIER_PRICING.TIER_2_DEEP_REASONING.priceUsdc
+    );
+    expect(byId['agent.mutual_interrogation'].priceUsdc).toBe(
+      X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc
+    );
   });
 });
 

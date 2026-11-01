@@ -32,27 +32,36 @@ export interface X402TierConfig {
   description: string;
 }
 
-// 统一高维三级阶梯定价标准
+// WBOG 折价基准：1 WBOG = $0.00008，用 WBOG 结算再打 8 折
+export const WBOG_BASE_PRICE_USDC = 0.00008;
+export const WBOG_DISCOUNT_RATE = 0.20;
+
+function wbogEquivalent(priceUsdc: string): string {
+  return String(Math.round(Number(priceUsdc) / WBOG_BASE_PRICE_USDC));
+}
+
+// 三级阶梯定价。Tier 2 对齐 Coinbase 提出的 x402「单篇文章 $0.25」微支付锚点，
+// 让完整长文的价格落在单次订阅替代品的量级，而不是按次白送。
 export const X402_TIER_PRICING: Record<X402CallTier, X402TierConfig> = {
-  // 基础数据/段落/摘要检索 (0.03 USDC)
+  // 基础数据/段落/摘要检索 (0.05 USDC)
   TIER_1_SUMMARY: {
-    priceUsdc: '0.03',
-    equivalentWbog: '375', // 基准价 $0.00008 折算，享受 20% 折扣后仅需 300 WBOG
-    wbogDiscountRate: 0.20,
+    priceUsdc: '0.05',
+    equivalentWbog: wbogEquivalent('0.05'),
+    wbogDiscountRate: WBOG_DISCOUNT_RATE,
     description: 'Tier 1: 核心论点、结构化元数据与高维向量切片瞬时检索',
   },
-  // 深度推演/提示词分形/代码实现 (0.05 USDC)
+  // 完整长文/证据链/提示词 (0.25 USDC)
   TIER_2_DEEP_REASONING: {
-    priceUsdc: '0.05',
-    equivalentWbog: '625', // 折扣后 500 WBOG
-    wbogDiscountRate: 0.20,
+    priceUsdc: '0.25',
+    equivalentWbog: wbogEquivalent('0.25'),
+    wbogDiscountRate: WBOG_DISCOUNT_RATE,
     description: 'Tier 2: 完整实证数据、算法源代码、可复现提示词与长文深度后半段',
   },
-  // 跨分身对等质询/AA2P 演武场商贸协同 (0.10 USDC)
+  // 跨分身对等质询/AA2P 商贸协同 (0.50 USDC)
   TIER_3_A2A_COLLAB: {
-    priceUsdc: '0.10',
-    equivalentWbog: '1250', // 折扣后 1000 WBOG
-    wbogDiscountRate: 0.20,
+    priceUsdc: '0.50',
+    equivalentWbog: wbogEquivalent('0.50'),
+    wbogDiscountRate: WBOG_DISCOUNT_RATE,
     description: 'Tier 3: 1对1 跨分身深度质询、专有知识库穿透推演与 Agentic Commerce 准入',
   },
 };

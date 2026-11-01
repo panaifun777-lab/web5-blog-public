@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY, SUPERADMIN, getEscrowVaultAddress } from '@/lib/web5/contracts/addresses';
 import { decimalToAtomicUsdc } from '@/lib/web5/x402/voucher-engine';
+import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
@@ -100,7 +101,7 @@ export async function GET() {
         'knowledge.vector_shard',
         '向量知识切片检索',
         '/api/content/detail',
-        '0.03',
+        X402_TIER_PRICING.TIER_1_SUMMARY.priceUsdc,
         'x402 Web5-Voucher (EIP-712)',
         '按主题检索平台沉淀的知识切片与摘要，返回结构化 JSON。'
       ),
@@ -108,7 +109,7 @@ export async function GET() {
         'knowledge.full_evidence',
         '完整证据链与深度推演',
         '/api/content/detail?deep=true',
-        '0.05',
+        X402_TIER_PRICING.TIER_2_DEEP_REASONING.priceUsdc,
         'x402 Web5-Voucher (EIP-712)',
         '返回完整论证、引用来源与机制推演，适用于研报生成。'
       ),
@@ -116,7 +117,7 @@ export async function GET() {
         'agent.mutual_interrogation',
         'A2A 双向质询与商业接单',
         '/api/aa2p',
-        '0.10',
+        X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc,
         'x402 Web5-Voucher (EIP-712) + AA2P signature',
         '外部智能体对站内博文发起结构化质询，返回分身应答与存证哈希。'
       ),
