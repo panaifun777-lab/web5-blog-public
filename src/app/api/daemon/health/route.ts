@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { voucherGateway } from '@/lib/web5/x402/voucher-engine';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
+import { describeSigner } from '@/lib/web5/payments/signer';
 import { AGENT_DAEMON_ENABLED } from '@/lib/launch/flags';
 import pkg from '../../../../../package.json';
 
@@ -58,6 +59,9 @@ export async function GET() {
         retryPolicy: 'ExponentialBackoff (1s -> 2s -> 4s)',
       },
       voucherGateway: voucherStats,
+      // Config-only (no key, no token, no URL); `ready: false` means a payout
+      // would be refused before it is signed.
+      payoutSigner: describeSigner(),
       onChain: {
         network: 'Circle ARC Mainnet',
         chainId: ARC_MAINNET.id,

@@ -1,30 +1,14 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  defineChain,
-  getAddress,
-  http,
-  isAddress,
-  parseGwei,
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { getActiveChain, getTreasuryAddress } from '@/lib/web5/contracts/addresses';
+import { isAddress } from 'viem';
+import { getTreasuryAddress } from '@/lib/web5/contracts/addresses';
 import { db } from '@/lib/db';
+import { arcChain, arcPublicClient } from './arc-chain';
+import { PayoutSignerError, assertPayoutSignerReady, loadLocalPayoutAccount } from './signer';
+import type { PayoutSigner } from './signer';
+import { checkHotWalletCeiling } from './hot-wallet';
 
-const ACTIVE_CHAIN = getActiveChain();
-
-export const arcChain = defineChain({
-  id: ACTIVE_CHAIN.id,
-  name: ACTIVE_CHAIN.name,
-  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: [ACTIVE_CHAIN.rpcUrl] } },
-  blockExplorers: { default: { name: 'ArcScan', url: ACTIVE_CHAIN.explorer } },
-});
-
-export const arcPublicClient = createPublicClient({
-  chain: arcChain,
-  transport: http(ACTIVE_CHAIN.rpcUrl),
-});
+// Chain/client live in ./arc-chain so the signer module can reuse them without
+// importing this Prisma-backed file. Re-exported for existing importers.
+export { arcChain, arcPublicClient };
 
 /** 服务端硬上限：env 只能调低，不能突破 5 / 25。 */
 export const PAYOUT_SINGLE_CAP_USDC = Math.min(
@@ -41,7 +25,7 @@ const DAILY_CAP_USDC = PAYOUT_DAILY_CAP_USDC;
 export type PayoutFailure = {
   ok: false;
   reason: string;
-  code?: 'CAP_SINGLE' | 'CAP_DAILY' | 'NO_SIGNER' | 'TX_FAILED';
+  code?: 'CAP_SINGLE' | 'CAP_DAILY' | 'CAP_HOT_WALLET' | 'BALANCE_UNAVAILABLE' | 'NO_SIGNER' | 'TX_FAILED';
   status?: number;
 };
 
@@ -118,23 +102,13 @@ export async function verifyNativeTransfer(params: {
   }
 }
 
+/**
+ * @deprecated Use the signer abstraction (`resolveSigner()` from ./signer).
+ * Kept for the withdraw route: returns the validated local treasury account.
+ * Delegates to the single loader in ./signer so messages cannot drift.
+ */
 export function getPayoutAccount() {
-  const key = process.env.TREASURY_PAYOUT_PRIVATE_KEY;
-  if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) {
-    return { ok: false as const, reason: 'TREASURY_PAYOUT_PRIVATE_KEY is not configured' };
-  }
-  try {
-    const account = privateKeyToAccount(key as `0x${string}`);
-    if (account.address.toLowerCase() !== getTreasuryAddress().toLowerCase()) {
-      return {
-        ok: false as const,
-        reason: 'Payout key does not belong to the treasury address',
-      };
-    }
-    return { ok: true as const, account };
-  } catch {
-    return { ok: false as const, reason: 'Invalid payout private key' };
-  }
+  return loadLocalPayoutAccount();
 }
 
 const USDC_UNIT = 10n ** 18n;
@@ -209,24 +183,39 @@ async function sendNativeUsdcSerialized(params: {
   const capped = await checkPayoutCaps(params.amountWei);
   if (!capped.ok) return { ok: false, reason: capped.reason, code: capped.code, status: capped.status };
 
-  const payout = getPayoutAccount();
-  if (!payout.ok) {
-    return { ok: false, reason: payout.reason, code: 'NO_SIGNER', status: 503 };
+  // Signer selection: remote KMS when explicitly configured, otherwise the
+  // unchanged local key. A half-configured KMS fails closed here (NO_SIGNER);
+  // it never degrades to signing with the VPS key.
+  let signer: PayoutSigner;
+  try {
+    signer = assertPayoutSignerReady();
+  } catch (err) {
+    if (err instanceof PayoutSignerError) {
+      return { ok: false, reason: err.message, code: 'NO_SIGNER', status: 503 };
+    }
+    throw err;
+  }
+
+  // Hot-wallet exposure rail: refuse before anything is signed or sent.
+  try {
+    const balanceWei = await arcPublicClient.getBalance({ address: getTreasuryAddress() });
+    const ceiling = checkHotWalletCeiling({ balanceWei, pendingPayoutWei: params.amountWei });
+    if (!ceiling.ok) {
+      console.warn('[arc] Payout refused by hot-wallet rail:', ceiling.reason);
+      return { ok: false, reason: ceiling.detail, code: 'CAP_HOT_WALLET', status: 409 };
+    }
+  } catch (err: any) {
+    console.warn('[arc] Hot-wallet balance check failed:', err?.shortMessage || err?.message);
+    return {
+      ok: false,
+      reason: 'Cannot read the treasury hot-wallet balance; refusing to sign',
+      code: 'BALANCE_UNAVAILABLE',
+      status: 503,
+    };
   }
 
   try {
-    const walletClient = createWalletClient({
-      account: payout.account,
-      chain: arcChain,
-      transport: http(ACTIVE_CHAIN.rpcUrl),
-    });
-
-    const txHash = await walletClient.sendTransaction({
-      to: getAddress(params.to),
-      value: params.amountWei,
-      maxFeePerGas: parseGwei('25'),
-      maxPriorityFeePerGas: parseGwei('2'),
-    });
+    const txHash = await signer.sendNativeUsdc(params.to as `0x${string}`, params.amountWei);
 
     const receipt = await arcPublicClient.waitForTransactionReceipt({
       hash: txHash,
@@ -238,6 +227,10 @@ async function sendNativeUsdcSerialized(params: {
     }
     return { ok: true, txHash, blockNumber: receipt.blockNumber.toString() };
   } catch (err: any) {
+    if (err instanceof PayoutSignerError) {
+      console.warn('[arc] Payout signer unavailable:', err.code);
+      return { ok: false, reason: err.message, code: 'NO_SIGNER', status: 503 };
+    }
     console.warn('[arc] Payout failed:', err?.shortMessage || err?.message);
     return { ok: false, reason: 'Payout transaction failed', code: 'TX_FAILED' };
   }
