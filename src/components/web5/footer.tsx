@@ -102,7 +102,7 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href="https://t.me/Web5blog_bot"
+                href="https://t.me/Web5_blog_bot"
                 target="_blank"
                 rel="noopener noreferrer"
                 title={t('footer.telegram')}

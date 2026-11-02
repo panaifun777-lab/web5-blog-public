@@ -504,6 +504,27 @@ export const API_ERRORS = {
     en: 'Invalid cron secret.',
     zh: '定时任务密钥不正确。',
   },
+  // ── Telegram 广播队列（TG_BROADCAST_SECRET 未设置时全部失效）──
+  BROADCAST_NOT_CONFIGURED: {
+    status: 503,
+    en: 'Telegram broadcast is not configured on this server.',
+    zh: '服务端尚未配置 Telegram 广播。',
+  },
+  BROADCAST_UNAUTHORIZED: {
+    status: 401,
+    en: 'Invalid broadcast secret.',
+    zh: '广播密钥不正确。',
+  },
+  BROADCAST_RECORD_NOT_FOUND: {
+    status: 404,
+    en: 'This order is not in the broadcast queue.',
+    zh: '该订单不在广播队列中。',
+  },
+  BROADCAST_RESULT_INVALID: {
+    status: 400,
+    en: 'ok must be a boolean, and tgMessageId is required when ok is true.',
+    zh: 'ok 必须是布尔值，且 ok 为 true 时必须提供 tgMessageId。',
+  },
 } as const satisfies Record<string, CatalogEntry>;
 
 export type ApiErrorCode = keyof typeof API_ERRORS;

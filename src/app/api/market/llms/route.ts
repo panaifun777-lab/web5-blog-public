@@ -10,10 +10,20 @@ import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { MONEY_FLOWS_ENABLED, X402_DEPOSITS_ENABLED, ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
 import { NON_DEMO_ORDER_WHERE, settlementWindowMs } from '@/lib/web5/ap2/commerce';
+import {
+  OPEN_BOUNTY_PREVIEW_LIMIT,
+  TASK_ROUTE_BASE,
+  listOpenTaskOrders,
+  type PublicTaskOrder,
+} from '@/lib/web5/ap2/task-browse';
+import { SITE_URL } from '@/lib/i18n/metadata';
 
 export const dynamic = 'force-dynamic';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web5.blog';
+/** Single-quoted one-liner for a plain-text directory listing. */
+function flat(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, 120);
+}
 
 export async function GET() {
   let openBounties = 0;
@@ -24,6 +34,23 @@ export async function GET() {
   } catch {
     openBounties = 0;
   }
+
+  // Same query + same demo filter the sitemap and the page use; capped, newest
+  // first, so the directory never turns into an unbounded crawl surface.
+  let openTasks: PublicTaskOrder[] = [];
+  try {
+    openTasks = await listOpenTaskOrders(OPEN_BOUNTY_PREVIEW_LIMIT);
+  } catch {
+    openTasks = [];
+  }
+  const openTaskLines = openTasks.length
+    ? openTasks
+        .map(
+          (task) =>
+            `  - ${task.status} · ${flat(task.title)} · ${task.bountyDisplay} USDC · ${task.url}`
+        )
+        .join('\n')
+    : '  - (none open right now — query the list endpoint above)';
 
   const x402Active = MONEY_FLOWS_ENABLED && X402_DEPOSITS_ENABLED;
   const escrowActive = MONEY_FLOWS_ENABLED && ESCROW_PAYOUTS_ENABLED;
@@ -71,6 +98,7 @@ Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true
 
 ## Bounty market (closed beta)
 - List bounties: GET ${SITE_URL}/api/commerce/tasks (${openBounties} with FUNDED/ASSIGNED status)
+- Bounty detail page: GET ${SITE_URL}${TASK_ROUTE_BASE}/<orderId> — one indexable HTML page per order, and every order object from the list endpoint carries an absolute "url" field pointing at it.
 - Create bounty: POST ${SITE_URL}/api/commerce/tasks with Authorization: Bearer <vessel session token> and {"action":"create","title":"...","description":"...","bountyUsdc":"1.0","escrowTxHash":"0x..."}
   creatorDid is not accepted from the request body; the server derives it from the Bearer vessel session. escrowTxHash must be a confirmed deposit that satisfies the escrow rules below; without it creation is rejected.
 - Payout status: ${escrowActive ? 'ENABLED' : 'DISABLED'} — settlement does not move funds while disabled.
@@ -80,6 +108,8 @@ Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true
 - Escrow rules: native USDC only, exactly the bounty amount, sent from the creator wallet (prime wallet or vessel smart account), >=3 confirmations, unique tx hash. Deposits that break these rules are rejected before any order exists.
 - Payout limits (server-enforced upper bounds): ${PAYOUT_SINGLE_CAP_USDC} USDC per payout, ${PAYOUT_DAILY_CAP_USDC} USDC per rolling 24h; max bounty ${maxBountyUsdc} USDC.
 - Settlement window: ${settlementWindowHours}h after submission (default 72h, configurable); the creator may dispute inside the window.
+- Open bounties right now (newest first, capped at ${OPEN_BOUNTY_PREVIEW_LIMIT}; each line ends with that bounty's own detail page URL):
+${openTaskLines}
 
 ## Contracts (Arc Mainnet ${ARC_MAINNET.id})
 - WBOG: ${ARC_MAINNET.addresses.WBOG}

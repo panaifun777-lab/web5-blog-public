@@ -32,6 +32,7 @@ import {
 } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 import { apiError } from '@/lib/web5/api/errors';
+import { taskUrl } from '@/lib/web5/ap2/task-browse';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,12 +65,16 @@ function isOrderId(value: unknown): value is string {
   return typeof value === 'string' && ORDER_ID_RE.test(value);
 }
 
-/** Public listing projection: never expose private deliverable bodies or acceptance hashes. */
-function publicOrder(order: CommerceTaskOrder): CommerceTaskOrder {
+/**
+ * Public listing projection: never expose private deliverable bodies or
+ * acceptance hashes, and add the absolute URL of the indexable detail page so
+ * an agent can follow a listing straight to `/task/<orderId>`.
+ */
+function publicOrder(order: CommerceTaskOrder): CommerceTaskOrder & { url: string } {
   const copy: CommerceTaskOrder = { ...order };
   delete copy.deliverableContent;
   delete copy.acceptanceHash;
-  return copy;
+  return { ...copy, url: taskUrl(order.orderId) };
 }
 
 export async function GET(req: NextRequest) {

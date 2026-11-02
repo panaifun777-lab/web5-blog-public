@@ -27,7 +27,7 @@
       "extensions": {
         "website": "https://web5.blog",
         "whitepaper": "https://web5.blog/founder",
-        "telegram": "https://t.me/Web5blog_bot",
+        "telegram": "https://t.me/Web5_blog_bot",
         "uniswapV4Position": "https://app.uniswap.org/positions/v4/arc/247118",
         "uniswapV4Swap": "https://app.uniswap.org/swap?chain=arc&inputCurrency=NATIVE&outputCurrency=0x5be2d3f16d008316fdb9964c7fd7b8a4a26d2f5f",
         "totalSupplyApi": "https://web5.blog/api/token/total-supply",
@@ -45,7 +45,7 @@
       "extensions": {
         "website": "https://web5.blog",
         "whitepaper": "https://web5.blog/founder",
-        "telegram": "https://t.me/Web5blog_bot"
+        "telegram": "https://t.me/Web5_blog_bot"
       }
     }
   ]

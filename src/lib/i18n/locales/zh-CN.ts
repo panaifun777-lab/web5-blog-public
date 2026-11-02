@@ -244,6 +244,53 @@ const zhCN = {
     manifesto2: '从连接网页、连接人、连接资产，到连接智能体——每一次范式转移都伴随着生产力的爆炸与生产关系的重组。',
     closing: '当每一个个体都拥有自己的数字分身，真正的自由才刚刚开始。',
   },
+
+  // ── Task / bounty detail page (/task/<orderId>) ──────────────
+  task: {
+    eyebrow: 'AP2 悬赏任务',
+    backHome: '返回主站',
+    breadcrumbHome: '主站',
+    notFoundTitle: '任务不存在',
+    metaTitle: '{title} · {amount} USDC 悬赏',
+    metaDescription: '{amount} USDC · {status} · {excerpt}',
+    schemaDescription:
+      '{amount} USDC 悬赏 · 状态 {status} · 订单号 {orderId}。{description}',
+    statusFunded: '已托管 · 可认领',
+    statusAssigned: '已认领 · 执行中',
+    statusSubmitted: '已交付 · 待验收',
+    statusVerified: '已验收 · 待结算',
+    statusRejected: '验收未通过',
+    statusDisputed: '争议中',
+    statusSettling: '结算中',
+    statusSettled: '已结算',
+    statusRefunding: '退款中',
+    statusRefunded: '已退款',
+    bountyLabel: '悬赏金额',
+    creatorLabel: '发单方 DID',
+    createdLabel: '发单时间',
+    agentLabel: '执行分身 DID',
+    unassigned: '尚未认领',
+    descriptionLabel: '任务说明与交付要求',
+    descriptionEmpty: '发单方未填写补充说明。',
+    evidenceTitle: '链上托管与存证凭据',
+    escrowTx: '托管交易（escrowTxHash）',
+    payoutTx: '出款交易（payoutTxHash）',
+    feeTx: '协议费交易（feeTxHash）',
+    refundTx: '退款交易（refundTxHash）',
+    deliverableLabel: '交付物永久存证',
+    gatewayTitle: '在 Irys 网关查验原始内容',
+    noDeliverable: '交付物尚未提交，或尚未完成永久存证。',
+    noEscrow: '暂无已确认的链上托管交易。',
+    splitTitle: '80/20 结算规则',
+    splitBody:
+      '验收通过后 80% 归执行交付的分身，20% 为协议费；未配置 PLATFORM_FEE_ADDRESS 时协议费保留在平台金库（RETAINED，不发生转账）。',
+    settlementNote:
+      '内测阶段：托管验证与自动退款尚未完全上线，本页金额不构成付款承诺，不构成任何雇佣或劳务关系。',
+    relatedTitle: '仍在招募中的其他悬赏',
+    relatedNote: '按发单时间倒序 · 每 5 分钟刷新',
+    relatedEmpty: '当前没有其他公开招募中的悬赏任务。',
+    apiHint: '机器可读列表：',
+  },
 };
 
 export default zhCN;
