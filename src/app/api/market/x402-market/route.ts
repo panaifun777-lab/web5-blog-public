@@ -13,10 +13,15 @@ import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
 import { NON_DEMO_ORDER_WHERE, settlementWindowMs } from '@/lib/web5/ap2/commerce';
+import {
+  OPEN_BOUNTY_PREVIEW_LIMIT,
+  TASK_ROUTE_BASE,
+  listOpenTaskOrders,
+  type PublicTaskOrder,
+} from '@/lib/web5/ap2/task-browse';
+import { SITE_URL } from '@/lib/i18n/metadata';
 
 export const dynamic = 'force-dynamic';
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web5.blog';
 
 function offering(
   id: string,
@@ -38,6 +43,25 @@ function offering(
   };
 }
 
+/**
+ * Compact open-bounty entry for the manifest. The `url` comes from
+ * `taskUrl()` inside `listOpenTaskOrders()`, so the host and the `/task/`
+ * prefix are never re-derived here, and only the allow-listed columns of
+ * `TASK_PUBLIC_SELECT` are reachable in the first place.
+ */
+function openBountySample(task: PublicTaskOrder) {
+  return {
+    orderId: task.orderId,
+    title: task.title,
+    status: task.status,
+    bountyUsdc: task.bountyUsdc,
+    url: task.url,
+    createdAt: task.createdAt,
+    escrowTxHash: task.escrowTxHash,
+    assignedAgentDid: task.assignedAgentDid,
+  };
+}
+
 export async function GET() {
   let openBounties = 0;
   try {
@@ -46,6 +70,14 @@ export async function GET() {
     });
   } catch {
     openBounties = 0;
+  }
+
+  // Same capped, demo-filtered query the sitemap and the task page use.
+  let openTasks: PublicTaskOrder[] = [];
+  try {
+    openTasks = await listOpenTaskOrders(OPEN_BOUNTY_PREVIEW_LIMIT);
+  } catch {
+    openTasks = [];
   }
 
   const paymentsPaused = process.env.X402_PAYMENTS_ENABLED === 'false';
@@ -124,6 +156,8 @@ export async function GET() {
     ],
     bountyMarket: {
       listEndpoint: `${SITE_URL}/api/commerce/tasks`,
+      detailPageUrlTemplate: `${SITE_URL}${TASK_ROUTE_BASE}/<orderId>`,
+      detailPageNote: 'Every order object returned by listEndpoint also carries its own absolute "url" field; openBountySamples below are the currently pickable ones.',
       createEndpoint: `${SITE_URL}/api/commerce/tasks`,
       createMethod: 'POST',
       createAuth: 'vessel session bearer (Authorization: Bearer <token>); creatorDid is derived server-side and ignored in the body',
@@ -159,6 +193,7 @@ export async function GET() {
         settlementWindowHours,
       },
       openBounties,
+      openBountySamples: openTasks.map(openBountySample),
     },
     acceptancePolicy: {
       autoAssign: true,

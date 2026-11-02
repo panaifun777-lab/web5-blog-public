@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 import { fakeDb } from './helpers/fake-db';
 
 vi.mock('@/lib/db', async () => {
@@ -10,6 +11,9 @@ vi.mock('@/lib/db', async () => {
 
 import { GET as getMarket } from '@/app/api/market/x402-market/route';
 import { GET as getLlms } from '@/app/api/market/llms/route';
+import { GET as listTasks } from '@/app/api/commerce/tasks/route';
+import { SITE_URL } from '@/lib/i18n/metadata';
+import { OPEN_BOUNTY_PREVIEW_LIMIT, taskUrl } from '@/lib/web5/ap2/task-browse';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { settlementWindowMs } from '@/lib/web5/ap2/commerce';
 import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
@@ -114,6 +118,83 @@ describe('llms.txt', () => {
     const amount = Number(createLine.match(/"bountyUsdc":"([\d.]+)"/)?.[1]);
     expect(amount).toBeGreaterThan(0);
     expect(amount).toBeLessThanOrEqual(MAX_BOUNTY);
+  });
+});
+
+describe('bounty detail page URLs on the discovery surfaces', () => {
+  // A crawler/agent that finds a bounty in a machine manifest must be able to
+  // follow it to an indexable HTML page. These three surfaces share
+  // `taskUrl()`, so the host is never restated here.
+  const seed = (orderId: string, data: Record<string, any> = {}) =>
+    fakeDb.seedOrder({
+      orderId,
+      creatorDid: 'did:plvtvs:creator',
+      title: 'Audit the Arc escrow vault',
+      description: 'Find the reentrancy.',
+      bountyUsdc: '2.50',
+      status: 'FUNDED',
+      deliverableContent: 'TOP-SECRET-BODY',
+      acceptanceHash: 'TOP-SECRET-ACCEPTANCE',
+      ...data,
+    });
+
+  it('gives every listed order an absolute detail-page url and no deliverable body', async () => {
+    seed('order-1');
+    seed('order-2', { status: 'SETTLED' });
+    const res = await listTasks(new NextRequest(`${SITE_URL}/api/commerce/tasks`));
+    const body = await res.json();
+    expect(body.count).toBe(2);
+    const byId = Object.fromEntries(body.orders.map((o: any) => [o.orderId, o]));
+    expect(byId['order-1'].url).toBe(`${SITE_URL}/task/order-1`);
+    expect(byId['order-2'].url).toBe(taskUrl('order-2'));
+    expect(byId['order-1']).not.toHaveProperty('deliverableContent');
+    expect(byId['order-1']).not.toHaveProperty('acceptanceHash');
+    expect(JSON.stringify(body)).not.toContain('TOP-SECRET-BODY');
+  });
+
+  it('advertises the detail-page template and open samples in the manifest', async () => {
+    seed('order-1', { status: 'ASSIGNED' });
+    seed('order-closed', { status: 'SETTLED' });
+    seed('ap2-task-seed-demo', { status: 'FUNDED' });
+    const m = await market();
+    expect(m.bountyMarket.detailPageUrlTemplate).toBe(`${SITE_URL}/task/<orderId>`);
+    const samples = m.bountyMarket.openBountySamples as any[];
+    expect(samples.map((s) => s.orderId)).toEqual(['order-1']);
+    expect(samples[0].url).toBe(taskUrl('order-1'));
+    expect(samples[0].status).toBe('ASSIGNED');
+    expect(Object.keys(samples[0]).sort()).toEqual([
+      'assignedAgentDid',
+      'bountyUsdc',
+      'createdAt',
+      'escrowTxHash',
+      'orderId',
+      'status',
+      'title',
+      'url',
+    ]);
+    expect(JSON.stringify(m)).not.toContain('TOP-SECRET');
+    expect(m.bountyMarket.openBounties).toBe(1);
+  });
+
+  it('prints the detail-page contract and a bounded open-bounty list in llms.txt', async () => {
+    seed('order-1');
+    const text = await llms();
+    expect(text).toMatch(/- Bounty detail page: GET \S+\/task\/<orderId>/);
+    expect(text).toContain(
+      `- Open bounties right now (newest first, capped at ${OPEN_BOUNTY_PREVIEW_LIMIT}`
+    );
+    const line = text.split('\n').find((l) => l.includes('order-1'));
+    expect(line).toContain('FUNDED');
+    expect(line).toContain('2.5 USDC');
+    expect(line?.trim().endsWith(taskUrl('order-1'))).toBe(true);
+    expect(text).not.toContain('TOP-SECRET');
+  });
+
+  it('still renders the directory when no bounty is open', async () => {
+    const text = await llms();
+    expect(text).toMatch(/- Open bounties right now/);
+    expect(text).toMatch(/\(none open right now/);
+    expect((await market()).bountyMarket.openBountySamples).toEqual([]);
   });
 });
 

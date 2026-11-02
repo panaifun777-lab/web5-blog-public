@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import https from 'https';
+import { createBroadcaster } from './tg-broadcast.mjs';
 
 const token = process.env.TG_BOT_TOKEN;
 if (!token) {
@@ -260,6 +261,9 @@ function handleMessage(msg) {
 
 async function main() {
   await init();
+  // Opt-in only: without TG_BROADCAST_SECRET + TG_CHANNEL_ID + TG_BOT_TOKEN this
+  // logs one "disabled" line and never makes a request. 1:1 replies are untouched.
+  createBroadcaster({ log: console }).start();
   poll();
 }
 

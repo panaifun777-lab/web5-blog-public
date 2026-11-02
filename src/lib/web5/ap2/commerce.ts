@@ -27,6 +27,7 @@ import {
   type EvidenceLedgerRow,
 } from '@/lib/web5/ap2/evidence';
 import { ESCROW_PAYOUTS_ENABLED, REFUNDS_ENABLED } from '@/lib/launch/flags';
+import { enqueueTaskBroadcast } from '@/lib/web5/broadcast/task-queue';
 
 export type OrderStatus =
   | 'FUNDED'
@@ -355,6 +356,13 @@ export async function createCommerceOrder(params: {
     }
     throw err;
   }
+
+  // Advisory broadcast only, and strictly fire-and-forget: it no-ops when
+  // TG_BROADCAST_SECRET is unset, and a queue failure can never fail or roll
+  // back an order whose escrow deposit is already confirmed on chain.
+  enqueueTaskBroadcast({ orderId: record.orderId, isDemo: record.isDemo }).catch((err: any) =>
+    console.warn(`[broadcast] enqueue failed for ${record.orderId}:`, err?.message || err)
+  );
 
   return mapPrismaOrder(record);
 }

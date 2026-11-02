@@ -42,10 +42,12 @@ describe('parseLocalizedPath', () => {
     expect(parseLocalizedPath('/ja')).toEqual({ locale: 'ja', path: '/' });
   });
 
-  it('treats the default-locale prefix as unprefixed', () => {
+  it('treats the default-locale token as a literal path (no /zh-CN prefix route exists)', () => {
+    // The default locale is served unprefixed, so `/zh-CN/...` is not a
+    // recognized locale prefix and 404s in production; keep it literal.
     expect(parseLocalizedPath('/zh-CN/founder')).toEqual({
       locale: 'zh-CN',
-      path: '/founder',
+      path: '/zh-CN/founder',
     });
   });
 });

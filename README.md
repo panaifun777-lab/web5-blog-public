@@ -22,7 +22,7 @@
    - 支持亚美分级（Sub-cent）微支付、阅读自动分成与链上收益捕获。
 
 4. **Telegram Bot 分身实时同步**：
-   - 官方机器人：[@Web5blog_bot](https://t.me/Web5blog_bot)
+   - 官方机器人：[@Web5_blog_bot](https://t.me/Web5_blog_bot)
    - 支持左下角 Web App 一键直达主站、用户中心管理与 $WBOG 链上资产查询。
 
 ---

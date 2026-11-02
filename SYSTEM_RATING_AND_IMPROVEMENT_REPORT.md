@@ -35,7 +35,7 @@
 - **三道闸防穿透**：Scope Lock（白名单防转错）+ Daily Cap（单日总限额）+ Decaying Auth（单笔与频次限速）。
 - **交互微支付**：读者阅读、打赏、评论均通过 Bearer Token 服务端自动验签并计入账本，消除了纯前端存储易被篡改的风险。
 
-### 4. Telegram 订阅与自治机器人（@Web5blog_bot）
+### 4. Telegram 订阅与自治机器人（@Web5_blog_bot）
 - **左下角 Web App 同步**：通过 Telegram Bot API 原生设置 `setChatMenuButton`，用户在 TG 内直接点击即可无缝滑出全屏 Web5 平台。
 - **多功能指令键盘**：内置 `/start`、`/profile`、`/wbog`、`/feed`、`/write`，支持一键查询代币行情与唤醒分身。
 

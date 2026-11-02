@@ -39,6 +39,7 @@ export function RootDocument({ locale, children }: { locale: LocaleCode; childre
           'https://farcaster.xyz/piaoshu',
           'https://x.com/PiaoshuAgent',
           'https://github.com/piaoshu',
+          'https://t.me/Web5_blog_bot',
         ],
         knowsAbout: ['Web5', 'Decentralized Identity', 'AI Agent', 'Smart Contracts'],
       },

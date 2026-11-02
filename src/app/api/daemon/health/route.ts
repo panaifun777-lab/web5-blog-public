@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { voucherGateway } from '@/lib/web5/x402/voucher-engine';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 import { describeSigner } from '@/lib/web5/payments/signer';
+import { getBroadcastStatus } from '@/lib/web5/broadcast/task-queue';
 import { AGENT_DAEMON_ENABLED } from '@/lib/launch/flags';
 import pkg from '../../../../../package.json';
 
@@ -36,6 +37,15 @@ export async function GET() {
     console.error('[daemon/health] voucher stats check failed:', err);
   }
 
+  // Config + counters only. Never the TG_BROADCAST_SECRET, never a bot token,
+  // and a queue read failure degrades to "disabled" instead of failing health.
+  let broadcast = { enabled: false, pending: 0, sent: 0, lastErrorKind: null as string | null };
+  try {
+    broadcast = await getBroadcastStatus();
+  } catch (err) {
+    console.error('[daemon/health] broadcast queue status check failed:', err);
+  }
+
   return NextResponse.json(
     {
       status: healthy ? 'HEALTHY' : 'DEGRADED',
@@ -62,6 +72,8 @@ export async function GET() {
       // Config-only (no key, no token, no URL); `ready: false` means a payout
       // would be refused before it is signed.
       payoutSigner: describeSigner(),
+      // Telegram bounty broadcast queue (TG_BROADCAST_SECRET unset = disabled).
+      broadcast,
       onChain: {
         network: 'Circle ARC Mainnet',
         chainId: ARC_MAINNET.id,
