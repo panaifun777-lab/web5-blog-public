@@ -9,7 +9,7 @@
 import { ExternalLink, Github, Twitter, Send } from 'lucide-react';
 import Link from 'next/link';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
-import { useT } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
 
 const ADDRS = {
   '$WBOG Token': ARC_MAINNET.addresses.WBOG,
@@ -21,7 +21,7 @@ const ADDRS = {
 const SOURCE_URL = process.env.NEXT_PUBLIC_SOURCE_URL || '';
 
 export function Footer() {
-  const t = useT();
+  const { t, locale } = useI18n();
 
   return (
     <footer className="relative z-10 border-t border-white/[0.04] bg-[#050508] px-6 py-10 mt-24">

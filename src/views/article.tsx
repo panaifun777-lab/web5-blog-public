@@ -12,13 +12,14 @@ import {
 import { CurateShareButton } from '@/components/web5/share/curate-share-button';
 import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
-import { DEFAULT_LOCALE } from '@/lib/i18n/config';
+import { DEFAULT_LOCALE, type LocaleCode } from '@/lib/i18n/config';
 import { createT } from '@/lib/i18n/translate';
 
 export const revalidate = 300;
 
 export interface ArticleViewProps {
   id: string;
+  locale?: LocaleCode;
 }
 
 async function getContent(idOrHash: string) {
@@ -100,9 +101,9 @@ export async function articleMetadata(id: string): Promise<Metadata> {
   };
 }
 
-export default async function ArticlePage({ id }: ArticleViewProps) {
+export default async function ArticlePage({ id, locale = DEFAULT_LOCALE }: ArticleViewProps) {
   const content = await getContent(id);
-  const t = createT(DEFAULT_LOCALE);
+  const t = createT(locale);
 
   if (!content) {
     notFound();
