@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
   if (!X402_DEPOSITS_ENABLED) {
     return featureDisabled(
       'X402_DEPOSITS_DISABLED',
-      'x402 预付费注册尚未开放：充值、对账与提现链路仍在验证中。'
+      'flags.x402RegisterDisabled',
+      req
     );
   }
 

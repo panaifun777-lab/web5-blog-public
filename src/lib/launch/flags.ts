@@ -1,4 +1,13 @@
 import { NextResponse } from 'next/server';
+import { translate } from '@/lib/i18n/translate';
+import { DEFAULT_LOCALE, type LocaleCode } from '@/lib/i18n/config';
+import { requestLocale } from '@/lib/web5/api/errors';
+
+/** Maps an API locale (zh/en) to a full catalog locale code. */
+function resolveLocale(req?: Request | null): LocaleCode {
+  return requestLocale(req) === 'zh' ? DEFAULT_LOCALE : 'en';
+}
+
 
 function enabled(value: string | undefined): boolean {
   return value === 'true' || value === '1';
@@ -30,15 +39,20 @@ export const AUTONOMOUS_AGENTS_ENABLED = enabled(process.env.AUTONOMOUS_AGENTS_E
 /** 无头守护进程默认关闭；开启时还需要 DISABLE_AGENT_DAEMON 未设置。 */
 export const AGENT_DAEMON_ENABLED = enabled(process.env.AGENT_DAEMON_ENABLED);
 
-export const DEMO_NOTICE = '内测展示，请勿打款';
+export const DEMO_NOTICE = translate(DEFAULT_LOCALE, 'flags.demoNotice');
 
-export const MONEY_FLOWS_DISABLED_MESSAGE =
-  '内测展示：链上托管、退款与分账尚未启用，请勿打款。';
+export const MONEY_FLOWS_DISABLED_MESSAGE = translate(
+  DEFAULT_LOCALE,
+  'flags.moneyFlowDisabled'
+);
 
-export function moneyFlowBlocked(code = 'MONEY_FLOWS_DISABLED'): NextResponse {
+export function moneyFlowBlocked(
+  code = 'MONEY_FLOWS_DISABLED',
+  req?: Request | null
+): NextResponse {
   return NextResponse.json(
     {
-      error: MONEY_FLOWS_DISABLED_MESSAGE,
+      error: translate(resolveLocale(req), 'flags.moneyFlowDisabled'),
       code,
       demo: true,
     },
@@ -52,9 +66,13 @@ export function moneyFlowBlocked(code = 'MONEY_FLOWS_DISABLED'): NextResponse {
   );
 }
 
-export function featureDisabled(code: string, message: string): NextResponse {
+export function featureDisabled(
+  code: string,
+  message: string,
+  req?: Request | null
+): NextResponse {
   return NextResponse.json(
-    { error: message, code, demo: true },
+    { error: translate(resolveLocale(req), message), code, demo: true },
     { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '3600' } }
   );
 }

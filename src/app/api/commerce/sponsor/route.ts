@@ -23,6 +23,6 @@ export async function GET() {
 export async function POST() {
   return featureDisabled(
     'SPONSORSHIPS_DISABLED',
-    '商业赞助尚未开放：支付验证、审核与退款流程未上线，请勿付款。'
+    'flags.sponsorshipsDisabled'
   );
 }

@@ -275,6 +275,53 @@ const es = {
     relatedEmpty: 'No hay otra recompensa abierta a reclamos ahora mismo.',
     apiHint: 'Listado legible por máquina:',
   },
+
+  flags: {
+    demoNotice: 'Beta preview — do not send funds',
+    moneyFlowDisabled:
+      'Beta preview: on-chain escrow, refunds and splits are not enabled yet. Do not send funds.',
+    airdropDisabled: 'The Genesis airdrop is still in preview and not open for claims.',
+    airdropSignerMissing: 'The airdrop payout signer is not configured.',
+    twitterLoginDisabled:
+      'Twitter/X login is not open yet: OAuth callback and session checks are still being finalized.',
+    autonomousAgentsDisabled:
+      'Autonomous agents are a preview feature and automatic interaction is not enabled.',
+    autonomousTickSecretMissing:
+      'The autonomous scheduler has no access secret configured and execution was refused.',
+    sponsorshipsDisabled:
+      'Sponsorships are not open: payment verification, review and refund flows are not live. Do not send funds.',
+    vipDisabled:
+      'Vessel VIP is not open: payment verification and benefit delivery are not live. Do not send funds.',
+    curveVaultDisabled:
+      'Genesis subscription is not open: subscription contract, token delivery and graduation mechanics are not live. Do not transfer funds.',
+    x402DepositsDisabled:
+      'x402 prepaid top-up is not open: reconciliation and withdrawal links are still being verified.',
+    x402RegisterDisabled:
+      'x402 prepaid registration is not open: top-up, reconciliation and withdrawal links are still being verified.',
+    defiHarvestDisabled:
+      'DeFi yield harvesting is not connected to a real strategy or on-chain settlement; no yield records are produced at this time.',
+  },
+  commerce: {
+    provenanceNotPermanentSubmit:
+      'Deliverable has not completed permanent provenance (fallback=true); submission rejected',
+    arweaveTxIdInvalid: 'Arweave transaction ID is invalid',
+    provenanceNotPermanentSettle: 'Deliverable is missing Arweave permanent provenance; settlement rejected',
+  },
+  errors: {
+    rateLimited: 'Too many requests, please retry shortly.',
+  },
+  rss: {
+    title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
+    description:
+      'Prime × Eidolon × Vessel three-layer life architecture. Content is distributed and archived with provenance status shown; payment channels are in closed beta.',
+  },
+  og: {
+    tagline: 'Write once. Archive transparently.',
+    subtitle: 'Readable by humans and AI, with provenance shown per article.',
+    badge: 'VESSEL-NATIVE ONTOLOGY GATEWAY',
+    primeEidolonVessel: 'Prime · Eidolon · Vessel',
+    chain: 'Circle ARC Mainnet · 5042',
+  },
 } satisfies DeepPartial<Dictionary>;
 
 export default es;

@@ -9,7 +9,7 @@ import { featureDisabled } from '@/lib/launch/flags';
 export async function GET() {
   return featureDisabled(
     'TWITTER_LOGIN_DISABLED',
-    'Twitter/X 登录尚未开放：OAuth 回调与会话校验仍在完善中。'
+    'flags.twitterLoginDisabled'
   );
 }
 

@@ -69,6 +69,7 @@ export async function GET() {
 export async function POST(_req: NextRequest) {
   return featureDisabled(
     'CURVE_VAULT_DISABLED',
-    '创世认购尚未开放：认购合约、代币发放与毕业机制均未上线，请勿转账。'
+    'flags.curveVaultDisabled',
+    _req
   );
 }

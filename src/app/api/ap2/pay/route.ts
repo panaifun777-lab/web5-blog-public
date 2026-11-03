@@ -14,7 +14,7 @@ import { apiError } from '@/lib/web5/api/errors';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
+  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked(undefined, req);
 
   const limited = rateLimit(`ap2-pay:${clientIp(req)}`, 30, 60_000);
   if (!limited.ok) {

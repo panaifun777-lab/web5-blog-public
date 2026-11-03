@@ -33,7 +33,7 @@ const PROTOCOL_FEE_RATIO = 0.20;
 const CURATOR_REBATE_RATIO = 0.15;
 
 export async function POST(req: NextRequest) {
-  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
+  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked(undefined, req);
 
   const limited = rateLimit(`ap2-settle:${clientIp(req)}`, 20, 60_000);
   if (!limited.ok) {
