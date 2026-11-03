@@ -11,7 +11,10 @@ import { Globe, Check } from 'lucide-react';
 import { useI18n, LOCALES, type LocaleCode } from '@/lib/i18n/index';
 import { localizePath, parseLocalizedPath } from '@/lib/i18n/routing';
 
-const locales = Object.values(LOCALES);
+// Offer only locales that ship a real catalog. `fallback-en` locales (fr/de/ru/ar)
+// render English under their own flag, so they are hidden from the switcher
+// until they carry a translated catalog — no "fake French" in the menu.
+const locales = Object.values(LOCALES).filter((l) => l.status !== 'fallback-en');
 
 export function LanguageSwitcher() {
   const [open, setOpen] = useState(false);

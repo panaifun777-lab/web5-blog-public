@@ -27,6 +27,7 @@ import { createT } from '@/lib/i18n/translate';
 import { DEFAULT_LOCALE, type LocaleCode } from '@/lib/i18n/config';
 import { localizePath } from '@/lib/i18n/routing';
 import { SITE_URL } from '@/lib/i18n/metadata';
+import { LanguageSwitcher } from '@/components/web5/i18n/language-switcher';
 import type { PublicTaskOrder } from '@/lib/web5/ap2/task-browse';
 import {
   arweaveGatewayUrl,
@@ -127,6 +128,7 @@ export default async function TaskPage({ orderId, locale = DEFAULT_LOCALE }: Tas
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <Badge className={`${statusTone} font-mono text-[10px]`}>{status}</Badge>
             <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 font-mono text-[10px]">
               ARC-{task.chainId}

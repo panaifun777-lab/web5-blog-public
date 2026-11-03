@@ -39,12 +39,17 @@ describe('catalog completeness', () => {
     for (const value of Object.values(zhKeys)) expect(typeof value).toBe('string');
   });
 
-  it('marks ja/ko/es as partial but still ships real entries', () => {
-    expect(flattenCatalog(ja)['nav.founder']).toBeTruthy();
-    expect(flattenCatalog(ko)['nav.founder']).toBeTruthy();
-    expect(flattenCatalog(es)['nav.founder']).toBeTruthy();
-    // partial on purpose: these are not translated yet
-    expect(flattenCatalog(ja)['article.noComments']).toBeUndefined();
+  it('ships the full catalog for ja/ko/es (100% key parity with zh-CN)', () => {
+    const want = Object.keys(zhKeys).length;
+    for (const [code, cat] of [['ja', ja], ['ko', ko], ['es', es]] as const) {
+      const keys = Object.keys(flattenCatalog(cat));
+      expect(keys.length, `${code} key count`).toBe(want);
+      // every entry is a string, none empty
+      for (const value of Object.values(flattenCatalog(cat))) {
+        expect(typeof value).toBe('string');
+        expect(value.trim()).not.toBe('');
+      }
+    }
   });
 
   it('resolves every key in every locale without rendering undefined', () => {
@@ -65,11 +70,11 @@ describe('fallback behaviour', () => {
     expect(translate('en', 'nav')).toBe('nav');
   });
 
-  it('falls back per key from a partial locale to en', () => {
-    // ja defines nav.founder …
-    expect(translate('ja', 'nav.founder')).toBe(flattenCatalog(ja)['nav.founder']);
-    // … but not article.noComments, which comes from en
-    expect(translate('ja', 'article.noComments')).toBe(en.article.noComments);
+  it('resolves its own translation for a completed locale (no en leak)', () => {
+    // ja is now 100% complete, so article.noComments is the Japanese string,
+    // not the English fallback.
+    expect(translate('ja', 'article.noComments')).toBe(flattenCatalog(ja)['article.noComments']);
+    expect(translate('ja', 'article.noComments')).not.toBe(en.article.noComments);
   });
 
   it('falls back from a locale with no catalog at all to en', () => {

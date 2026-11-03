@@ -529,7 +529,27 @@ export const API_ERRORS = {
 
 export type ApiErrorCode = keyof typeof API_ERRORS;
 
+function cookieValue(req: Request | null | undefined, name: string): string | undefined {
+  const header = req?.headers.get('cookie');
+  if (!header) return undefined;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    if (part.slice(0, idx).trim() === name) return decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return undefined;
+}
+
 export function requestLocale(req?: Request | null): ApiLocale {
+  // The language switcher writes a `locale` cookie (legacy `NEXT_LOCALE` is
+  // honoured on read). Prefer it so an API error matches the page the user is
+  // looking at, then fall back to Accept-Language. The error catalog only ships
+  // zh/en, so every other locale resolves to English — consistent with the rest
+  // of the app's per-key fallback.
+  const cookieLocale = cookieValue(req, 'locale') ?? cookieValue(req, 'NEXT_LOCALE');
+  if (cookieLocale && (cookieLocale === 'zh-CN' || cookieLocale.toLowerCase().startsWith('zh'))) {
+    return 'zh';
+  }
   const raw = req?.headers.get('accept-language');
   if (!raw) return 'en';
   const first = raw.split(',')[0]?.trim().toLowerCase() ?? '';
