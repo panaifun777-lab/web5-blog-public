@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import { db } from '@/lib/db';
 import { INDEXABLE_LOCALES, alternateLanguages, localizePath } from '@/lib/i18n/routing';
 import { SITE_URL } from '@/lib/i18n/metadata';
+import { articleUrl } from '@/lib/web5/seo/indexnow';
 import {
   OPEN_BOUNTY_PREVIEW_LIMIT,
   listOpenTaskOrders,
@@ -67,7 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const c of contents) {
       if (c.arweaveHash) {
         routes.push({
-          url: `${baseUrl}/p/${c.arweaveHash}`,
+          url: articleUrl(c.arweaveHash),
           lastModified: c.updatedAt || c.publishedAt,
           changeFrequency: 'monthly',
           priority: 0.9,

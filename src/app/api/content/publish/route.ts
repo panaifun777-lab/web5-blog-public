@@ -10,6 +10,8 @@ import { serializeForJson } from '@/lib/web5/types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 import { apiError } from '@/lib/web5/api/errors';
+import { SITE_URL } from '@/lib/i18n/metadata';
+import { articleUrl, submitToIndexNow } from '@/lib/web5/seo/indexnow';
 
 export async function POST(req: NextRequest) {
   const limited = rateLimit(`content-publish:${clientIp(req)}`, 5, 60_000);
@@ -27,6 +29,10 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const result = await publishContent(body, session);
+
+    // Hand the new URL to IndexNow without delaying the user's publish.
+    submitToIndexNow([articleUrl(result.arweaveHash), SITE_URL]).catch(() => {});
+
     return NextResponse.json({
       success: true,
       arweaveHash: result.arweaveHash,
