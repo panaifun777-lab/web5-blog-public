@@ -153,20 +153,20 @@ export function ExpertChamber({ session }: { session?: any }) {
             </div>
             <div>
               <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2">
-                <span>{isEn ? '🧠 AI Expert Cognitive Chamber — Closed Beta Preview' : '🧠 AI 专家智库直连问答舱 — 内测预览'}</span>
+                <span>{isEn ? '🧠 AI Expert Cognitive Chamber' : '🧠 AI 专家智库直连问答舱'}</span>
                 <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px]">
                   x402 Micro-Service
                 </Badge>
               </h3>
               <p className="text-[11px] text-[#888] mt-0.5">
-                {isEn ? 'Direct link with 4 cognitive experts. Listed at 0.05 USDC but not billed during the closed beta.' : '直连 4 大核心领域智能体专家，标价 0.05 USDC 仅作展示，内测期间不扣款。'}
+                {isEn ? 'Direct link with 4 cognitive experts. Listed at 0.05 USDC but not billed.' : '直连 4 大核心领域智能体专家，标价 0.05 USDC 仅作展示，当前不扣款。'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 font-mono text-xs text-[#FFCC00] bg-[#FFCC00]/10 px-3 py-1.5 rounded-lg border border-[#FFCC00]/25">
             <Coins className="w-3.5 h-3.5" />
-            <span>内测展示 · 不扣款 <span className="text-[10px] text-[#aaa]">({isEn ? 'listed 0.05 USDC' : '标价 0.05 USDC'})</span></span>
+            <span>{isEn ? 'Not billed' : '当前不扣款'} <span className="text-[10px] text-[#aaa]">({isEn ? 'listed 0.05 USDC' : '标价 0.05 USDC'})</span></span>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ export function ExpertChamber({ session }: { session?: any }) {
               className="bg-gradient-to-r from-[#0066FF] to-[#00FFCC] text-black font-bold text-xs h-7 px-3.5"
             >
               <Zap className="w-3.5 h-3.5 mr-1" />
-              {loading ? (isEn ? 'Consulting...' : '专家研判中...') : (isEn ? 'Ask (closed beta · no charge)' : '内测提问 · 不扣款')}
+              {loading ? (isEn ? 'Consulting...' : '专家研判中...') : (isEn ? 'Ask (no charge)' : '提问 · 不扣款')}
             </Button>
           </div>
         </div>
@@ -228,10 +228,10 @@ export function ExpertChamber({ session }: { session?: any }) {
                 <Sparkles className="w-3.5 h-3.5" />
                 {error
                   ? (isEn ? 'Consultation unavailable' : '会诊暂不可用')
-                  : (isEn ? `Draft response · ${selectedExpert.enName}` : `${selectedExpert.name} · 内测生成内容`)}
+                  : (isEn ? `Draft response · ${selectedExpert.enName}` : `${selectedExpert.name} · 生成内容`)}
               </span>
               <span className="text-[#888] font-mono">
-                {error ? (isEn ? 'NO ANSWER GENERATED' : '未生成内容') : (isEn ? 'Closed beta · not billed' : '内测展示 · 未计费')}
+                {error ? (isEn ? 'NO ANSWER GENERATED' : '未生成内容') : (isEn ? 'Not billed' : '当前未计费')}
               </span>
             </div>
             {error ? (
@@ -249,7 +249,7 @@ export function ExpertChamber({ session }: { session?: any }) {
               </div>
             ) : (
               <div className="whitespace-pre-wrap font-sans text-xs">
-                {answer || (isEn ? 'Generating draft response...' : '正在生成内测内容...')}
+                {answer || (isEn ? 'Generating draft response...' : '正在生成内容...')}
               </div>
             )}
           </div>
