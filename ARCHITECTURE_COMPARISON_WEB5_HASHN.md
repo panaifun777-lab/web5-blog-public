@@ -36,7 +36,9 @@
 ## 3. 真正值得借鉴的两点
 
 - **(A) Escrow 多席位团队分账**:hashn 有 `Team Spend Allocation`,Web5.blog 没有。这是唯一的功能性缺口。已单独出设计方案 `ESCROW_TEAM_SPLIT_DESIGN.md`。
-- **(B) 自治接单 agent**:hashn 让 AI 自动抓单、产出、动资产;Web5.blog 把 `AUTONOMOUS_AGENTS_ENABLED` **默认关闭是刻意的安全选择**(防合成内容、防提示词注入驱动资产移动)。**不要**盲目照搬它的"AI 自动移动资产";若要开,应做成受 `MONEY_FLOWS_ENABLED` 同级的显式开关,且只在主网灰度跑通后启用。
+- **(B) 自治接单 agent**:hashn 让 AI 自动抓单、产出、动资产;Web5.blog 把 `AUTONOMOUS_AGENTS_ENABLED` **默认关闭是刻意的安全选择**(防合成内容、防提示词注入驱动资产移动)。**不要**盲目照搬它的"AI 自动移动资产"。
+  - **已落地**:自治代理现在只有一个总开关。`AUTONOMOUS_AGENTS_ENABLED`(与 `MONEY_FLOWS_ENABLED` 同级)同时管住 `/api/autonomous/tick` 和无头守护进程;`AGENT_DAEMON_ENABLED` 只能在总开关已开时打开进程内循环,`DISABLE_AGENT_DAEMON=true` 为运维急停。守护进程启动入口 `agentDaemon.start()` 自身再校验一次,避免任何调用方绕过。见 `src/lib/launch/flags.ts` 的 `agentDaemonActive()` 与 `tests/autonomous-gate.test.ts`。
+  - **仍未开**:生产环境两个开关均为关;只有在主网灰度(1 USDC runbook)跑通后,才考虑先开 `AUTONOMOUS_AGENTS_ENABLED` 的"只产出、不动钱"部分。
 
 ---
 

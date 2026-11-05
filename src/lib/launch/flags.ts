@@ -36,8 +36,21 @@ export const REFUNDS_ENABLED =
 /** 自治代理会产生公开互动与日志，上线初期默认关闭，避免合成内容。 */
 export const AUTONOMOUS_AGENTS_ENABLED = enabled(process.env.AUTONOMOUS_AGENTS_ENABLED);
 
-/** 无头守护进程默认关闭；开启时还需要 DISABLE_AGENT_DAEMON 未设置。 */
+/** 无头守护进程的进程内开关；单独打开不生效，还必须打开自治代理总开关。 */
 export const AGENT_DAEMON_ENABLED = enabled(process.env.AGENT_DAEMON_ENABLED);
+
+/** 运维急停：无论上面两个开关如何，设置后守护进程必须不跑。 */
+export const AGENT_DAEMON_FORCE_STOPPED = enabled(process.env.DISABLE_AGENT_DAEMON);
+
+/**
+ * 守护进程是否真的应该运行。
+ * 它是自治代理的实际执行体（同行评审、自动交付、周期抓取），所以和
+ * `/api/autonomous/tick` 共用同一个总开关：只有 AUTONOMOUS_AGENTS_ENABLED
+ * 与 AGENT_DAEMON_ENABLED 同时打开、且未被急停，才允许自治行为离开进程。
+ */
+export function agentDaemonActive(): boolean {
+  return AUTONOMOUS_AGENTS_ENABLED && AGENT_DAEMON_ENABLED && !AGENT_DAEMON_FORCE_STOPPED;
+}
 
 export const DEMO_NOTICE = translate(DEFAULT_LOCALE, 'flags.demoNotice');
 
