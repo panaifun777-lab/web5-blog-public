@@ -19,10 +19,13 @@ import { fromTokenUnits } from '@/lib/web5/types';
 import type { VesselSession } from '@/lib/web5/types';
 import { PERSONA_PROFILES, type PersonaType } from '@/lib/web5/security/tdpo';
 import { scanAgentReachRadar, type TrendingInsight } from '@/lib/web5/reach/radar';
+import { useI18n } from '@/lib/i18n';
 
 type WriteState = 'idle' | 'streaming' | 'done' | 'error';
 
 export function Writer({ session }: { session: VesselSession | null }) {
+  const { locale } = useI18n();
+  const isEn = locale !== 'zh-CN';
   const [prompt, setPrompt] = useState('');
   const [title, setTitle] = useState('');
   const [outline, setOutline] = useState('');
@@ -61,7 +64,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
   // Step 1: 毫秒级自动罗列大纲与章节要点
   const handleGenerateOutline = async () => {
     if (!prompt.trim()) {
-      alert('请先输入你的标题或核心观点种子！');
+      alert(isEn ? 'Please enter a title or your core idea first!' : '请先输入你的标题或核心观点种子！');
       return;
     }
     setIsGeneratingOutline(true);
@@ -96,7 +99,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       setOutline(acc.trim());
       if (!title) setTitle(prompt.slice(0, 25));
     } catch (e: any) {
-      alert('大纲生成异常: ' + e?.message);
+      alert((isEn ? 'Outline generation error: ' : '大纲生成异常: ') + e?.message);
     } finally {
       setIsGeneratingOutline(false);
     }
@@ -132,7 +135,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       });
 
       if (!res.ok) {
-        throw new Error(`AI 写作失败: ${res.status}`);
+        throw new Error(isEn ? `AI writing failed: ${res.status}` : `AI 写作失败: ${res.status}`);
       }
 
       const reader = res.body?.getReader();
@@ -186,7 +189,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
       setError((err as Error).message);
       setState('error');
     }
-  }, [prompt, style, title, outline, wordTarget]);
+  }, [prompt, style, title, outline, wordTarget, isEn]);
 
   const stopStream = () => {
     abortRef.current?.abort();
@@ -273,7 +276,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
         setPublishResult(data);
         try { localStorage.setItem('web5_task_write', 'true'); } catch {}
       } else {
-        setError(data.error || '发布失败');
+        setError(data.error || (isEn ? 'Publish failed' : '发布失败'));
       }
     } catch (err) {
       setError((err as Error).message);
@@ -287,11 +290,11 @@ export function Writer({ session }: { session: VesselSession | null }) {
       <Card className="cyber-panel">
         <CardContent className="p-8 text-center">
           <Shield className="w-12 h-12 mx-auto mb-4 text-[#FFCC00]" />
-          <h3 className="text-xl font-bold mb-2">需要容器权限</h3>
+          <h3 className="text-xl font-bold mb-2">{isEn ? 'Container permission required' : '需要容器权限'}</h3>
           <p className="text-[#999] mb-4">
             {session?.accessMode === 'observer'
-              ? 'Observer Mode 无法写作。请唤醒容器以解锁 AI 分身写作能力。'
-              : '请先唤醒容器以解锁 AI 分身写作能力。'}
+              ? (isEn ? 'Observer Mode cannot write. Awaken the container to unlock AI-avatar writing.' : 'Observer Mode 无法写作。请唤醒容器以解锁 AI 分身写作能力。')
+              : (isEn ? 'Please awaken the container to unlock AI-avatar writing.' : '请先唤醒容器以解锁 AI 分身写作能力。')}
           </p>
         </CardContent>
       </Card>
@@ -301,7 +304,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold cyber-text-glow-cyan">AI 分身写作</h2>
+        <h2 className="text-2xl font-bold cyber-text-glow-cyan">{isEn ? 'AI Avatar Writing' : 'AI 分身写作'}</h2>
         <Badge variant="outline" className="cyber-mono cyber-border-cyan text-[#00FFCC]">
           <Sparkles className="w-3 h-3 mr-1" /> EIDOLON ACTIVE
         </Badge>
@@ -311,11 +314,11 @@ export function Writer({ session }: { session: VesselSession | null }) {
       <Card className="cyber-panel">
         <CardContent className="p-4 space-y-3">
           <div>
-            <label className="cyber-mono text-xs text-[#666] mb-1 block">主题/核心观点</label>
+            <label className="cyber-mono text-xs text-[#666] mb-1 block">{isEn ? 'Topic / core idea' : '主题/核心观点'}</label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="输入你的核心观点，Eidolon 将基于你的 RAG 私有知识库流式写作..."
+              placeholder={isEn ? 'Enter your core idea; Eidolon writes from your private RAG knowledge base...' : '输入你的核心观点，Eidolon 将基于你的 RAG 私有知识库流式写作...'}
               className="bg-[#0a0a0a] border-[#1a1a1a] min-h-[80px]"
               disabled={state === 'streaming'}
             />
@@ -325,7 +328,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
           <div className="pt-1 border-t border-white/[0.04]">
             <div className="text-[11px] text-[#666] mb-1.5 flex items-center justify-between">
               <span className="flex items-center gap-1 font-mono">
-                <Shield className="w-3 h-3 text-[#00FFCC]" /> EIDOLONOS 人格矩阵与 TDPO 防火墙保护
+                <Shield className="w-3 h-3 text-[#00FFCC]" /> {isEn ? 'EIDOLONOS persona matrix & TDPO firewall' : 'EIDOLONOS 人格矩阵与 TDPO 防火墙保护'}
               </span>
               <span className="text-[#00FFCC] text-[10px] font-mono">{PERSONA_PROFILES[persona].name}</span>
             </div>
@@ -351,7 +354,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
           {radarInsights.length > 0 && (
             <div className="pt-1.5 border-t border-white/[0.04]">
               <div className="text-[11px] text-[#888] mb-1.5 flex items-center gap-1.5 font-mono">
-                <Sparkles className="w-3 h-3 text-[#FFCC00]" /> AGENT-REACH 实时热点雷达 (点击直接填入灵感)
+                <Sparkles className="w-3 h-3 text-[#FFCC00]" /> {isEn ? 'AGENT-REACH live trend radar (click to fill inspiration)' : 'AGENT-REACH 实时热点雷达 (点击直接填入灵感)'}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {radarInsights.map((insight, idx) => (
@@ -375,7 +378,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
           <div className="pt-2 border-t border-white/[0.04] space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#666] font-mono">篇幅规格:</span>
+                <span className="text-[11px] text-[#666] font-mono">{isEn ? 'Length:' : '篇幅规格:'}</span>
                 <div className="flex gap-1">
                   {[500, 1000, 2000, 3000].map((num) => (
                     <button
@@ -388,7 +391,9 @@ export function Writer({ session }: { session: VesselSession | null }) {
                           : 'border-white/[0.06] text-[#666] hover:text-white'
                       }`}
                     >
-                      {num} 字{num >= 2000 ? '旗舰长文' : '短长篇'}
+                      {isEn
+                        ? `${num} words${num >= 2000 ? ' (flagship long)' : ' (short/medium)'}`
+                        : `${num} 字${num >= 2000 ? '旗舰长文' : '短长篇'}`}
                     </button>
                   ))}
                 </div>
@@ -404,7 +409,9 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 className="text-xs h-7 border-[#FFCC00]/40 text-[#FFCC00] hover:bg-[#FFCC00]/10 flex items-center"
               >
                 <Sparkles className="w-3 h-3 mr-1" />
-                <span>{isGeneratingOutline ? '正在提炼大纲...' : 'Step 1: 毫秒生成章节大纲'}</span>
+                <span>{isGeneratingOutline
+                  ? (isEn ? 'Refining outline...' : '正在提炼大纲...')
+                  : (isEn ? 'Step 1: Generate chapter outline' : 'Step 1: 毫秒生成章节大纲')}</span>
               </Button>
             </div>
 
@@ -412,8 +419,8 @@ export function Writer({ session }: { session: VesselSession | null }) {
             {outline && (
               <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] space-y-1">
                 <div className="flex justify-between items-center text-[10px] text-[#888] font-mono">
-                  <span>拟定章节结构与逻辑骨架 (可编辑调整):</span>
-                  <button type="button" onClick={() => setOutline('')} className="text-[#ff4444] hover:underline">清空大纲</button>
+                  <span>{isEn ? 'Drafted chapter structure & logic skeleton (editable):' : '拟定章节结构与逻辑骨架 (可编辑调整):'}</span>
+                  <button type="button" onClick={() => setOutline('')} className="text-[#ff4444] hover:underline">{isEn ? 'Clear outline' : '清空大纲'}</button>
                 </div>
                 <Textarea
                   value={outline}
@@ -467,9 +474,9 @@ export function Writer({ session }: { session: VesselSession | null }) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="cyber-mono text-xs text-[#666]">
-                {state === 'streaming' && '▸ EIDOLON 正在思考...'}
-                {state === 'done' && '✓ 生成完成'}
-                {state === 'error' && '✗ 生成失败'}
+                {state === 'streaming' && (isEn ? '▸ EIDOLON is thinking...' : '▸ EIDOLON 正在思考...')}
+                {state === 'done' && (isEn ? '✓ Generation complete' : '✓ 生成完成')}
+                {state === 'error' && (isEn ? '✗ Generation failed' : '✗ 生成失败')}
               </span>
               {state === 'streaming' && (
                 <div className="cyber-loading-bar w-20 h-1" />
@@ -493,7 +500,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
             <RefreshCw className="w-3 h-3 mr-1" /> REGENERATE
           </Button>
           <Button size="sm" variant="outline" onClick={() => {
-            const edited = window.prompt('编辑内容（可直接修改后保存）:', output);
+            const edited = window.prompt(isEn ? 'Edit the content (save after edits):' : '编辑内容（可直接修改后保存）:', output);
             if (edited && edited.trim()) setOutput(edited);
           }} className="border-[#00FFCC]/30 text-[#00FFCC] text-xs">
             <FileText className="w-3 h-3 mr-1" /> EDIT
@@ -506,14 +513,14 @@ export function Writer({ session }: { session: VesselSession | null }) {
         <Card className="cyber-panel">
           <CardContent className="p-4 space-y-3">
             <h3 className="cyber-mono cyber-text-glow-gold flex items-center gap-2">
-              <Coins className="w-4 h-4" /> 发布与确权
+              <Coins className="w-4 h-4" /> {isEn ? 'Publish & prove ownership' : '发布与确权'}
             </h3>
             <div>
-              <label className="cyber-mono text-xs text-[#666] mb-1 block">标题</label>
+              <label className="cyber-mono text-xs text-[#666] mb-1 block">{isEn ? 'Title' : '标题'}</label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="文章标题"
+                placeholder={isEn ? 'Article title' : '文章标题'}
                 className="bg-[#0a0a0a] border-[#1a1a1a]"
               />
             </div>
@@ -522,10 +529,10 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 <FileText className="w-3 h-3" /> CC-BY
               </span>
               <span className="flex items-center gap-1">
-                <Coins className="w-3 h-3" /> 1% 版税
+                <Coins className="w-3 h-3" /> {isEn ? '1% royalty' : '1% 版税'}
               </span>
               <span className="flex items-center gap-1">
-                <Shield className="w-3 h-3" /> ARP 确权
+                <Shield className="w-3 h-3" /> {isEn ? 'ARP ownership' : 'ARP 确权'}
               </span>
             </div>
             <Button
@@ -534,9 +541,9 @@ export function Writer({ session }: { session: VesselSession | null }) {
               className="cyber-btn-gold w-full"
             >
               {publishing ? (
-                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> 发布中...</>
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> {isEn ? 'Publishing...' : '发布中...'}</>
               ) : (
-                <><Zap className="w-4 h-4 mr-1" /> 发布至 Arweave + 铸造 NFT</>
+                <><Zap className="w-4 h-4 mr-1" /> {isEn ? 'Publish to Arweave + mint NFT' : '发布至 Arweave + 铸造 NFT'}</>
               )}
             </Button>
           </CardContent>
@@ -549,7 +556,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 text-[#00FFCC]">
               <Check className="w-5 h-5" />
-              <h3 className="font-bold">发布成功</h3>
+              <h3 className="font-bold">{isEn ? 'Published successfully' : '发布成功'}</h3>
             </div>
             <div className="space-y-2 cyber-mono text-xs">
               <div>
@@ -557,7 +564,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 <a
                   href={`/?post=${publishResult.arweaveHash}`}
                   className="text-[#00FFCC] hover:underline cursor-pointer font-bold"
-                  title="点击查看文章内容"
+                  title={isEn ? 'Click to view the article' : '点击查看文章内容'}
                 >
                   {publishResult.arweaveHash} ↗
                 </a>
@@ -581,7 +588,9 @@ export function Writer({ session }: { session: VesselSession | null }) {
               <div>
                 <span className="text-[#666]">Upload: </span>
                 <span className="text-[#00FFCC]">
-                  {publishResult.uploadFallback ? 'Web5 节点存证已完成' : 'Irys 真实上传'} ({publishResult.uploadSize} bytes)
+                  {publishResult.uploadFallback
+                    ? (isEn ? 'Web5 node proof-of-storage complete' : 'Web5 节点存证已完成')
+                    : (isEn ? 'Real Irys upload' : 'Irys 真实上传')} ({publishResult.uploadSize} bytes)
                 </span>
               </div>
             </div>
@@ -592,7 +601,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 }}
                 className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold text-xs h-8 px-4 shadow-lg shadow-[#00FFCC]/20"
               >
-                📖 立即阅读刚发布的文章
+                📖 {isEn ? 'Read the article you just published' : '立即阅读刚发布的文章'}
               </Button>
               <Button
                 onClick={() => {
@@ -605,7 +614,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
                 variant="ghost"
                 className="cyber-mono text-xs text-[#888] hover:text-white"
               >
-                写下一篇
+                {isEn ? 'Write another' : '写下一篇'}
               </Button>
             </div>
           </CardContent>
