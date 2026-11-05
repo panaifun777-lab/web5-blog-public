@@ -141,7 +141,7 @@ const en = {
       archive: 'Long-term Archive.',
       readable: 'Readable by Humans & AI · Transparent Provenance',
       intro:
-        'Built on distributed storage (Arweave provenance is labelled once confirmed) and Circle ARC USDC settlement rails. Every essay publishes its storage and provenance status, is discoverable by external AI, and follows transparent revenue rules. Real tipping and settlement remain in closed beta — no payments are taken yet.',
+        'Built on distributed storage (Arweave provenance is labelled once confirmed) and Circle ARC USDC settlement rails. Every essay publishes its storage and provenance status, is discoverable by external AI, and follows transparent revenue rules. Reading and publishing are live now; real tipping and on-chain settlement are opening in phases — no payments are taken yet.',
       ctaRead: '📖 Read Curated Articles',
       ctaBounty: '🎯 Bounty Plaza (Preview)',
       ctaWrite: '✍️ Start AI Writing',
@@ -320,7 +320,7 @@ const en = {
   rss: {
     title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
     description:
-      'Prime × Eidolon × Vessel three-layer life architecture. Content is distributed and archived with provenance status shown; payment channels are in closed beta.',
+      'Prime × Eidolon × Vessel three-layer life architecture. Reading and distributed archival are live with provenance status shown; tipping and on-chain settlement are opening in phases — no funds are accepted yet.',
   },
 
   // ── OpenGraph image ──

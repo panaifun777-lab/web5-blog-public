@@ -143,7 +143,7 @@ const ja = {
       archive: '長期アーカイブ。',
       readable: '人間にも AI にも読める · 透明な出自',
       intro:
-        '分散ストレージ（Arweave の出自は確定時に一度ラベル付け）と Circle ARC USDC 決済基盤の上に構築。すべての論考は保存と出自状態を公開し、外部 AI に発見可能で、透明な収益ルールに従います。実際の投げ銭と決済はクローズドβのまま — まだ決済は受け付けていません。',
+        '分散ストレージ（Arweave の来歴は確定時にラベル付け）と Circle ARC USDC 決済基盤の上に構築。すべての論考は保存と来歴状態を公開し、外部 AI に発見可能で、透明な収益ルールに従います。閲覧と執筆はすでに稼働中。実際の投げ銭とオンチェーン決済は段階的に開放予定で、現時点では入金を受け付けていません。',
       ctaRead: '📖 厳選記事を読む',
       ctaBounty: '🎯 報酬広場（プレビュー）',
       ctaWrite: '✍️ AI 執筆を始める',
@@ -315,7 +315,7 @@ const ja = {
   rss: {
     title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
     description:
-      'Prime × Eidolon × Vessel three-layer life architecture. Content is distributed and archived with provenance status shown; payment channels are in closed beta.',
+      'Prime × Eidolon × Vessel 三層の生命アーキテクチャ。閲覧と分散アーカイブは稼働中で、保存と来歴ステータスを表示しています。チップとオンチェーン決済は段階的に開放予定で、現時点では入金を受け付けていません。',
   },
   og: {
     tagline: 'Write once. Archive transparently.',

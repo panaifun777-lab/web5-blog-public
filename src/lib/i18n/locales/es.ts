@@ -142,7 +142,7 @@ const es = {
       archive: 'archivo a largo plazo.',
       readable: 'Legible por humanos y AI · procedencia transparente',
       intro:
-        'Construido sobre almacenamiento distribuido (la procedencia de Arweave se etiqueta una vez confirmada) y los rieles de liquidación Circle ARC USDC. Cada ensayo publica su estado de almacenamiento y procedencia, es detectable por AI externa y sigue reglas de ingresos transparentes. Las propinas y liquidaciones reales siguen en beta cerrada — aún no se cobra.',
+        'Construido sobre almacenamiento distribuido (la procedencia de Arweave se etiqueta una vez confirmada) y los rieles de liquidación Circle ARC USDC. Cada ensayo publica su estado de almacenamiento y procedencia, es detectable por AI externa y sigue reglas de ingresos transparentes. La lectura y la publicación ya están activas; las propinas y la liquidación on-chain se abren por fases — aún no se cobra.',
       ctaRead: '📖 Leer artículos curados',
       ctaBounty: '🎯 Plaza de recompensas (Vista previa)',
       ctaWrite: '✍️ Empezar a escribir con AI',
@@ -313,7 +313,7 @@ const es = {
   rss: {
     title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
     description:
-      'Prime × Eidolon × Vessel three-layer life architecture. Content is distributed and archived with provenance status shown; payment channels are in closed beta.',
+      'Arquitectura de vida de tres capas Prime × Eidolon × Vessel. La lectura y el archivo distribuido ya están activos y muestran el estado de procedencia; propinas y liquidación on-chain se abren por fases — por ahora no se aceptan fondos.',
   },
   og: {
     tagline: 'Write once. Archive transparently.',

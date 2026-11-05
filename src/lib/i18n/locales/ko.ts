@@ -142,7 +142,7 @@ const ko = {
       archive: '장기 아카이브.',
       readable: '인간과 AI 모두 읽을 수 있음 · 투명한 출처',
       intro:
-        '분산 스토리지(Arweave 출처는 확정 시 한 번 라벨링)와 Circle ARC USDC 정산 레일 위에 구축. 모든 에세이는 저장 및 출처 상태를 공개하고, 외부 AI가 발견할 수 있으며, 투명한 수익 규칙을 따릅니다. 실제 팁과 정산은 여전히 클로즈드 베타 — 아직 결제를 받지 않습니다.',
+        '분산 스토리지(Arweave 출처는 확정 시 라벨링)와 Circle ARC USDC 정산 레일 위에 구축. 모든 에세이는 저장 및 출처 상태를 공개하고, 외부 AI가 발견할 수 있으며, 투명한 수익 규칙을 따릅니다. 열람과 작성이 이미 운영 중입니다. 실제 팁과 온체인 정산은 단계적으로 열리며, 현재까지는 입금을 받지 않습니다.',
       ctaRead: '📖 엄선 기사 읽기',
       ctaBounty: '🎯 바운티 광장 (미리보기)',
       ctaWrite: '✍️ AI 집필 시작',
@@ -312,7 +312,7 @@ const ko = {
   rss: {
     title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
     description:
-      'Prime × Eidolon × Vessel three-layer life architecture. Content is distributed and archived with provenance status shown; payment channels are in closed beta.',
+      'Prime × Eidolon × Vessel 3계층 생명 아키텍처. 열람과 분산 아카이빙은 이미 운영 중이며 저장·입증 상태를 표시합니다. 팁과 온체인 정산은 단계적으로 열리며, 현재까지는 입금을 받지 않습니다.',
   },
   og: {
     tagline: 'Write once. Archive transparently.',

@@ -151,7 +151,7 @@ const zhCN = {
       archive: '长期存档。',
       readable: 'AI 和人类都能读，存证状态透明。',
       intro:
-        '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。真实打赏与结算通道内测中，暂不开放打款。',
+        '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。阅读与发布现已开放；真实打赏与链上结算通道分批上线，现阶段暂不受理打款。',
       ctaRead: '📖 立即阅读思想博文',
       ctaBounty: '🎯 悬赏任务大厅 (内测展示)',
       ctaWrite: '✍️ 开启 AI 写作',
@@ -325,7 +325,7 @@ const zhCN = {
   rss: {
     title: 'Web5.blog · 容器原生博客本体网关',
     description:
-      'Prime × Eidolon × Vessel 三层生命架构。内容分布式存档并标注存证状态，支付通道处于内测阶段。',
+      'Prime × Eidolon × Vessel 三层生命架构。阅读与分布式存证已上线并标注存证状态；打赏与链上结算通道分批开放，现阶段不受理打款。',
   },
 
   // ── OpenGraph image ──
