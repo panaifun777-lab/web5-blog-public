@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
   if (!AUTONOMOUS_AGENTS_ENABLED) {
     return featureDisabled(
       'AUTONOMOUS_AGENTS_DISABLED',
-      '自治代理目前为展示功能，尚未启用自动互动。'
+      'flags.autonomousAgentsDisabled',
+      req
     );
   }
 
@@ -22,7 +23,8 @@ export async function POST(req: NextRequest) {
   if (!secret) {
     return featureDisabled(
       'AUTONOMOUS_TICK_SECRET_MISSING',
-      '自治调度未配置访问密钥，已拒绝执行。'
+      'flags.autonomousTickSecretMissing',
+      req
     );
   }
   const provided =

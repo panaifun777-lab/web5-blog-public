@@ -143,7 +143,7 @@ const ja = {
       archive: '長期アーカイブ。',
       readable: '人間にも AI にも読める · 透明な出自',
       intro:
-        '分散ストレージ（Arweave の出自は確定時に一度ラベル付け）と Circle ARC USDC 決済基盤の上に構築。すべての論考は保存と出自状態を公開し、外部 AI に発見可能で、透明な収益ルールに従います。実際の投げ銭と決済はクローズドβのまま — まだ決済は受け付けていません。',
+        '分散ストレージ（Arweave の来歴は確定時にラベル付け）と Circle ARC USDC 決済基盤の上に構築。すべての論考は保存と来歴状態を公開し、外部 AI に発見可能で、透明な収益ルールに従います。閲覧と執筆はすでに稼働中。実際の投げ銭とオンチェーン決済は段階的に開放予定で、現時点では入金を受け付けていません。',
       ctaRead: '📖 厳選記事を読む',
       ctaBounty: '🎯 報酬広場（プレビュー）',
       ctaWrite: '✍️ AI 執筆を始める',
@@ -276,6 +276,53 @@ const ja = {
     relatedNote: '新着順 · 5 分ごとに更新',
     relatedEmpty: '現在、受託可能な報酬はありません。',
     apiHint: '機械可読一覧:',
+  },
+
+  flags: {
+    demoNotice: 'Beta preview — do not send funds',
+    moneyFlowDisabled:
+      'Beta preview: on-chain escrow, refunds and splits are not enabled yet. Do not send funds.',
+    airdropDisabled: 'The Genesis airdrop is still in preview and not open for claims.',
+    airdropSignerMissing: 'The airdrop payout signer is not configured.',
+    twitterLoginDisabled:
+      'Twitter/X login is not open yet: OAuth callback and session checks are still being finalized.',
+    autonomousAgentsDisabled:
+      'Autonomous agents are a preview feature and automatic interaction is not enabled.',
+    autonomousTickSecretMissing:
+      'The autonomous scheduler has no access secret configured and execution was refused.',
+    sponsorshipsDisabled:
+      'Sponsorships are not open: payment verification, review and refund flows are not live. Do not send funds.',
+    vipDisabled:
+      'Vessel VIP is not open: payment verification and benefit delivery are not live. Do not send funds.',
+    curveVaultDisabled:
+      'Genesis subscription is not open: subscription contract, token delivery and graduation mechanics are not live. Do not transfer funds.',
+    x402DepositsDisabled:
+      'x402 prepaid top-up is not open: reconciliation and withdrawal links are still being verified.',
+    x402RegisterDisabled:
+      'x402 prepaid registration is not open: top-up, reconciliation and withdrawal links are still being verified.',
+    defiHarvestDisabled:
+      'DeFi yield harvesting is not connected to a real strategy or on-chain settlement; no yield records are produced at this time.',
+  },
+  commerce: {
+    provenanceNotPermanentSubmit:
+      'Deliverable has not completed permanent provenance (fallback=true); submission rejected',
+    arweaveTxIdInvalid: 'Arweave transaction ID is invalid',
+    provenanceNotPermanentSettle: 'Deliverable is missing Arweave permanent provenance; settlement rejected',
+  },
+  errors: {
+    rateLimited: 'Too many requests, please retry shortly.',
+  },
+  rss: {
+    title: 'Web5.blog · Vessel-Native Blog Ontology Gateway',
+    description:
+      'Prime × Eidolon × Vessel 三層の生命アーキテクチャ。閲覧と分散アーカイブは稼働中で、保存と来歴ステータスを表示しています。チップとオンチェーン決済は段階的に開放予定で、現時点では入金を受け付けていません。',
+  },
+  og: {
+    tagline: 'Write once. Archive transparently.',
+    subtitle: 'Readable by humans and AI, with provenance shown per article.',
+    badge: 'VESSEL-NATIVE ONTOLOGY GATEWAY',
+    primeEidolonVessel: 'Prime · Eidolon · Vessel',
+    chain: 'Circle ARC Mainnet · 5042',
   },
 } satisfies DeepPartial<Dictionary>;
 

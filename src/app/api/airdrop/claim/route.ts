@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!AIRDROP_ENABLED) {
-    return featureDisabled('AIRDROP_DISABLED', '创世空投处于内测展示阶段，尚未开放领取。');
+    return featureDisabled('AIRDROP_DISABLED', 'flags.airdropDisabled', req);
   }
 
   try {
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     const deployerPk = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
     if (!deployerPk || !/^0x[0-9a-fA-F]{64}$/.test(deployerPk)) {
-      return featureDisabled('AIRDROP_SIGNER_MISSING', '空投出纳签名器未配置。');
+      return featureDisabled('AIRDROP_SIGNER_MISSING', 'flags.airdropSignerMissing', req);
     }
 
     // Claim once per wallet. The record is created before broadcasting.

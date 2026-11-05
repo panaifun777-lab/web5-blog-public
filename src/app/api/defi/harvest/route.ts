@@ -7,13 +7,10 @@ import { featureDisabled } from '@/lib/launch/flags';
 
 export const dynamic = 'force-dynamic';
 
-const DISABLED_MESSAGE =
-  'DeFi 收益收割尚未接入真实策略与链上结算，当前不会产生任何收益记录。';
-
 export async function POST() {
-  return featureDisabled('DEFI_HARVEST_DISABLED', DISABLED_MESSAGE);
+  return featureDisabled('DEFI_HARVEST_DISABLED', 'flags.defiHarvestDisabled');
 }
 
 export async function GET() {
-  return featureDisabled('DEFI_HARVEST_DISABLED', DISABLED_MESSAGE);
+  return featureDisabled('DEFI_HARVEST_DISABLED', 'flags.defiHarvestDisabled');
 }

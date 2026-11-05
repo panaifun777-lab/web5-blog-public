@@ -24,9 +24,13 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 /**
  * - `source`      — zh-CN, the source of truth
- * - `complete`    — every key translated, enforced at compile time
- * - `partial`     — `satisfies DeepPartial<Dictionary>`; missing keys fall back to `en`
- * - `fallback-en` — not translated at all, renders the `en` catalog
+ * - `complete`    — full key parity with zh-CN and localized copy; promoted
+ *                   into the sitemap / hreflang / robots index. Latin-script
+ *                   proper nouns and gated-feature notices may stay in English.
+ * - `partial`     — `satisfies DeepPartial<Dictionary>`; missing keys fall back
+ *                   to `en`. Currently unused (ja/ko/es graduated to complete).
+ * - `fallback-en` — not translated at all, renders the `en` catalog. Kept out
+ *                   of the index so search engines never see an English dup.
  */
 export type LocaleStatus = 'source' | 'complete' | 'partial' | 'fallback-en';
 
@@ -43,9 +47,9 @@ export interface LocaleMeta {
 export const LOCALES: Record<LocaleCode, LocaleMeta> = {
   'zh-CN': { code: 'zh-CN', label: 'Chinese', nativeLabel: '简体中文', flag: '🇨🇳', ogLocale: 'zh_CN', status: 'source' },
   en: { code: 'en', label: 'English', nativeLabel: 'English', flag: '🇺🇸', ogLocale: 'en_US', status: 'complete' },
-  ja: { code: 'ja', label: 'Japanese', nativeLabel: '日本語', flag: '🇯🇵', ogLocale: 'ja_JP', status: 'partial' },
-  ko: { code: 'ko', label: 'Korean', nativeLabel: '한국어', flag: '🇰🇷', ogLocale: 'ko_KR', status: 'partial' },
-  es: { code: 'es', label: 'Spanish', nativeLabel: 'Español', flag: '🇪🇸', ogLocale: 'es_ES', status: 'partial' },
+  ja: { code: 'ja', label: 'Japanese', nativeLabel: '日本語', flag: '🇯🇵', ogLocale: 'ja_JP', status: 'complete' },
+  ko: { code: 'ko', label: 'Korean', nativeLabel: '한국어', flag: '🇰🇷', ogLocale: 'ko_KR', status: 'complete' },
+  es: { code: 'es', label: 'Spanish', nativeLabel: 'Español', flag: '🇪🇸', ogLocale: 'es_ES', status: 'complete' },
   fr: { code: 'fr', label: 'French', nativeLabel: 'Français', flag: '🇫🇷', ogLocale: 'fr_FR', status: 'fallback-en' },
   de: { code: 'de', label: 'German', nativeLabel: 'Deutsch', flag: '🇩🇪', ogLocale: 'de_DE', status: 'fallback-en' },
   ru: { code: 'ru', label: 'Russian', nativeLabel: 'Русский', flag: '🇷🇺', ogLocale: 'ru_RU', status: 'fallback-en' },

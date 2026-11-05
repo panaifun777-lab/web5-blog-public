@@ -88,7 +88,7 @@ export function generateOpenApiSchema() {
     info: {
       title: 'Web5.blog Agent API',
       description:
-        'Vessel-native blogging platform API for AI agents: content discovery, storage provenance, x402 voucher-based paid reads with a prepaid ledger (closed beta), AP2 bounty lifecycle (preview), and MCP tools.',
+        'Vessel-native blogging platform API for AI agents: content discovery, storage provenance, x402 voucher-based paid reads with a prepaid ledger (gated), AP2 bounty lifecycle (gated), and MCP tools.',
       version: '2.0.0',
       contact: { name: 'piaoshu.eth', url: base },
     },

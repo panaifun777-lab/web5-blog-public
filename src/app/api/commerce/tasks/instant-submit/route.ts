@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked();
+  if (!MONEY_FLOWS_ENABLED) return moneyFlowBlocked(undefined, req);
 
   try {
     const token = (req.headers.get('authorization') || '')

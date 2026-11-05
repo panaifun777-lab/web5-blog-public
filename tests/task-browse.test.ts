@@ -337,6 +337,9 @@ describe('buildTaskMetadata', () => {
     expect(md.alternates?.languages).toEqual({
       'zh-CN': '/task/order-1',
       en: '/en/task/order-1',
+      ja: '/ja/task/order-1',
+      ko: '/ko/task/order-1',
+      es: '/es/task/order-1',
       'x-default': '/task/order-1',
     });
     expect(md.openGraph && !Array.isArray(md.openGraph) ? md.openGraph.url : undefined).toBe(

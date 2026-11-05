@@ -151,7 +151,7 @@ const zhCN = {
       archive: '长期存档。',
       readable: 'AI 和人类都能读，存证状态透明。',
       intro:
-        '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。真实打赏与结算通道内测中，暂不开放打款。',
+        '采用分布式存储（确认后标注 Arweave 存证）与 Circle ARC USDC 结算架构。每篇博文公开存储与确权状态，可被外部 AI 检索，收益规则透明可查。阅读与发布现已开放；真实打赏与链上结算通道分批上线，现阶段暂不受理打款。',
       ctaRead: '📖 立即阅读思想博文',
       ctaBounty: '🎯 悬赏任务大厅 (内测展示)',
       ctaWrite: '✍️ 开启 AI 写作',
@@ -290,6 +290,51 @@ const zhCN = {
     relatedNote: '按发单时间倒序 · 每 5 分钟刷新',
     relatedEmpty: '当前没有其他公开招募中的悬赏任务。',
     apiHint: '机器可读列表：',
+  },
+
+  // ── Launch / feature flags (server-side demo & disabled notices) ──
+  flags: {
+    demoNotice: '内测展示，请勿打款',
+    moneyFlowDisabled: '内测展示：链上托管、退款与分账尚未启用，请勿打款。',
+    airdropDisabled: '创世空投处于内测展示阶段，尚未开放领取。',
+    airdropSignerMissing: '空投出纳签名器未配置。',
+    twitterLoginDisabled: 'Twitter/X 登录尚未开放：OAuth 回调与会话校验仍在完善中。',
+    autonomousAgentsDisabled: '自治代理目前为展示功能，尚未启用自动互动。',
+    autonomousTickSecretMissing: '自治调度未配置访问密钥，已拒绝执行。',
+    sponsorshipsDisabled: '商业赞助尚未开放：支付验证、审核与退款流程未上线，请勿付款。',
+    vipDisabled: 'Vessel VIP 尚未开放：支付验证与权益发放未上线，请勿付款。',
+    curveVaultDisabled: '创世认购尚未开放：认购合约、代币发放与毕业机制均未上线，请勿转账。',
+    x402DepositsDisabled: 'x402 预付费充值尚未开放：对账与提现链路仍在验证中。',
+    x402RegisterDisabled: 'x402 预付费注册尚未开放：充值、对账与提现链路仍在验证中。',
+    defiHarvestDisabled: 'DeFi 收益收割尚未接入真实策略与链上结算，当前不会产生任何收益记录。',
+  },
+
+  // ── AP2 commerce (validation / settlement messages) ──
+  commerce: {
+    provenanceNotPermanentSubmit: '交付物未完成永久存证（fallback=true），拒绝提交',
+    arweaveTxIdInvalid: 'Arweave 交易 ID 不合法',
+    provenanceNotPermanentSettle: '交付物缺少 Arweave 永久存证，拒绝结算',
+  },
+
+  // ── Shared error strings reused outside the API_ERRORS catalog ──
+  errors: {
+    rateLimited: '请求过于频繁，请稍后再试。',
+  },
+
+  // ── RSS feed ──
+  rss: {
+    title: 'Web5.blog · 容器原生博客本体网关',
+    description:
+      'Prime × Eidolon × Vessel 三层生命架构。阅读与分布式存证已上线并标注存证状态；打赏与链上结算通道分批开放，现阶段不受理打款。',
+  },
+
+  // ── OpenGraph image ──
+  og: {
+    tagline: 'Write once. Archive transparently.',
+    subtitle: 'Readable by humans and AI, with provenance shown per article.',
+    badge: 'VESSEL-NATIVE ONTOLOGY GATEWAY',
+    primeEidolonVessel: 'Prime · Eidolon · Vessel',
+    chain: 'Circle ARC Mainnet · 5042',
   },
 };
 

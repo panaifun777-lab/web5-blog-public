@@ -30,7 +30,7 @@ export async function GET() {
   <channel>
     <title>Web5.blog · Vessel-Native Blog Ontology Gateway</title>
     <link>${baseUrl}</link>
-    <description>Prime × Eidolon × Vessel 三层生命架构。内容分布式存档并标注存证状态，支付通道处于内测阶段。</description>
+    <description>Prime × Eidolon × Vessel 三层生命架构。阅读与分布式存证已上线并标注存证状态；打赏与链上结算通道分批开放，现阶段不受理打款。</description>
     <language>zh-CN</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml" />
