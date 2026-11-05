@@ -281,7 +281,7 @@ export function HologramAvatarStage() {
         </div>
       </div>
 
-      {/* 协议状态（内测展示，非收益承诺） */}
+      {/* 协议状态（支付通道待开放，非收益承诺） */}
       <div className="relative z-10 mt-5 pt-3.5 border-t border-white/[0.06] space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
@@ -290,7 +290,7 @@ export function HologramAvatarStage() {
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#FFCC00]">x402</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Beta' : '内测'}</div>
+            <div className="text-[9px] text-[#666]">{isEn ? 'Not live' : '待开放'}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#10B981]">80%*</div>

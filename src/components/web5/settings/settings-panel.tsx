@@ -190,7 +190,7 @@ export function SettingsPanel({ session }: { session: VesselSession | null }) {
                 color="#00FFCC"
               />
               <VPSConfig
-                tier="标准（Beta 公测）"
+                tier="标准（增长阶段）"
                 specs={['4 vCPU', '8GB RAM', '160GB SSD', 'Ubuntu 22.04 LTS']}
                 cost="~$25/月"
                 suitable="100-500 用户，AP2 微支付测试"
