@@ -8,12 +8,16 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  if (process.env.AGENT_DAEMON_ENABLED !== 'true') {
-    console.log('[instrumentation] Agent daemon disabled (AGENT_DAEMON_ENABLED != true)');
-    return;
-  }
-  if (process.env.DISABLE_AGENT_DAEMON === 'true') {
-    console.log('[instrumentation] Agent daemon disabled via env');
+
+  // Same gate the daemon uses; reading it here avoids loading agent code when
+  // autonomous behaviour is switched off.
+  const { AUTONOMOUS_AGENTS_ENABLED, AGENT_DAEMON_ENABLED, AGENT_DAEMON_FORCE_STOPPED, agentDaemonActive } =
+    await import('@/lib/launch/flags');
+  if (!agentDaemonActive()) {
+    console.log(
+      `[instrumentation] Agent daemon disabled (AUTONOMOUS_AGENTS=${AUTONOMOUS_AGENTS_ENABLED} ` +
+        `AGENT_DAEMON=${AGENT_DAEMON_ENABLED} FORCE_STOPPED=${AGENT_DAEMON_FORCE_STOPPED})`
+    );
     return;
   }
 

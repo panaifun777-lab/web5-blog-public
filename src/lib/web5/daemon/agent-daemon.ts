@@ -15,7 +15,7 @@ import {
   type CommerceTaskOrder,
 } from '@/lib/web5/ap2/commerce';
 import { uploadToArweave, ArweavePermanenceError } from '@/lib/web5/content/arweave-uploader';
-import { ESCROW_PAYOUTS_ENABLED } from '@/lib/launch/flags';
+import { ESCROW_PAYOUTS_ENABLED, agentDaemonActive } from '@/lib/launch/flags';
 
 export interface AgentEventMessage {
   type:
@@ -420,6 +420,10 @@ class HeadlessAgentDaemon {
    */
   start(intervalMs: number = 30000) {
     if (this.isRunning) return;
+    if (!agentDaemonActive()) {
+      console.warn('⛔ [Headless Daemon] Refusing to start: AUTONOMOUS_AGENTS_ENABLED and AGENT_DAEMON_ENABLED must both be on (and DISABLE_AGENT_DAEMON off).');
+      return;
+    }
     this.isRunning = true;
     console.log('🤖 [Headless Daemon] Starting Web5 Autonomous Agent Daemon with AP2 Commerce Pipeline...');
 

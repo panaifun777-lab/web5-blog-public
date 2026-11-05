@@ -9,7 +9,7 @@ import { voucherGateway } from '@/lib/web5/x402/voucher-engine';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 import { describeSigner } from '@/lib/web5/payments/signer';
 import { getBroadcastStatus } from '@/lib/web5/broadcast/task-queue';
-import { AGENT_DAEMON_ENABLED } from '@/lib/launch/flags';
+import { agentDaemonActive } from '@/lib/launch/flags';
 import pkg from '../../../../../package.json';
 
 export const dynamic = 'force-dynamic';
@@ -27,7 +27,7 @@ export async function GET() {
     console.error('[daemon/health] database check failed:', err);
   }
 
-  const daemonEnabled = AGENT_DAEMON_ENABLED && process.env.DISABLE_AGENT_DAEMON !== 'true';
+  const daemonEnabled = agentDaemonActive();
   const healthy = database === 'OK';
 
   let voucherStats: Awaited<ReturnType<typeof voucherGateway.getChannelStats>> | null = null;
