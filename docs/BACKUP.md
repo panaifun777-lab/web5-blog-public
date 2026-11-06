@@ -82,9 +82,44 @@ Hard rules the script enforces:
 `null` means the table was absent at snapshot time — that is the signal that
 the schema moved, not an error.
 
-## 4. Choosing the offsite target
+## 4. The offsite target (live since 2026-11-06)
 
-All three work with the same script; only `OFFSITE_UPLOAD_CMD` changes.
+**Backblaze B2 bucket `web5-backups`, prefix `offsite/`, behind rclone crypt.**
+Different provider from the VPS, no credit card required, ~free for <1 GB.
+Three remotes/objects matter, and none of them hold a secret you should paste
+anywhere:
+
+| Name | What it is | Where it lives |
+|---|---|---|
+| `web5-b2` | rclone remote, native `type = b2` (account + key) | `/root/.config/rclone/rclone.conf` (600) |
+| `web5-crypt` | rclone crypt layered on `web5-b2:web5-backups/offsite/` | same file; `filename_encryption = obfuscate`, `encryption = standard` |
+| — | the crypt passphrase + filename salt | `/root/ops/offsite-crypt-key.txt` (600) |
+
+Two things about that layering are deliberate and easy to break:
+
+- **Crypt keeps names transparent, so the verify script still works.** Reading
+  through `web5-crypt:` shows `web5-db-…Z.db.gz`, which is what
+  `scripts/verify-backup.sh` greps for. Listing the raw `web5-b2:` remote shows
+  only obfuscated names (`12.SAx1-zx-…`) — that is the proof the provider holds
+  ciphertext. Point the `OFFSITE_*` hooks at `web5-b2:` and the drill breaks.
+- **The passphrase is the backup.** Copy `/root/ops/offsite-crypt-key.txt` off
+  the machine. If the VPS is lost and that file went with it, every offsite
+  archive is unrecoverable — which is the point of the encryption.
+
+`/root/ops/enable-b2-offsite.sh` (root-only, not in the repo) wires all of the
+above from scratch: B2 remote → bucket reachability → crypt remote with a
+freshly generated passphrase → canary upload/roundtrip/delete → rewrite
+`backup.env` → real backup → restore drill. Re-running it regenerates the
+passphrase, so treat the old offsite archives as orphaned afterwards.
+
+Two dead ends, recorded so nobody repeats them:
+
+- **Cloudflare R2** — the dashboard checkout requires a credit card.
+- **B2 through rclone's S3 backend** — rclone 1.75 rejects `provider = B2`, and
+  the S3-compatible endpoint answers `403 InvalidAccessKeyId: Malformed Access
+  Key Id` to a normal application key. Use native `type = b2`.
+
+The general options, for reference:
 
 | Target | What it requires | Cost / ops | Tradeoffs |
 |---|---|---|---|
@@ -98,7 +133,12 @@ the credentials readable only by root.
 Worked examples (placeholders — real values live in `backup.env` only):
 
 ```bash
-# S3-compatible, via rclone (recommended: one tool, list+fetch come free)
+# Backblaze B2 through rclone crypt — what production actually runs (§4)
+OFFSITE_UPLOAD_CMD='rclone copy {file} web5-crypt:'
+OFFSITE_LIST_CMD='rclone lsf web5-crypt:'
+OFFSITE_FETCH_CMD='rclone copyto web5-crypt:{file} {dest}'
+
+# Plain object storage, no crypt in front
 OFFSITE_UPLOAD_CMD='rclone copy {file} remote:web5-backups/'
 OFFSITE_LIST_CMD='rclone lsf --files-only remote:web5-backups/'
 # copyto, not copy: {dest} is the full target file path, and `rclone copy`
@@ -138,7 +178,11 @@ install -d -m 755 /var/log/web5
 # 5. real run, once, by hand
 /root/ops/backup-offsite.sh; echo "exit=$?"
 
-# 6. units
+# 6. schedule — production uses cron (root crontab -e), one line:
+#    30 3 * * * /root/ops/backup-offsite.sh >> /var/log/web5-backup.log 2>&1
+#    It runs after backup-web5.sh (03:20) and publish-backup-manifest.sh (03:25).
+#    The systemd units in ops/ are an equivalent alternative and are NOT
+#    installed on the VPS; installing them on top of cron would double-run.
 install -m 644 /root/web5.blog/ops/web5-backup-offsite.service /etc/systemd/system/
 install -m 644 /root/web5.blog/ops/web5-backup-offsite.timer   /etc/systemd/system/
 systemd-analyze verify /etc/systemd/system/web5-backup-offsite.service
@@ -146,20 +190,24 @@ systemctl daemon-reload
 systemctl enable --now web5-backup-offsite.timer
 
 # 7. confirm
-systemctl list-timers web5-backup-offsite.timer
-systemctl start web5-backup-offsite.service && systemctl status web5-backup-offsite.service
+crontab -l | grep backup-offsite              # the live scheduler
+systemctl list-timers web5-backup-offsite.timer   # only if you took §6's units
 tail -n 3 /var/log/web5/backup-offsite.log
 /root/ops/verify-backup.sh --offsite          # must print RESULT: PASS
 ```
+
+`OFFSITE_LIST_CMD` must print one plain object name per line — that is what
+`scripts/verify-backup.sh` greps for `\.db\.gz$`. `rclone lsf` does; `rclone
+lsjson` does not, and a `lsjson` list silently yields "no archives found".
 
 ### 5.1 `/root/ops/backup.env` (mode 600)
 
 ```bash
 # Offsite transport — required. Without it the script exits 2.
-OFFSITE_UPLOAD_CMD='rclone copy {file} remote:web5-backups/'
-# Used by scripts/verify-backup.sh; {dest} is a file path, so use copyto.
-OFFSITE_LIST_CMD='rclone lsf --files-only remote:web5-backups/'
-OFFSITE_FETCH_CMD='rclone copyto "remote:web5-backups/{file}" {dest}'
+# Live values (B2 behind crypt — see §4):
+OFFSITE_UPLOAD_CMD='rclone copy {file} web5-crypt:'
+OFFSITE_LIST_CMD='rclone lsf web5-crypt:'
+OFFSITE_FETCH_CMD='rclone copyto web5-crypt:{file} {dest}'
 
 # Optional overrides (defaults shown)
 #DB_PATH=/root/web5.blog/prisma/db/custom.db
@@ -278,9 +326,15 @@ Exit codes (useful in the alert text): `0` ok · `1` failure · `2` misconfigure
 - **Uploaded media is not covered.** If user uploads matter, mirror
   `public/` and `upload/` with the same rclone remote (`rclone sync`) on the
   same timer — that is a separate, larger job and a decision for the lead.
-- **No encryption of the archive.** It is gzipped, not encrypted; the provider
-  can read it. `gzip | age -r <key>` or `rclone crypt` are the two cheap
-  options if that is required.
+- **The archive is encrypted at the provider, and that is a two-edged sword.**
+  Uploads go through rclone crypt, so B2 stores ciphertext with obfuscated
+  names (§4). Nothing can be restored without
+  `/root/ops/offsite-crypt-key.txt`, which currently exists **only on the VPS**
+  — until it is copied off-box, losing the machine loses both copies. Keep the
+  keyfile out of the repo and out of the bucket.
+- **Retention is unbounded.** The bucket is set to "keep all versions" and no
+  expiry rule was configured, so objects accumulate forever (~300 KB/day). A
+  30–90 day rule is still worth setting.
 - **`.env` is not in the backup** by design (it holds keys). Its contents must
   be recoverable from the password manager.
 - **Local 03:20 cron backup is unchanged** and still the fast path for "undo
@@ -288,12 +342,13 @@ Exit codes (useful in the alert text): `0` ok · `1` failure · `2` misconfigure
 
 ## 9. Quarterly checklist
 
-- [ ] `systemctl list-timers web5-backup-offsite.timer` — next run within 24h, last run succeeded.
+- [ ] `crontab -l | grep backup-offsite` still scheduled (or `systemctl list-timers web5-backup-offsite.timer` if you installed the units) — last run succeeded.
 - [ ] `tail -n 20 /var/log/web5/backup-offsite.log` — every line `"status":"ok"`, no gaps > 36h.
-- [ ] `rclone lsf remote:web5-backups/` (or equivalent) — one `.db.gz` + `.json` pair per day, count ≈ retention days.
+- [ ] `rclone lsf web5-crypt:` — one `.db.gz` + `.json` pair per day, count ≈ retention days.
 - [ ] `/root/ops/verify-backup.sh --offsite` → `RESULT: PASS`. Corrupt one byte of a copy on purpose once a year and confirm it prints `FAIL`.
 - [ ] Restore drill (§6) into a scratch copy — full run, including the five endpoints.
 - [ ] Restore drill once with the app *stopped* and once on a *clean* machine (no `/root/web5.blog`, no `.env`) — proves the runbook does not depend on host state.
+- [ ] `/root/ops/offsite-crypt-key.txt` still readable off-box (§6 on a clean machine fails without it).
 - [ ] Offsite credentials still valid; rotate the key if anyone with access left.
 - [ ] Offsite lifecycle/retention policy still set (30–90 days) and versioning on.
 - [ ] `df -h` on the VPS — local retention dir not filling the disk.
