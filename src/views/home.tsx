@@ -1142,7 +1142,7 @@ async function connectWallet(
     }
 
     // ━━ 2. 获取钱包地址 ━━
-    const accounts = await withTimeout(
+    const accounts = await withTimeout<string[]>(
       ethereum.request({ method: 'eth_requestAccounts' }), 60000, tr('home.error.step.waitAuth'), tr,
     );
     const addr = accounts?.[0];
