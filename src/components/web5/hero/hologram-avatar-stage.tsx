@@ -31,8 +31,7 @@ export function HologramAvatarStage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { locale } = useI18n();
-  const isEn = locale !== 'zh-CN';
+  const { t } = useI18n();
 
   useEffect(() => {
     setMounted(true);
@@ -270,9 +269,7 @@ export function HologramAvatarStage() {
           </span>
         </h3>
         <p className="text-[11px] text-[#888] leading-relaxed max-w-xs mx-auto">
-          {isEn
-            ? 'A sovereign avatar that reads, writes and publishes on your behalf — every action auditable.'
-            : '代为阅读、写作与发布的高维数字分身，每一次行动都可回溯审计。'}
+          {t('heroX.soulDesc')}
         </p>
         <div className="pt-1">
           <Badge className="bg-[#00FFCC]/10 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] font-mono py-0.5 tracking-widest">
@@ -286,23 +283,23 @@ export function HologramAvatarStage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#00FFCC]">PROV</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Provenance' : '存证可查'}</div>
+            <div className="text-[9px] text-[#666]">{t('heroX.provenance')}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#FFCC00]">x402</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Not live' : '待开放'}</div>
+            <div className="text-[9px] text-[#666]">{t('heroX.notLive')}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#10B981]">80%*</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Planned' : '规划分成'}</div>
+            <div className="text-[9px] text-[#666]">{t('heroX.planned')}</div>
           </div>
           <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04]">
             <div className="text-sm font-bold text-[#B080E8]">USDC</div>
-            <div className="text-[9px] text-[#666]">{isEn ? 'Gas Token' : '原生 Gas'}</div>
+            <div className="text-[9px] text-[#666]">{t('heroX.gasToken')}</div>
           </div>
         </div>
         <p className="text-[9px] text-[#555] font-mono text-center">
-          {isEn ? '*Planned split, not yet enforced on-chain.' : '*规划中的分成比例，尚未在链上执行。'}
+          {t('heroX.plannedNote')}
         </p>
 
         {/* 协议与发现链接 */}

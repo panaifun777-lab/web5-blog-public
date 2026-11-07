@@ -53,8 +53,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [copiedApiKey, setCopiedApiKey] = useState(false);
   const [vesselWalletAddr, setVesselWalletAddr] = useState('');
   const [vesselWalletBal, setVesselWalletBal] = useState(0);
-  const { locale } = useI18n();
-  const isEn = locale !== 'zh-CN';
+  const { t } = useI18n();
 
   useEffect(() => {
     try {
@@ -75,14 +74,14 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       if (ok) {
         setPasskeyGuardEnabled(true);
         localStorage.setItem('web5_passkey_guard', 'true');
-        alert(isEn ? '✅ Passkey Biometric Sovereign Guard enabled!' : '✅ Passkey 生物识别二次安全锁已成功启用！高危操作将受到硬件级保护。');
+        alert(t('vessel.passkeyGuardOn'));
       }
     } else {
       const ok = await verifyPasskeyBiometric('关闭 Passkey 生物密钥二次锁');
       if (ok) {
         setPasskeyGuardEnabled(false);
         localStorage.setItem('web5_passkey_guard', 'false');
-        alert(isEn ? 'Passkey Sovereign Guard disabled.' : 'Passkey 生物识别二次安全锁已关闭。');
+        alert(t('vessel.passkeyGuardOff'));
       }
     }
   };
@@ -91,15 +90,13 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
     if (passkeyGuardEnabled) {
       const ok = await verifyPasskeyBiometric(`修改单日预算限额为 ${lim} USDC`);
       if (!ok) {
-        alert(isEn ? 'Biometric verification cancelled.' : '生物识别校验已取消或未通过，限额保持不变。');
+        alert(t('vessel.bioVerifyCancelled'));
         return;
       }
     }
     setDailyLimitUsdc(lim);
     localStorage.setItem('web5_daily_limit_usdc', lim);
-    alert(isEn 
-      ? `✅ Daily Limit saved locally as ${lim} USDC. This is a browser-only draft; it is not yet synced to the BudgetFence contract allowance.`
-      : `✅ 分身每日预算已本地保存为 ${lim} USDC。该设置仅为浏览器本地草稿，尚未同步到 BudgetFence 链上合约配额。`);
+    alert(t('vessel.dailyLimitSaved', { lim }));
   };
 
   const handleWithdraw = async () => {
@@ -114,26 +111,20 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
     if (passkeyGuardEnabled) {
       const ok = await verifyPasskeyBiometric('确认执行紧急熔断注销 Session Key');
       if (!ok) {
-        alert(isEn ? 'Biometric verification aborted.' : '生物特征确认未通过，熔断操作已中止。');
+        alert(t('vessel.bioVerifyAborted'));
         return;
       }
     }
-    const confirmed = confirm(isEn
-      ? '🚨 [PANIC REVOKE CONFIRMATION]\n\nAre you sure you want to revoke your Avatar Session Key? This will immediately terminate all autonomous agent spending permissions on-chain.\n\nYour main wallet assets remain 100% untouched.'
-      : '🚨【紧急熔断安全确认】\n\n确定要立即销毁当前 AI 分身的 Session Key 吗？\n\n这将立刻阻断分身的一切链上自动微支付与出纳权限，你的主钱包核心资产不受任何影响！');
+    const confirmed = confirm(t('vessel.panicRevokeConfirm'));
     if (confirmed) {
       localStorage.removeItem('web5_vessel_session');
-      alert(isEn
-        ? 'Local session cleared. On-chain session-key revocation is not implemented yet; clear the browser session and review any standing allowances manually.'
-        : '本地会话已清除。链上 Session Key 吊销尚未实现，请手动检查并撤销相关授权。');
+      alert(t('vessel.panicRevokeLocalCleared'));
       window.location.reload();
     }
   };
 
   const handleOpenVesselWithDiscount = (_useWbog: boolean) => {
-    alert(isEn
-      ? 'Opening additional avatars is not available during the closed beta.'
-      : '内测期间暂不开放新增分身矩阵。');
+    alert(t('vessel.closedBetaNoExtra'));
   };
 
   const load = useCallback(async () => {
@@ -234,14 +225,12 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       <Card className="cyber-panel">
         <CardContent className="p-8 text-center">
           <Lock className="w-12 h-12 mx-auto mb-4 text-[#B080E8]" />
-          <h3 className="text-xl font-bold mb-2">{isEn ? 'Observer Mode' : '当前为只读观察模式'}</h3>
+          <h3 className="text-xl font-bold mb-2">{t('vessel.observerMode')}</h3>
           <p className="text-[#999] mb-4 max-w-md mx-auto text-sm leading-relaxed">
-            {isEn
-              ? 'This session has no Vessel DID, so the avatar matrix cannot load. Sign in again with your wallet to create a full Vessel identity.'
-              : '当前会话没有 Vessel 容器身份（Vessel DID），无法加载分身矩阵。请返回登录页，使用「容器登录」或「钱包登录」完成主钱包签名后重试。'}
+            {t('vessel.observerModeDesc')}
           </p>
           <Button onClick={handleRelogin} className="bg-[#B080E8]/15 text-[#B080E8] border border-[#B080E8]/30 hover:bg-[#B080E8]/25">
-            {isEn ? 'Sign in again' : '重新登录'}
+            {t('vessel.signInAgain')}
           </Button>
         </CardContent>
       </Card>
@@ -253,14 +242,14 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       <Card className="cyber-panel border-[#FF4444]/30">
         <CardContent className="p-8 text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-[#FF66AA]" />
-          <h3 className="text-xl font-bold mb-2">{isEn ? 'Failed to load dashboard' : '分身矩阵加载失败'}</h3>
+          <h3 className="text-xl font-bold mb-2">{t('vessel.dashboardLoadFailed')}</h3>
           <p className="text-[#999] mb-4 text-sm break-all">{error}</p>
           <div className="flex items-center justify-center gap-3">
             <Button onClick={load} className="cyber-mono text-xs">
-              <RefreshCw className="w-3 h-3 mr-1" /> {isEn ? 'Retry' : '重试'}
+              <RefreshCw className="w-3 h-3 mr-1" /> {t('vessel.retry')}
             </Button>
             <Button onClick={handleRelogin} variant="ghost" className="cyber-mono text-xs text-[#999]">
-              {isEn ? 'Sign in again' : '重新登录'}
+              {t('vessel.signInAgain')}
             </Button>
           </div>
         </CardContent>
@@ -353,11 +342,11 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-white">
-                    {isEn ? 'My Root Wallet (Sovereign Soul)' : '我的主钱包 (本体根权限)'}
+                    {t('vessel.rootWalletTitle')}
                   </h4>
                   <p className="text-[10px] text-[#10B981] flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                    {isEn ? 'Private keys safe in local hardware / MetaMask' : '私钥保存在本地设备 / 绝对不托管'}
+                    {t('vessel.rootWalletSub')}
                   </p>
                 </div>
               </div>
@@ -369,15 +358,15 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
               <div className="flex items-center justify-between text-[10px] font-mono">
                 <span className="text-[#888]">
-                  {isEn ? 'Bound Root Wallet / Passkey DID:' : '绑定主钱包地址 / Passkey DID:'}
+                  {t('vessel.boundRootWallet')}
                 </span>
                 {session.primeDid?.includes('0x8f8') || session.primeDid?.includes('sim-') ? (
                   <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px] py-0 h-4">
-                    {isEn ? '⚠️ Unverified Device ID' : '⚠️ 暂存设备身份 · 未确权'}
+                    {t('vessel.unverifiedDevice')}
                   </Badge>
                 ) : (
                   <Badge className="bg-[#10B981]/15 text-[#10B981] border-[#10B981]/30 text-[9px] py-0 h-4">
-                    {isEn ? '✓ Verified Root Wallet' : '✓ 真实主钱包已确权'}
+                    {t('vessel.verifiedRootWallet')}
                   </Badge>
                 )}
               </div>
@@ -393,7 +382,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                   onClick={async () => {
                     const ethereum = (window as any).ethereum;
                     if (!ethereum) {
-                      alert(isEn ? 'Please install MetaMask / OKX Web3 wallet extension.' : '未检测到 MetaMask / OKX 钱包插件，请安装后进行确权绑定。');
+                      alert(t('vessel.installWallet'));
                       return;
                     }
                     try {
@@ -445,18 +434,16 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                         try {
                           localStorage.setItem('web5_vessel_session', JSON.stringify(session));
                         } catch {}
-                        alert(isEn
-                          ? `🎉 Sovereign Root Wallet verified: ${realAddr}!\n\nBound to this vessel container. Withdrawals are not open yet; no transfer will occur until the payout channel goes live.`
-                          : `🎉 主钱包确权成功：${realAddr}！\n\n已成功绑定至当前分身容器。提现通道尚未开放，绑定完成不代表会发生任何转账。`);
+                        alert(t('vessel.rootWalletVerified', { addr: realAddr }));
                         window.location.reload();
                       } else {
                         alert(data.error || '确权绑定失败');
                       }
                     } catch (e: any) {
                       if (e?.code === 4001) {
-                        alert(isEn ? 'Binding cancelled' : '已取消签名绑定');
+                        alert(t('vessel.bindingCancelled'));
                       } else {
-                        alert((isEn ? 'Binding failed: ' : '绑定失败：') + (e?.message?.slice(0, 80) || '未知错误'));
+                        alert(t('vessel.bindingFailed') + (e?.message?.slice(0, 80) || '未知错误'));
                       }
                     }
                   }}
@@ -465,8 +452,8 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                   <Key className="w-3 h-3" />
                   <span>
                     {session.primeDid?.includes('0x8f8') || session.primeDid?.includes('sim-')
-                      ? (isEn ? '🔗 Sign to Bind Real Root Wallet' : '🔗 签名确权我的真实 Web3 主钱包')
-                      : (isEn ? '🔄 Switch / Rebind Root Wallet' : '🔄 更换 / 重新确权主钱包')}
+                      ? (t('vessel.signBindRealWallet'))
+                      : (t('vessel.switchRebindWallet'))}
                   </span>
                 </Button>
               </div>
@@ -475,7 +462,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <div className="p-3.5 rounded-xl bg-[#10B981]/05 border border-[#10B981]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="text-[11px] text-[#aaa]">
-                  {isEn ? 'Avatar Earnings Ledger (not paid out):' : '分身收益账本（尚未出款）:'}
+                  {t('vessel.avatarEarningsLedger')}
                 </div>
                 <div className="text-2xl font-black text-[#10B981] font-mono">
                   +{earnedHarvestUsdc.toFixed(2)} <span className="text-xs font-normal">USDC</span>
@@ -490,7 +477,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 title={PUBLIC_MONEY_FLOWS_ENABLED ? undefined : PUBLIC_MONEY_FLOWS_DISABLED_MESSAGE}
                 className="bg-gradient-to-r from-[#10B981] to-[#00FFCC] disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs h-10 px-4 shadow-lg shadow-[#10B981]/20 hover:scale-[1.02] transition-all flex-shrink-0"
               >
-                {!PUBLIC_MONEY_FLOWS_ENABLED ? PUBLIC_DEMO_NOTICE : withdrawing ? (isEn ? 'Processing...' : '提现处理中...') : (isEn ? '💰 Withdraw (not available yet)' : '💰 提现（暂未开放）')}
+                {!PUBLIC_MONEY_FLOWS_ENABLED ? PUBLIC_DEMO_NOTICE : withdrawing ? t('vessel.withdrawProcessing') : t('vessel.withdrawUnavailable')}
               </Button>
             </div>
           </CardContent>
@@ -506,7 +493,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-white">
-                    {isEn ? 'AI Avatar Micro-Wallet (Vessel Card)' : 'AI 分身受限零钱包 (Vessel 副卡)'}
+                    {t('vessel.microWalletTitle')}
                   </h4>
                   <p className="text-[10px] text-[#B080E8] flex items-center gap-1">
                     <Lock className="w-3 h-3" />
@@ -523,24 +510,24 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <div className="p-3 rounded-xl bg-black/40 border border-[#B080E8]/20 space-y-2">
               <div className="text-[10px] text-[#888] font-mono flex items-center gap-1.5">
                 <Bot className="w-3 h-3 text-[#B080E8]" />
-                {isEn ? 'Vessel Prepaid Wallet (website dedicated):' : '网站专用钱包 (Vessel 预付卡):'}
+                {t('vessel.prepaidWallet')}
               </div>
               <div className="text-xs text-[#B080E8] font-mono break-all select-all font-semibold">
                 {vesselWalletAddr || '0x0000…0000'}
               </div>
               <div className="flex items-center justify-between text-[11px] font-mono">
-                <span className="text-[#888]">{isEn ? 'Balance:' : '余额:'}</span>
+                <span className="text-[#888]">{t('vessel.balance')}</span>
                 <span className="text-[#FFCC00] font-bold">{vesselWalletBal.toFixed(4)} USDC</span>
               </div>
               <div className="text-[9px] text-[#666] font-mono">
-                {isEn ? 'Top up once from your root wallet, then tip/task auto-settles without signature' : '主钱包一次性充值，之后打赏/发任务免签自动结算'}
+                {t('vessel.topUpOnce')}
               </div>
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   onClick={async () => {
                     const ethereum = (window as any).ethereum;
-                    if (!ethereum) { alert(isEn ? 'Please connect root wallet' : '请先连接主钱包'); return; }
+                    if (!ethereum) { alert(t('vessel.connectRootWallet')); return; }
                     try {
                       const chainIdHex = '0x13b2';
                       try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chainIdHex }] }); }
@@ -559,15 +546,15 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       await ethereum.request({ method: 'eth_sendTransaction', params: [{ from, to: vesselWalletAddr, value: '0x' + amountWei.toString(16) }] });
                       const b = await getVesselWalletBalance(vesselWalletAddr);
                       setVesselWalletBal(b);
-                      alert(isEn ? '✅ Topped up 0.1 USDC to dedicated wallet!' : '✅ 已向专用钱包充值 0.1 USDC，可免签打赏了！');
+                      alert(t('vessel.toppedUp'));
                     } catch (e: any) {
-                      if (e?.code === 4001) alert(isEn ? 'Cancelled' : '已取消充值');
-                      else alert((isEn ? 'Recharge failed: ' : '充值失败：') + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
+                      if (e?.code === 4001) alert(t('vessel.rechargeCancelled'));
+                      else alert(t('vessel.rechargeFailed') + (e?.message?.slice(0, 80) || '请确认主钱包已连接'));
                     }
                   }}
                   className="flex-1 text-xs h-8 bg-[#B080E8]/20 text-[#B080E8] border border-[#B080E8]/40 hover:bg-[#B080E8]/30"
                 >
-                  ⚡ {isEn ? 'Top Up 0.1 USDC' : '主钱包充值 0.1U'}
+                  ⚡ {t('vessel.topUp0_1')}
                 </Button>
 
                 <Button
@@ -575,7 +562,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                   variant="outline"
                   onClick={async () => {
                     const ethereum = (window as any).ethereum;
-                    if (!ethereum) { alert(isEn ? 'Please connect Web3 root wallet' : '请先连接 Web3 主钱包'); return; }
+                    if (!ethereum) { alert(t('vessel.connectWeb3RootWallet')); return; }
                     try {
                       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                       const from = accounts[0];
@@ -585,18 +572,16 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       setVesselWalletAddr(derived.address);
                       const b = await getVesselWalletBalance(derived.address);
                       setVesselWalletBal(b);
-                      alert(isEn
-                        ? `✅ Synchronized dedicated wallet (${derived.address.slice(0, 8)}...) across devices via root signature!`
-                        : `✅ 已成功通过主钱包签名派生并同步专属子卡（${derived.address.slice(0, 8)}...）！在任何设备登录均可永久找回余额。`);
+                      alert(t('vessel.subCardSynced', { addr: derived.address.slice(0, 8) }));
                     } catch (e: any) {
-                      if (e?.code === 4001) alert(isEn ? 'Cancelled signature' : '已取消签名');
-                      else alert((isEn ? 'Sync failed: ' : '同步失败：') + (e?.message?.slice(0, 80) || '未知错误'));
+                      if (e?.code === 4001) alert(t('vessel.signatureCancelled'));
+                      else alert(t('vessel.syncFailed') + (e?.message?.slice(0, 80) || '未知错误'));
                     }
                   }}
                   className="text-xs h-8 border-white/[0.15] text-[#aaa] hover:text-white hover:bg-white/[0.05]"
-                  title={isEn ? "Recover or bind this dedicated wallet across devices via root signature" : "通过主钱包一次签名在任何设备永久同步/找回同一个专属零钱包"}
+                  title={t('vessel.syncSubCardTitle')}
                 >
-                  🔗 {isEn ? 'Sync Sub-Card' : '跨设备同步子卡'}
+                  🔗 {t('vessel.syncSubCard')}
                 </Button>
               </div>
             </div>
@@ -604,7 +589,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             <div className="p-3 rounded-xl bg-black/40 border border-white/[0.06] space-y-2">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-[#888]">
-                  {isEn ? 'Daily Cap (1.0 ~ 5.0 USDC max):' : '自主设定每日限额 (单日 1.0 ~ 5.0 USDC):'}
+                  {t('vessel.dailyCap')}
                 </span>
                 <span className="font-bold text-[#FFCC00] font-mono">{dailyLimitUsdc} USDC/日</span>
               </div>
@@ -624,21 +609,21 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 ))}
               </div>
               <div className="flex items-center justify-between text-[10px] text-[#666] pt-1">
-                <span>{isEn ? 'Spent today: ' : '今日已自动微支付: '}{spentTodayUsdc} USDC</span>
-                <span>{isEn ? 'Remaining: ' : '剩余可用配额: '}{(Math.max(0, parseFloat(dailyLimitUsdc) - parseFloat(spentTodayUsdc))).toFixed(2)} USDC</span>
+                <span>{t('vessel.spentToday')}{spentTodayUsdc} USDC</span>
+                <span>{t('vessel.remaining')}{(Math.max(0, parseFloat(dailyLimitUsdc) - parseFloat(spentTodayUsdc))).toFixed(2)} USDC</span>
               </div>
             </div>
 
             <div className="p-3 rounded-xl bg-[#FF66AA]/05 border border-[#FF66AA]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="text-[10px] text-[#aaa] max-w-[200px] leading-relaxed">
-                {isEn ? 'Your core funds remain safe in your root wallet. Revoke session anytime!' : '大钱永远在主钱包里！随时销毁 Session Key，分身立即丧失所有链上扣费权限。'}
+                {t('vessel.coreFundsSafe')}
               </div>
               <Button
                 variant="destructive"
                 onClick={handlePanicRevoke}
                 className="bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-xs h-9 px-3.5 shadow-lg shadow-[#EF4444]/20 flex-shrink-0"
               >
-                🚨 {isEn ? 'Panic Revoke Session' : '一键紧急断开 (Panic Revoke)'}
+                🚨 {t('vessel.panicRevokeSession')}
               </Button>
             </div>
           </CardContent>
@@ -653,7 +638,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
           </div>
           <div>
             <div className="text-xs font-bold text-white flex items-center gap-2">
-              <span>{isEn ? 'Expand Avatar Matrix (Secondary High-Tier Seat)' : '扩建第二专属分身矩阵 (高阶 Agent 席位)'}</span>
+              <span>{t('vessel.expandMatrix')}</span>
               <Badge className="bg-[#FFCC00]/20 text-[#FFCC00] border-none text-[9px] h-4">
                 🔥 6 折特惠中
               </Badge>
@@ -696,7 +681,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
             </div>
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-2">
-                <span>{isEn ? 'Autonomous Agent API Gateway & Sybil Stake' : '🤖 智能体对外接入与 API 准入网关'}</span>
+                <span>{t('vessel.agentGateway')}</span>
                 <Badge className="bg-[#0066FF]/20 text-[#0066FF] border-[#0066FF]/30 text-[9px]">
                   x402 / MCP READY
                 </Badge>
@@ -752,7 +737,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-[#B080E8]" />
           <span className="text-xs font-bold text-white">
-            {isEn ? 'Sovereign Identity Completion (Bind more credentials)' : '主权身份完善绑定 (进一步绑定你的分身)'}
+            {t('vessel.identityCompletion')}
           </span>
           <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px]">
             OPTIONAL
@@ -974,7 +959,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-[#00FFCC]" />
                         <span className="font-bold text-xs text-white">
-                          {isEn ? 'Earnings Overview' : '收益概览'}
+                          {t('vessel.earningsOverview')}
                         </span>
                       </div>
                       <Badge className="bg-white/[0.08] text-[#999] border-white/[0.12] text-[9px] font-mono">
@@ -982,12 +967,10 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       </Badge>
                     </div>
                     <p className="text-[11px] text-[#ccc] leading-relaxed">
-                      {isEn
-                        ? 'Only confirmed on-chain income that has completed payout is counted here. No synthetic activity is displayed.'
-                        : '仅统计已完成链上确认与出款的收益；页面不再展示虚构流水。'}
+                      {t('vessel.earningsOverviewDesc')}
                     </p>
                     <div className="text-[10px] text-[#888] font-mono flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                      <span>{isEn ? 'Ledger total' : '账本累计'}</span>
+                      <span>{t('vessel.ledgerTotal')}</span>
                       <span className="text-[#00FFCC] font-bold">{earnedHarvestUsdc.toFixed(4)} USDC</span>
                     </div>
                   </div>
