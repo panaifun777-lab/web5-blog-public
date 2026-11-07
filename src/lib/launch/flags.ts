@@ -26,6 +26,15 @@ export const AIRDROP_ENABLED = enabled(process.env.AIRDROP_ENABLED);
 /** x402 预付费充值默认关闭，直到对账与提现链路可用。 */
 export const X402_DEPOSITS_ENABLED = enabled(process.env.X402_DEPOSITS_ENABLED);
 
+/** x402 付费网关总开关：默认关闭（fail-closed），必须在 MONEY_FLOWS_ENABLED 同时开启才真正生效。 */
+export const X402_PAYMENTS_ENABLED = enabled(process.env.X402_PAYMENTS_ENABLED);
+
+/** 要求付款方预付费余额结算：默认 REQUIRED（fail-closed for requiring），仅显式 'false' 才关闭。 */
+export const X402_REQUIRE_PREPAID = process.env.X402_REQUIRE_PREPAID !== 'false';
+
+/** 真实资金出口：同时受总资金开关与 x402 开关约束，任何一者关闭即停收。 */
+export const X402_PAYMENTS_LIVE = MONEY_FLOWS_ENABLED && X402_PAYMENTS_ENABLED;
+
 /** 托管结算必须执行真实分账后才允许把订单置为 SETTLED。 */
 export const ESCROW_PAYOUTS_ENABLED = enabled(process.env.ESCROW_PAYOUTS_ENABLED);
 

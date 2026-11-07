@@ -20,6 +20,7 @@ import type { VesselSession } from '@/lib/web5/types';
 import { PERSONA_PROFILES, type PersonaType } from '@/lib/web5/security/tdpo';
 import { scanAgentReachRadar, type TrendingInsight } from '@/lib/web5/reach/radar';
 import { useI18n } from '@/lib/i18n';
+import { localizePath } from '@/lib/i18n/routing';
 
 type WriteState = 'idle' | 'streaming' | 'done' | 'error';
 
@@ -562,7 +563,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
               <div>
                 <span className="text-[#666]">Arweave Hash: </span>
                 <a
-                  href={`/?post=${publishResult.arweaveHash}`}
+                  href={localizePath(`/?post=${publishResult.arweaveHash}`, locale)}
                   className="text-[#00FFCC] hover:underline cursor-pointer font-bold"
                   title={isEn ? 'Click to view the article' : '点击查看文章内容'}
                 >
@@ -597,7 +598,7 @@ export function Writer({ session }: { session: VesselSession | null }) {
             <div className="flex items-center gap-3 mt-4">
               <Button
                 onClick={() => {
-                  window.location.href = `/?post=${publishResult.arweaveHash}`;
+                  window.location.href = localizePath(`/?post=${publishResult.arweaveHash}`, locale);
                 }}
                 className="bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold text-xs h-8 px-4 shadow-lg shadow-[#00FFCC]/20"
               >

@@ -95,6 +95,7 @@ normalize-env.js
 # production data and deploy secrets (never commit)
 /db/*.db
 /prisma/db/*.db
+/prisma/*.db
 /contracts/.env
 /_vps_*.py
 /cmp_*.py

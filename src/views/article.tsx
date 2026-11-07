@@ -14,6 +14,7 @@ import { Footer } from '@/components/web5/footer';
 import { ARC_MAINNET } from '@/lib/web5/contracts/addresses';
 import { DEFAULT_LOCALE, type LocaleCode } from '@/lib/i18n/config';
 import { createT } from '@/lib/i18n/translate';
+import { localizePath } from '@/lib/i18n/routing';
 
 export const revalidate = 300;
 
@@ -149,14 +150,14 @@ export default async function ArticlePage({ id, locale = DEFAULT_LOCALE }: Artic
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/"
+              href={localizePath('/', locale)}
               className="flex items-center gap-1.5 text-xs text-[#888] hover:text-[#00FFCC] transition-colors font-mono py-1 px-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t('article.backHome')}</span>
             </Link>
             <div className="h-4 w-px bg-white/[0.1] hidden sm:block" />
-            <Link href="/" className="items-center gap-1.5 font-mono text-sm font-black hidden sm:flex">
+            <Link href={localizePath('/', locale)} className="items-center gap-1.5 font-mono text-sm font-black hidden sm:flex">
               <span>W</span><span className="text-[#00FFCC]">•</span>
               <span>B</span><span className="text-[#FFCC00]">•</span>
               <span>O</span><span className="text-[#B080E8]">•</span>
@@ -190,7 +191,7 @@ export default async function ArticlePage({ id, locale = DEFAULT_LOCALE }: Artic
               </span>
             )}
             <Link
-              href="/?tab=write"
+              href={localizePath('/?tab=write', locale)}
               className="text-xs bg-gradient-to-r from-[#00FFCC] to-[#0066FF] text-black font-bold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1"
             >
               <Zap className="w-3 h-3" />
@@ -360,7 +361,7 @@ export default async function ArticlePage({ id, locale = DEFAULT_LOCALE }: Artic
 
           <div className="pt-2 flex items-center justify-between text-[11px] text-[#888]">
             <span>{t('article.tipClosed')}</span>
-            <Link href={`/?post=${content.arweaveHash}`} className="text-[#00FFCC] font-bold hover:underline flex items-center gap-1">
+            <Link href={localizePath(`/?post=${content.arweaveHash}`, locale)} className="text-[#00FFCC] font-bold hover:underline flex items-center gap-1">
               <span>{t('article.readOnSite')}</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
@@ -378,7 +379,7 @@ export default async function ArticlePage({ id, locale = DEFAULT_LOCALE }: Artic
               </Badge>
             </div>
             <a
-              href={`/?post=${content.arweaveHash}`}
+              href={localizePath(`/?post=${content.arweaveHash}`, locale)}
               className="text-xs bg-[#00FFCC]/15 hover:bg-[#00FFCC]/25 text-[#00FFCC] border border-[#00FFCC]/30 px-3 py-1 rounded-lg flex items-center gap-1 font-mono transition-all w-fit"
             >
               <Zap className="w-3 h-3" />

@@ -4,7 +4,7 @@
 // ════════════════════════════════════════════════════════════════
 
 /** Every locale the switcher offers, in display order. */
-export const LOCALE_CODES = ['zh-CN', 'en', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar'] as const;
+export const LOCALE_CODES = ['zh-CN', 'en', 'ja', 'ko', 'es'] as const;
 
 export type LocaleCode = (typeof LOCALE_CODES)[number];
 
@@ -50,10 +50,6 @@ export const LOCALES: Record<LocaleCode, LocaleMeta> = {
   ja: { code: 'ja', label: 'Japanese', nativeLabel: '日本語', flag: '🇯🇵', ogLocale: 'ja_JP', status: 'complete' },
   ko: { code: 'ko', label: 'Korean', nativeLabel: '한국어', flag: '🇰🇷', ogLocale: 'ko_KR', status: 'complete' },
   es: { code: 'es', label: 'Spanish', nativeLabel: 'Español', flag: '🇪🇸', ogLocale: 'es_ES', status: 'complete' },
-  fr: { code: 'fr', label: 'French', nativeLabel: 'Français', flag: '🇫🇷', ogLocale: 'fr_FR', status: 'fallback-en' },
-  de: { code: 'de', label: 'German', nativeLabel: 'Deutsch', flag: '🇩🇪', ogLocale: 'de_DE', status: 'fallback-en' },
-  ru: { code: 'ru', label: 'Russian', nativeLabel: 'Русский', flag: '🇷🇺', ogLocale: 'ru_RU', status: 'fallback-en' },
-  ar: { code: 'ar', label: 'Arabic', nativeLabel: 'العربية', flag: '🇦🇪', ogLocale: 'ar_AE', status: 'fallback-en' },
 };
 
 export const LOCALE_LIST: LocaleMeta[] = LOCALE_CODES.map((code) => LOCALES[code]);
@@ -62,15 +58,20 @@ export function isLocaleCode(value: unknown): value is LocaleCode {
   return typeof value === 'string' && (LOCALE_CODES as readonly string[]).includes(value);
 }
 
-/** BCP-47 primary subtag → catalog locale. `zh-TW`/`zh-Hant` intentionally map to zh-CN. */
+/**
+ * BCP-47 primary subtag → catalog locale. `zh-TW`/`zh-Hant` intentionally map
+ * to zh-CN. `fr`/`de`/`ru`/`ar` are dropped locales that alias `en` so a visitor
+ * whose browser requests them still lands on readable English rather than the
+ * zh-CN default.
+ */
 export const LANGUAGE_SUBTAG_TO_LOCALE: Record<string, LocaleCode> = {
   zh: 'zh-CN',
   en: 'en',
   ja: 'ja',
   ko: 'ko',
   es: 'es',
-  fr: 'fr',
-  de: 'de',
-  ru: 'ru',
-  ar: 'ar',
+  fr: 'en',
+  de: 'en',
+  ru: 'en',
+  ar: 'en',
 };

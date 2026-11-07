@@ -1,8 +1,9 @@
 // ════════════════════════════════════════════════════════════════
 // src/lib/i18n/locales/index.ts — locale → catalog map
 //
-// fr/de/ru/ar are shipped as explicit `en` aliases so a locale pick can
-// never resolve to `undefined`. ja/ko/es are partial and rely on the
+// Only the five shipped locales carry a catalog; fr/de/ru/ar were trimmed and
+// are no longer LocaleCode values (their subtag requests alias `en` in
+// config.LANGUAGE_SUBTAG_TO_LOCALE). ja/ko/es are partial and rely on the
 // per-key fallback inside `translate()`.
 // ════════════════════════════════════════════════════════════════
 
@@ -23,10 +24,6 @@ export const DICTIONARIES: Record<LocaleCode, Catalog> = {
   ja,
   ko,
   es,
-  fr: en,
-  de: en,
-  ru: en,
-  ar: en,
 };
 
 export { zhCN, en, ja, ko, es };

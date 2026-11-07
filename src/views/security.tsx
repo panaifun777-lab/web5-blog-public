@@ -15,6 +15,8 @@ import {
   FileText,
   Mail,
 } from 'lucide-react';
+import { DEFAULT_LOCALE, type LocaleCode } from '@/lib/i18n/config';
+import { localizePath } from '@/lib/i18n/routing';
 
 const GITHUB_ADVISORY =
   'https://github.com/panaifun777-lab/web5-blog-public/security/advisories/new';
@@ -127,7 +129,7 @@ function SectionLabel({ index, title }: { index: string; title: string }) {
   );
 }
 
-export default function SecurityPage() {
+export default function SecurityPage({ locale = DEFAULT_LOCALE }: { locale?: LocaleCode }) {
   return (
     <main className="min-h-screen bg-[#050508] text-white">
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,255,204,0.015),transparent_60%)] pointer-events-none" />
@@ -136,7 +138,7 @@ export default function SecurityPage() {
         {/* Back */}
         <div className="flex items-center justify-between mb-8">
           <Link
-            href="/"
+            href={localizePath('/', locale)}
             className="inline-flex items-center gap-2 text-[#555] hover:text-[#00FFCC] text-sm transition-colors font-mono"
           >
             <ArrowLeft className="w-4 h-4" /> 返回 W · B · O · G
