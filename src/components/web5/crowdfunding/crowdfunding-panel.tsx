@@ -186,6 +186,8 @@ export function CrowdfundingPanel({ session }: { session?: any }) {
     }
   };
 
+  if (!PUBLIC_MONEY_FLOWS_ENABLED) return null;
+
   return (
     <div className="space-y-6">
       {!PUBLIC_MONEY_FLOWS_ENABLED && (

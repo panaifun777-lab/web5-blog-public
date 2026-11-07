@@ -89,6 +89,8 @@ export function GenesisCurveModal({ open, onOpenChange, session, onSuccess }: Ge
   const currentReserve = vault?.currentReserveUsdc || 380;
   const cap = vault?.graduationCapUsdc || 3000;
 
+  if (!PUBLIC_MONEY_FLOWS_ENABLED) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#0a0a0f] border border-[#FFCC00]/40 text-white max-w-lg p-6 shadow-2xl backdrop-blur-2xl">
