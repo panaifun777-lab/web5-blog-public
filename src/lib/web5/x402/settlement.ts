@@ -8,6 +8,7 @@
 import { db } from '@/lib/db';
 import { TREASURY } from '@/lib/web5/contracts/addresses';
 import { VOUCHER_TTL_MS, decimalToAtomicUsdc, type SessionVoucher } from './voucher-engine';
+import { X402_REQUIRE_PREPAID } from '@/lib/launch/flags';
 
 const X402_NONCE_PURPOSE = 'X402_VOUCHER';
 
@@ -19,7 +20,7 @@ export interface VoucherSettlementResult {
 
 /** 生产默认要求预付费余额；仅本地无资金联调时可显式关闭 */
 export function isPrepaidSettlementRequired(): boolean {
-  return process.env.X402_REQUIRE_PREPAID !== 'false';
+  return X402_REQUIRE_PREPAID;
 }
 
 export async function settleVoucherFromPrepaidBalance(

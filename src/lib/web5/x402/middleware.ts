@@ -22,6 +22,7 @@ import {
   isPrepaidSettlementRequired,
   settleVoucherFromPrepaidBalance,
 } from '@/lib/web5/x402/settlement';
+import { X402_PAYMENTS_LIVE } from '@/lib/launch/flags';
 
 export type X402CallTier = 'TIER_1_SUMMARY' | 'TIER_2_DEEP_REASONING' | 'TIER_3_A2A_COLLAB';
 
@@ -191,7 +192,7 @@ export async function handleX402PaymentGate(
   }
 
   // 紧急暂停开关：维护或异常期间一律停止收费放行
-  if (process.env.X402_PAYMENTS_ENABLED === 'false') {
+  if (!X402_PAYMENTS_LIVE) {
     return {
       authorized: false,
       reason: 'payments_paused',

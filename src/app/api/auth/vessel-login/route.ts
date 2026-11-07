@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { normalizePrimeWalletAddress } from '@/lib/web5/prime';
 import {
   type VesselChallenge, type AA2PClaim,
   RFC_CONSTANTS, serializeForJson,
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
       update: { lastActiveAt: new Date(now) },
       create: {
         did: delegation.primeDid,
-        walletAddress: delegation.primeDid.split(':').pop() || '0x0',
+        walletAddress: normalizePrimeWalletAddress(undefined, delegation.primeDid),
         role: 'USER',
         status: 'ACTIVE',
       },

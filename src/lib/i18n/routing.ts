@@ -53,7 +53,7 @@ function normalizePath(pathname: string): string {
 }
 
 /** `('/founder', 'en') → '/en/founder'`; the default locale is unprefixed. */
-export function localizePath(pathname: string, locale: LocaleCode): string {
+export function localizePath(pathname: string, locale: string): string {
   const path = normalizePath(pathname);
   if (locale === DEFAULT_LOCALE || !isLocalizablePath(path)) return path;
   return path === '/' ? `/${locale}` : `/${locale}${path}`;
@@ -89,7 +89,7 @@ export function alternateLanguages(pathname: string): Record<string, string> {
   return languages;
 }
 
-/** Text direction for an `<html dir>` attribute. */
-export function localeDirection(locale: LocaleCode): 'ltr' | 'rtl' {
+/** Text direction for an `<html dir>` attribute. Unknown/legacy locales (e.g. 'ar') are handled as RTL. */
+export function localeDirection(locale: string): 'ltr' | 'rtl' {
   return locale === 'ar' ? 'rtl' : 'ltr';
 }

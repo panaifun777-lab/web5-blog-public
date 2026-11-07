@@ -6,6 +6,7 @@
 
 import { db } from '@/lib/db';
 import { getCurrentVesselSession } from '@/lib/web5/vessel-auth';
+import { normalizePrimeWalletAddress } from '@/lib/web5/prime';
 import type { ContentLicense } from '@prisma/client';
 import type { VesselSession } from '@/lib/web5/types';
 import { createHash } from 'crypto';
@@ -250,11 +251,11 @@ export async function publishContent(
   if (!prime) {
     const rawWallet = session.primeDid.replace('did:plvtvs:', '').toLowerCase();
     prime = await db.prime.upsert({
-      where: { walletAddress: rawWallet.startsWith('0x') ? rawWallet : '0x10687368ef1be3f178de0fccf5edff49e1c258b1' },
+      where: { walletAddress: normalizePrimeWalletAddress(rawWallet, session.primeDid) },
       update: { lastActiveAt: new Date() },
       create: {
         did: session.primeDid,
-        walletAddress: rawWallet.startsWith('0x') ? rawWallet : '0x10687368ef1be3f178de0fccf5edff49e1c258b1',
+        walletAddress: normalizePrimeWalletAddress(rawWallet, session.primeDid),
         displayName: 'Web5 Pioneer',
         avatarSeed: session.primeDid,
         role: 'USER',

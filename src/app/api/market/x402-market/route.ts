@@ -10,6 +10,7 @@ import { ARC_MAINNET, TREASURY, SUPERADMIN, getEscrowVaultAddress } from '@/lib/
 import { decimalToAtomicUsdc } from '@/lib/web5/x402/voucher-engine';
 import { X402_TIER_PRICING } from '@/lib/web5/x402/middleware';
 import { isPrepaidSettlementRequired } from '@/lib/web5/x402/settlement';
+import { X402_PAYMENTS_LIVE } from '@/lib/launch/flags';
 import { PAYOUT_SINGLE_CAP_USDC, PAYOUT_DAILY_CAP_USDC } from '@/lib/web5/payments/arc';
 import { AGENT_META } from '@/lib/admin/agent-discovery';
 import { NON_DEMO_ORDER_WHERE, settlementWindowMs } from '@/lib/web5/ap2/commerce';
@@ -80,7 +81,7 @@ export async function GET() {
     openTasks = [];
   }
 
-  const paymentsPaused = process.env.X402_PAYMENTS_ENABLED === 'false';
+  const paymentsPaused = !X402_PAYMENTS_LIVE;
 
   const escrowVault = getEscrowVaultAddress();
   const settlementWindowHours = settlementWindowMs() / 3_600_000;

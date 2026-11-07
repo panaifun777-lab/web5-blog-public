@@ -77,8 +77,10 @@ describe('fallback behaviour', () => {
     expect(translate('ja', 'article.noComments')).not.toBe(en.article.noComments);
   });
 
-  it('falls back from a locale with no catalog at all to en', () => {
-    expect(translate('ar', 'footer.follow')).toBe(en.footer.follow);
+  it('falls back from a dropped locale subtag to en', () => {
+    expect(matchLocaleTag('ar')).toBe('en');
+    expect(matchLocaleTag('de')).toBe('en');
+    expect(translate(matchLocaleTag('ar')!, 'footer.follow')).toBe(en.footer.follow);
   });
 
   it('reads zh-CN from the source catalog', () => {
@@ -168,10 +170,17 @@ describe('Accept-Language negotiation', () => {
   });
 
   it('maps every primary subtag to a catalog locale', () => {
-    expect(matchLocaleTag('fr-CA')).toBe('fr');
-    expect(matchLocaleTag('de')).toBe('de');
-    expect(matchLocaleTag('ru-RU')).toBe('ru');
-    expect(matchLocaleTag('ar-EG')).toBe('ar');
+    // Shipped locales resolve to themselves (with region subtags).
+    expect(matchLocaleTag('ja-JP')).toBe('ja');
+    expect(matchLocaleTag('ko')).toBe('ko');
+    expect(matchLocaleTag('es-ES')).toBe('es');
+    expect(matchLocaleTag('zh-TW')).toBe('zh-CN');
+    expect(matchLocaleTag('en')).toBe('en');
+    // Dropped locales (fr/de/ru/ar) alias to en rather than resolve to themselves.
+    expect(matchLocaleTag('fr-CA')).toBe('en');
+    expect(matchLocaleTag('de')).toBe('en');
+    expect(matchLocaleTag('ru-RU')).toBe('en');
+    expect(matchLocaleTag('ar-EG')).toBe('en');
     expect(matchLocaleTag('x-private')).toBeNull();
   });
 });

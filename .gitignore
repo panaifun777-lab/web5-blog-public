@@ -16,38 +16,102 @@ node_modules
 # next.js
 /.next/
 /out/
-/build
 
 # production
-.vercel
+/build
 
-# database (business data is never published)
-*.db
-*.db-journal
-*.sqlite
-*.sqlite3
+# misc
+.DS_Store
+*.pem
 
-# env files (keep the example)
-.env*
-!.env.example
-
-# logs and debug output
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+
 # typescript
 *.tsbuildinfo
-
-# contracts artifacts and local dependencies
-contracts/out/
-contracts/cache/
-contracts/broadcast/
-contracts/lib/
-
-# local tooling
-.DS_Store
+next-env.d.ts
+local-*
 .claude
 .z-ai-config
+*.log
+dev.log
+dev.out.log
+test
+prompt
+
+server.log
+# Skills directory
+/skills/
+
+# contracts artifacts & temporary
+contracts/out/
+contracts/cache/
+normalize-env.js
+
+# local ops / scratch (root only, may contain server credentials)
+/deploy_*.py
+/deploy_*.mjs
+/check_*.py
+/probe_*.py
+/fetch_*.py
+/parse_*.py
+/inspect_*.py
+/save_*.py
+/split_*.py
+/gen_*.py
+/find_*.py
+/search_*.py
+/sync_*.py
+/update_*.py
+/retry_*.py
+/run_*.py
+/submit_*.py
+/dump_*.py
+/grab_*.py
+/grep_*.py
+/clean_*.py
+/reorder_*.py
+/preview_*.py
+/test_*.py
+/poll*.py
+/gemini_*
+/gdoc*
+/fetch_*.txt
+/*SYSTEM_*AUDIT*.md
+/*_report*.md
+/RunOcr.cs
+/do_ocr.ps1
+# production data and deploy secrets (never commit)
+/db/*.db
+/prisma/db/*.db
+/prisma/*.db
+/contracts/.env
+/_vps_*.py
+/cmp_*.py
+/mk-deploy.mjs
+/gen-sync.mjs
+/finalize-deploy.mjs
+/deploy-prebuilt.mjs
+/sync-vps.ps1
+/scripts/update_settled_tasks.py
+
+# local ops helpers stay out of the repo
+/deploy-cron.py
+/deploy-vps.py
+/deploy-vps.mjs
+/extract_conv.py
+/get_creation.py
+/upgrade_license.py
+/verify_wellknown_live.py
+/fetch_gdoc_preview.html
