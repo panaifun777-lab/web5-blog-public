@@ -41,8 +41,7 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
-  const { locale } = useI18n();
-  const isEn = locale !== 'zh-CN';
+  const { t } = useI18n();
 
   const [items, setItems] = useState<Opp[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,9 +82,11 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
       const data = await res.json();
       if (data.success) {
         setMsg(
-          isEn
-            ? `Fetched ${data.fetched} · new ${data.inserted} · updated ${data.updated}`
-            : `抓取 ${data.fetched} 条 · 新增 ${data.inserted} · 更新 ${data.updated}`
+          t('reach.crawled', {
+            fetched: data.fetched,
+            inserted: data.inserted,
+            updated: data.updated,
+          })
         );
         await load();
       } else {
@@ -127,7 +128,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
           <div className="flex items-center gap-2">
             <Radar className="w-4 h-4 text-[#00FFCC] animate-pulse" />
             <span className="text-xs font-bold text-white font-mono tracking-wider">
-              {isEn ? 'GLOBAL LABOR OPPORTUNITY RADAR' : '全球劳务机会雷达'}
+              {t('reach.title')}
             </span>
             <Badge className="bg-[#00FFCC]/15 text-[#00FFCC] border-[#00FFCC]/30 text-[9px] py-0 h-4">
               LIVE
@@ -145,7 +146,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
             ) : (
               <RefreshCw className="w-3 h-3 mr-1" />
             )}
-            {isEn ? 'Crawl Now' : '立即抓取'}
+            {t('reach.crawlNow')}
           </Button>
         </div>
 
@@ -164,9 +165,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
         ) : shown.length === 0 ? (
           <div className="text-center py-6 text-xs text-[#666]">
             <AlertTriangle className="w-5 h-5 mx-auto mb-2 opacity-40" />
-            {isEn
-              ? 'No opportunities yet. Click "Crawl Now" to fetch live listings.'
-              : '暂无机会数据。点击「立即抓取」从公开源实时拉取。'}
+            {t('reach.empty')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -191,7 +190,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
                           title={op.rewardText || undefined}
                         >
                           <AlertTriangle className="w-2.5 h-2.5" />
-                          {isEn ? 'Proposed amount (unconfirmed)' : '提案金额（未确认）'}
+                          {t('reach.proposedAmount')}
                         </span>
                       ) : op.rewardUsdc ? (
                         <span className="text-[#FFCC00] flex items-center gap-0.5">
@@ -226,7 +225,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1 rounded hover:bg-white/[0.08] text-[#888] hover:text-white"
-                        title={isEn ? 'Open source' : '查看来源'}
+                        title={t('reach.openSource')}
                       >
                         <ExternalLink className="w-3 h-3" />
                       </a>
@@ -235,7 +234,7 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
                           onClick={() => importToBounty(op.id)}
                           disabled={importingId === op.id}
                           className="p-1 rounded hover:bg-[#00FFCC]/15 text-[#888] hover:text-[#00FFCC]"
-                          title={isEn ? 'Import as on-site bounty' : '导入为站内悬赏'}
+                          title={t('reach.importBounty')}
                         >
                           {importingId === op.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -255,9 +254,9 @@ export function OpportunityRadar({ compact = false }: { compact?: boolean }) {
         <div className="mt-2 pt-2 border-t border-white/[0.04] flex items-center justify-between text-[9px] font-mono text-[#555]">
           <span className="flex items-center gap-1">
             <Clock className="w-2.5 h-2.5" />
-            {isEn ? 'Sources: GitHub · Remotive · Jobicy · RemoteOK' : '数据源：GitHub · Remotive · Jobicy · RemoteOK'}
+            {t('reach.sources')}
           </span>
-          <span>{items.length} {isEn ? 'items' : '条'}</span>
+          <span>{items.length} {t('reach.items')}</span>
         </div>
       </CardContent>
     </Card>

@@ -8,6 +8,13 @@
 import type { DeepPartial } from '../types';
 import type { Dictionary } from './zh-CN';
 
+// Migrated i18n slice #89 — English values reused for ko until translated.
+import { vesselEn } from './extras/vessel';
+import { reachEn } from './extras/reach';
+import { blogEn } from './extras/blog';
+import { heroEn } from './extras/hero';
+import { founderXEn } from './extras/founder';
+
 const ko = {
   layout: {
     titleDefault: 'Web5.blog · Vessel 네이티브 블로그 플랫폼',
@@ -321,6 +328,13 @@ const ko = {
     primeEidolonVessel: 'Prime · Eidolon · Vessel',
     chain: 'Circle ARC Mainnet · 5042',
   },
+
+  // ── Migrated i18n slice #89 (en values; ko translations pending) ──
+  vessel: vesselEn,
+  reach: reachEn,
+  blog: blogEn,
+  heroX: heroEn,
+  founderX: founderXEn,
 } satisfies DeepPartial<Dictionary>;
 
 export default ko;

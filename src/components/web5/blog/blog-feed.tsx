@@ -98,8 +98,7 @@ export function BlogFeed({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const { locale } = useI18n();
-  const isEn = locale !== 'zh-CN';
+  const { locale, t } = useI18n();
   const [langFilter, setLangFilter] = useState<'ALL' | 'ZH' | 'EN'>('ALL');
 
   // 监听并持久化 URL 上的 ?ref= 策展人推荐参数
@@ -449,7 +448,7 @@ export function BlogFeed({
           }}
           className="cyber-mono text-[#00FFCC] hover:text-[#00FFCC]"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> {isEn ? 'BACK TO FEED' : '返回博文列表'}
+          <ArrowLeft className="w-4 h-4 mr-1" /> {t('blog.backToFeed')}
         </Button>
 
         <Card className="cyber-panel">
@@ -706,10 +705,10 @@ export function BlogFeed({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-2xl font-bold cyber-text-glow-cyan">
-            {isEn ? 'Permaweb Blog Stream' : '博客流'}
+            {t('blog.blogStream')}
           </h2>
           <p className="text-xs text-[#888] mt-0.5">
-            {isEn ? 'Decentralized essays with transparent storage provenance.' : '去中心化思想母体，每篇内容公开标注存储与存证状态。'}
+            {t('blog.blogStreamDesc')}
           </p>
         </div>
 
@@ -718,7 +717,7 @@ export function BlogFeed({
           <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06]">
             <Globe className="w-3.5 h-3.5 text-[#00FFCC] ml-1.5 mr-0.5" />
             {[
-              { id: 'ALL', label: isEn ? 'All' : '全部' },
+              { id: 'ALL', label: t('blog.langAll') },
               { id: 'ZH', label: '🇨🇳 中文' },
               { id: 'EN', label: '🇬🇧 EN' },
             ].map(item => (
@@ -737,7 +736,7 @@ export function BlogFeed({
           </div>
 
           <Button onClick={loadPosts} variant="ghost" size="sm" className="cyber-mono text-xs border border-white/[0.06] bg-white/[0.02]">
-            {isEn ? 'Refresh' : '刷新'}
+            {t('blog.refresh')}
           </Button>
         </div>
       </div>
@@ -759,9 +758,9 @@ export function BlogFeed({
       ) : filteredPosts.length === 0 ? (
         <div className="cyber-panel text-center py-12">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <div className="cyber-mono text-[#666]">{isEn ? 'No Articles in this category' : '暂无内容'}</div>
+          <div className="cyber-mono text-[#666]">{t('blog.noArticles')}</div>
           <div className="text-xs text-[#999] mt-2">
-            {isEn ? 'Click "Write" tab to publish your first Web5 blog post' : '点击"写作"标签发布你的第一篇 Web5 博客'}
+            {t('blog.noArticlesHint')}
           </div>
         </div>
       ) : (
@@ -783,7 +782,7 @@ export function BlogFeed({
                       </Badge>
                     </div>
                     <div className="cyber-mono text-[10px] text-[#666]">
-                      {new Date(post.publishedAt).toLocaleDateString(isEn ? 'en-US' : 'zh-CN')}
+                      {new Date(post.publishedAt).toLocaleDateString(locale === 'zh-CN' ? 'zh-CN' : 'en-US')}
                     </div>
                   </div>
                   <div className="text-right">
@@ -807,12 +806,12 @@ export function BlogFeed({
                     return (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#00FFCC]/10 text-[#00FFCC] border border-[#00FFCC]/20">
                         <Activity className="w-3 h-3 animate-pulse" />
-                        <span>{isEn ? 'Resonance' : '共鸣'} {r.score}% ({r.label.split(' ')[0]})</span>
+                        <span>{t('blog.resonance')} {r.score}% ({r.label.split(' ')[0]})</span>
                       </span>
                     );
                   })()}
                   <span className="text-[#555]">·</span>
-                  <span className="text-[#888]">{isEn ? 'AA2P Verified' : 'AA2P 验证通过'}</span>
+                  <span className="text-[#888]">{t('blog.aa2pVerified')}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs cyber-mono text-[#666]">

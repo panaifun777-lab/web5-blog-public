@@ -7,6 +7,14 @@
 
 import type { Dictionary } from './zh-CN';
 
+// Migrated hardcoded EN/ZH strings (i18n slice #89). Each fragment is filled
+// by a dedicated migration agent; zh and en keep identical key sets.
+import { vesselEn } from './extras/vessel';
+import { reachEn } from './extras/reach';
+import { blogEn } from './extras/blog';
+import { heroEn } from './extras/hero';
+import { founderXEn } from './extras/founder';
+
 const en = {
   layout: {
     titleDefault: 'Web5.blog · Vessel-Native Blog Platform',
@@ -331,6 +339,13 @@ const en = {
     primeEidolonVessel: 'Prime · Eidolon · Vessel',
     chain: 'Circle ARC Mainnet · 5042',
   },
+
+  // ── Migrated i18n slice #89 (en) ──
+  vessel: vesselEn,
+  reach: reachEn,
+  blog: blogEn,
+  heroX: heroEn,
+  founderX: founderXEn,
 } satisfies Dictionary;
 
 export default en;

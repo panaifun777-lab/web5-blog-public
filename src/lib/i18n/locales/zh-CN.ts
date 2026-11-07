@@ -9,6 +9,14 @@
 // 键名约定见 docs/I18N.md。占位符写作 {name}。
 // ════════════════════════════════════════════════════════════════
 
+// Migrated hardcoded EN/ZH strings (i18n slice #89). Each fragment is filled
+// by a dedicated migration agent; zh and en keep identical key sets.
+import { vesselZh } from './extras/vessel';
+import { reachZh } from './extras/reach';
+import { blogZh } from './extras/blog';
+import { heroZh } from './extras/hero';
+import { founderXZh } from './extras/founder';
+
 const zhCN = {
   // ── Site metadata (root layout) ───────────────────────────────
   layout: {
@@ -336,6 +344,13 @@ const zhCN = {
     primeEidolonVessel: 'Prime · Eidolon · Vessel',
     chain: 'Circle ARC Mainnet · 5042',
   },
+
+  // ── Migrated i18n slice #89 (zh) ──
+  vessel: vesselZh,
+  reach: reachZh,
+  blog: blogZh,
+  heroX: heroZh,
+  founderX: founderXZh,
 };
 
 export default zhCN;
