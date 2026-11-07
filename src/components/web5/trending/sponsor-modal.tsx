@@ -74,6 +74,8 @@ export function SponsorModal({ open, onOpenChange, onSuccess }: SponsorModalProp
     }
   };
 
+  if (!PUBLIC_MONEY_FLOWS_ENABLED) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#0a0a0f] border border-[#FFCC00]/40 text-white max-w-md p-6 shadow-2xl backdrop-blur-2xl">

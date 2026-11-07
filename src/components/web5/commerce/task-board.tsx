@@ -450,6 +450,8 @@ export function TaskBoard({
     return matchCat && matchSearch;
   });
 
+  if (!PUBLIC_MONEY_FLOWS_ENABLED) return null;
+
   return (
     <div className="space-y-5 mb-8">
       {!PUBLIC_MONEY_FLOWS_ENABLED && (
