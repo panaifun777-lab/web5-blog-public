@@ -88,6 +88,7 @@ export function pageMetadata(input: PageMetadataInput): Metadata {
   const ogDescription = input.ogDescription ?? description;
 
   return {
+    metadataBase: new URL(SITE_URL),
     title: input.absoluteTitle ? { absolute: input.absoluteTitle } : title,
     description,
     alternates: {
