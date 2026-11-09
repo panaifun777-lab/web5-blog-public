@@ -15,7 +15,6 @@ import {
   Users, Activity, FileText, Coins, TrendingUp,
   Trophy, Ticket, RefreshCw, Globe, ArrowUpRight, Briefcase,
 } from 'lucide-react';
-import { GLOBAL_REMOTE_JOBS } from '@/lib/web5/ap2/remote-jobs';
 
 interface ExploreData {
   stats: {
@@ -241,6 +240,28 @@ export function ExplorePanel() {
 }
 
 function GlobalRemoteJobsSection() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/reach/opportunities?limit=8', { cache: 'no-store' });
+      if (res.ok) {
+        const d = await res.json();
+        setItems(d.items || []);
+      }
+    } catch {
+      /* 忽略网络错误，保留空态 */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
   return (
     <Card className="cyber-panel">
       <CardHeader>
@@ -248,61 +269,93 @@ function GlobalRemoteJobsSection() {
           <h3 className="cyber-mono text-[#00FFCC] flex items-center gap-2">
             <Globe className="w-4 h-4" /> 全球自由劳务与工作机会精选
           </h3>
-          <Badge variant="outline" className="border-[#FFCC00]/50 text-[#FFCC00]">
-            示例数据 · 非真实招聘
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-[#00FFCC]/50 text-[#00FFCC]">
+              实时抓取
+            </Badge>
+            <Button onClick={load} variant="ghost" size="sm" className="h-6 px-2 cyber-mono text-[10px]">
+              <RefreshCw className="w-3 h-3 mr-1" /> 刷新
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <p className="text-[10px] text-[#777] font-mono mb-3 leading-relaxed">
-          以下岗位为界面演示用途，不代表真实在招职位，也不构成投递邀请。正式职位市场开放前请勿据此联系任何第三方。
+          聚合 GitHub 悬赏、Remotive、Jobicy、RemoteOK 等公开源的真实远程机会，按推荐分排序。金额仅为来源标注的参考值，投递请跳转原始链接自行核实。
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {GLOBAL_REMOTE_JOBS.map((job) => (
-            <div
-              key={job.id}
-              className="border border-[#1a1a1a] p-3 rounded-lg hover:border-[#00FFCC]/40 transition-colors bg-black/40 flex flex-col justify-between"
-            >
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-start gap-2">
-                  <h4 className="text-sm font-bold text-white line-clamp-1">{job.title}</h4>
-                  <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] text-[10px] flex-shrink-0 font-mono">
-                    示例 {job.budgetUsdc} U/{job.rateType === 'monthly' ? '月' : job.rateType === 'hourly' ? '时' : '单'}
-                  </Badge>
-                </div>
-                <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
-                  <Briefcase className="w-3 h-3" />
-                  <span>{job.company}</span>
-                  <span className="text-[#555]">·</span>
-                  <span className="text-[#888]">{job.location}</span>
-                </div>
-                <p className="text-xs text-[#888] line-clamp-2 leading-relaxed">
-                  {job.description}
-                </p>
-                <div className="flex items-center gap-1 flex-wrap pt-1">
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#B080E8]/10 text-[#B080E8] border border-[#B080E8]/20 font-mono">
-                    {job.type}
-                  </span>
-                  {job.tags.slice(0, 3).map((t) => (
-                    <span
-                      key={t}
-                      className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-[#777] border border-white/[0.06] font-mono"
-                    >
-                      #{t}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="cyber-loading-bar h-28 rounded" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center text-[#666] py-8 cyber-mono text-sm">
+            暂无实时抓取到的机会，点击「刷新」或稍后再试。
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {items.map((op) => (
+              <div
+                key={op.id}
+                className="border border-[#1a1a1a] p-3 rounded-lg hover:border-[#00FFCC]/40 transition-colors bg-black/40 flex flex-col justify-between"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="text-sm font-bold text-white line-clamp-2">{op.title}</h4>
+                    {op.tags?.includes('proposed') ? (
+                      <Badge className="bg-[#F59E0B]/15 text-[#F59E0B] text-[10px] flex-shrink-0 font-mono">
+                        金额待确认
+                      </Badge>
+                    ) : op.rewardUsdc ? (
+                      <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] text-[10px] flex-shrink-0 font-mono">
+                        {op.rewardUsdc} USDC
+                      </Badge>
+                    ) : op.rewardText ? (
+                      <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] text-[10px] flex-shrink-0 font-mono">
+                        {String(op.rewardText).slice(0, 16)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
+                    <Briefcase className="w-3 h-3" />
+                    <span className="truncate">{op.organization || op.source}</span>
+                  </div>
+                  {op.description && (
+                    <p className="text-xs text-[#888] line-clamp-2 leading-relaxed">
+                      {op.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1 flex-wrap pt-1">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#B080E8]/10 text-[#B080E8] border border-[#B080E8]/20 font-mono">
+                      {op.source}
                     </span>
-                  ))}
+                    {(op.tags || []).slice(0, 3).map((t: string) => (
+                      <span
+                        key={t}
+                        className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-[#777] border border-white/[0.06] font-mono"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] pt-2 mt-2 border-t border-white/[0.04]">
+                  <span className="text-[#555] font-mono">推荐分 {op.matchScore}</span>
+                  <a
+                    href={op.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#00FFCC] flex items-center gap-0.5 font-bold hover:underline"
+                  >
+                    查看原始来源 <ArrowUpRight className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
-
-              <div className="flex justify-between items-center text-[10px] pt-2 mt-2 border-t border-white/[0.04]">
-                <span className="text-[#555] font-mono">演示来源: {job.source}</span>
-                <span className="text-[#666] flex items-center gap-0.5 font-bold">
-                  仅展示 · 不可投递
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

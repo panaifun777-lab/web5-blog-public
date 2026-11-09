@@ -39,20 +39,16 @@ import {
   TrendingUp,
   Flame,
   Layers,
-  ArrowUpRight,
   Info,
   Loader2,
   AlertTriangle,
   Globe,
-  Briefcase,
-  Search,
   Filter,
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { OpportunityRadar } from '@/components/web5/reach/opportunity-radar';
 import { DemoBadge } from '@/components/web5/commerce/demo-badge';
 import type { CommerceTaskOrder } from '@/lib/web5/ap2/commerce';
-import { GLOBAL_REMOTE_JOBS, type RemoteJob } from '@/lib/web5/ap2/remote-jobs';
 import {
   getOrCreateVesselWallet,
   getVesselWalletBalance,
@@ -76,8 +72,6 @@ export function TaskBoard({
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'FUNDED' | 'ASSIGNED' | 'SETTLED'>('ALL');
   const [boardSection, setBoardSection] = useState<'bounties' | 'remote_jobs'>('bounties');
-  const [jobCategory, setJobCategory] = useState<string>('ALL');
-  const [jobSearch, setJobSearch] = useState<string>('');
   const { locale } = useI18n();
   const isEn = locale !== 'zh-CN';
 
@@ -439,17 +433,6 @@ export function TaskBoard({
 
   const filteredTasks = tasks.filter((t) => (filter === 'ALL' ? true : t.status === filter));
 
-  const filteredJobs = GLOBAL_REMOTE_JOBS.filter((job) => {
-    const matchCat = jobCategory === 'ALL' || job.category === jobCategory;
-    const matchSearch =
-      !jobSearch.trim() ||
-      job.title.toLowerCase().includes(jobSearch.toLowerCase()) ||
-      job.titleEn.toLowerCase().includes(jobSearch.toLowerCase()) ||
-      job.company.toLowerCase().includes(jobSearch.toLowerCase()) ||
-      job.tags.some((t) => t.toLowerCase().includes(jobSearch.toLowerCase()));
-    return matchCat && matchSearch;
-  });
-
   if (!PUBLIC_MONEY_FLOWS_ENABLED) return null;
 
   return (
@@ -576,7 +559,7 @@ export function TaskBoard({
             <Globe className="w-3.5 h-3.5" />
             <span>{isEn ? 'Global Remote & Sovereign Gigs' : '全球自由劳务与工作机会精选'}</span>
             <Badge className="bg-[#00FFCC]/20 text-[#00FFCC] text-[9px] py-0 px-1.5 border-none">
-              {GLOBAL_REMOTE_JOBS.length} DEMO
+              {isEn ? 'LIVE' : '实时'}
             </Badge>
           </button>
         </div>
@@ -772,155 +755,9 @@ export function TaskBoard({
           </div>
         </>
       ) : (
-        /* ══════════════════════════════════════════════════════════════
-            全新板块：「全球自由劳务与工作机会精选」
-        ══════════════════════════════════════════════════════════════ */
+        /* 全球自由劳务与工作机会精选 — 真实抓取的外部机会雷达 */
         <div className="space-y-4">
-          <div className="flex items-center gap-2 rounded-xl border border-[#FFCC00]/30 bg-[#FFCC00]/10 px-3 py-2 text-[11px] text-[#FFE58A]">
-            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>
-              {isEn
-                ? 'Sample roles · not real hiring. The listings below are demo data for layout preview only.'
-                : '示例岗位 · 非真实招聘。以下岗位为演示数据，仅用于界面预览。'}
-            </span>
-          </div>
-
-          {/* 筛选与搜索条 */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-            {/* 分类切换 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              {[
-                { id: 'ALL', label: isEn ? 'All Categories' : '全部工种' },
-                { id: 'Rust/Solidity', label: 'Rust/Solidity' },
-                { id: 'AI/Prompt', label: 'Prompt 架构' },
-                { id: 'Research/Translation', label: isEn ? 'Translation/Research' : '研报翻译' },
-                { id: 'Data/Annotation', label: isEn ? 'Data Annotation' : '数据标注' },
-                { id: 'DeFi/Protocol', label: isEn ? 'DeFi Protocol' : '协议与做市' },
-              ].map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setJobCategory(c.id)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                    jobCategory === c.id
-                      ? 'bg-[#00FFCC]/20 text-[#00FFCC] border border-[#00FFCC]/40 font-bold'
-                      : 'text-[#777] hover:text-white bg-white/[0.02] border border-white/[0.04]'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-
-            {/* 搜索框 */}
-            <div className="relative min-w-[200px]">
-              <Search className="w-3.5 h-3.5 text-[#666] absolute left-2.5 top-2.5" />
-              <input
-                type="text"
-                value={jobSearch}
-                onChange={(e) => setJobSearch(e.target.value)}
-                placeholder={isEn ? 'Search gigs by skill, role...' : '搜索岗位、技术栈或公司...'}
-                className="w-full h-8 pl-8 pr-3 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder:text-[#555] focus:outline-none focus:border-[#00FFCC] transition-colors font-mono"
-              />
-            </div>
-          </div>
-
-          {/* 岗位列表卡片 */}
-          <div className="grid sm:grid-cols-2 gap-3.5">
-            {filteredJobs.map((job) => (
-              <Card
-                key={job.id}
-                className="bg-white/[0.02] border-white/[0.06] hover:border-[#00FFCC]/40 transition-all group flex flex-col justify-between"
-              >
-                <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                  <div className="space-y-2.5">
-                    {/* 公司与预算 */}
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="space-y-0.5">
-                        <div className="text-[10px] text-[#00FFCC] font-mono flex items-center gap-1.5">
-                          <Briefcase className="w-3 h-3" />
-                          <span>{job.company}</span>
-                          {job.demo && (
-                            <span className="bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/30 rounded px-1 text-[9px]">
-                              DEMO
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="font-bold text-sm text-white group-hover:text-[#00FFCC] transition-colors leading-snug">
-                          {isEn ? job.titleEn : job.title}
-                        </h4>
-                      </div>
-
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-[#FFCC00] font-mono text-xs font-bold bg-[#FFCC00]/10 px-2 py-0.5 rounded border border-[#FFCC00]/20 flex items-center gap-1">
-                          <Coins className="w-3 h-3" />
-                          <span>{job.budgetUsdc} USDC</span>
-                        </div>
-                        <span className="text-[9px] text-[#666] font-mono mt-0.5 block">
-                          /{job.rateType === 'monthly' ? (isEn ? 'mo' : '月') : job.rateType === 'hourly' ? (isEn ? 'hr' : '时') : (isEn ? 'proj' : '单')}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 描述 */}
-                    <p className="text-xs text-[#888] leading-relaxed line-clamp-2">
-                      {isEn ? job.descriptionEn : job.description}
-                    </p>
-
-                    {/* 标签 */}
-                    <div className="flex items-center gap-1 flex-wrap pt-1">
-                      <Badge className="bg-white/[0.04] text-white/80 border-white/[0.08] text-[9px] py-0 h-4">
-                        📍 {job.location}
-                      </Badge>
-                      <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 text-[9px] py-0 h-4">
-                        ⚡ {job.type}
-                      </Badge>
-                      {job.tags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.02] text-[#777] border border-white/[0.04] font-mono"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* 核心要求精要 */}
-                    <div className="p-2 rounded-lg bg-black/40 border border-white/[0.04] text-[10px] text-[#999] space-y-1">
-                      <div className="text-[#666] font-semibold text-[9px] uppercase tracking-wider">
-                        {isEn ? 'Key Qualification:' : '核心任职要求:'}
-                      </div>
-                      <div className="truncate">
-                        • {isEn ? job.requirementsEn[0] : job.requirements[0]}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 底部投递与来源 */}
-                  <div className="pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[10px]">
-                    <span className="text-[#555] font-mono truncate max-w-[130px]">
-                      via {job.source}
-                    </span>
-
-                    <a
-                      href={job.applyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 h-6 px-2.5 rounded-lg bg-[#00FFCC]/15 text-[#00FFCC] border border-[#00FFCC]/30 hover:bg-[#00FFCC]/25 font-bold transition-all text-xs"
-                    >
-                      <span>{isEn ? 'Apply / Details' : '申请投递 / 详情'}</span>
-                      <ArrowUpRight className="w-3 h-3" />
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {filteredJobs.length === 0 && (
-            <div className="text-center py-12 text-[#666] text-xs">
-              {isEn ? 'No remote jobs match your search criteria.' : '暂无符合筛选条件的工作机会。'}
-            </div>
-          )}
+          <OpportunityRadar />
         </div>
       )}
 
