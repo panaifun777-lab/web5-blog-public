@@ -13,6 +13,14 @@ function enabled(value: string | undefined): boolean {
   return value === 'true' || value === '1';
 }
 
+/**
+ * 真实 Vessel 身份模式总开关。默认关闭 = beta 模拟身份。
+ * 开启后：AA2P 签名走真实 viem verifyMessage + eidolonos.xyz 预言机授权，
+ * 任何未配置项一律 fail-closed（拒绝签发），绝不会把模拟身份当真实身份放行。
+ * 详见 src/lib/web5/vessel-verifier.ts。
+ */
+export const REAL_VESSEL_IDENTITY = enabled(process.env.REAL_VESSEL_IDENTITY);
+
 /** 真实资金入口总开关。默认关闭，避免未完成托管/退款/分账的路径收钱。 */
 export const MONEY_FLOWS_ENABLED = enabled(process.env.MONEY_FLOWS_ENABLED);
 
@@ -97,4 +105,22 @@ export function featureDisabled(
     { error: translate(resolveLocale(req), message), code, demo: true },
     { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '3600' } }
   );
+}
+
+/**
+ * 硬门槛：从 beta 走向真实资金的关键闸口。
+ *
+ * 真实资金（MONEY_FLOWS_ENABLED）只能结算到经过真实身份验签的会话。
+ * 即使资金总开关被打开，凡是 identityReal !== true 的会话（beta 模拟身份、
+ * observer 模式）一律拒绝，避免用模拟身份结算真实 USDC。
+ *
+ * 资金总开关关闭时本函数直接放行（无资金流动，无需真实身份），
+ * 因此不会误伤当前只读/内测的 beta 体验。
+ */
+export function realIdentityRequiredForMoney(session: {
+  identityReal?: boolean;
+}): { ok: boolean; code?: string } {
+  if (!MONEY_FLOWS_ENABLED) return { ok: true };
+  if (session.identityReal === true) return { ok: true };
+  return { ok: false, code: 'SIMULATED_IDENTITY_NO_MONEY' };
 }

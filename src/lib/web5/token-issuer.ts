@@ -19,18 +19,24 @@ interface IssueTokenParams {
   ap2Budget: BudgetFence;
   permissions: VesselPermission[];
   expiresAt: number;
+  /** 身份是否经过真实加密验签（TEE + 预言机）。false = beta 模拟身份。 */
+  identityReal?: boolean;
 }
 
 /**
  * 签发 Vessel Session Token
  * MVP 实现：vesselDid + random nonce + expiry，HMAC-SHA256 签名
  * 生产环境：使用 jose 库签发 JWT，含 primeDid / vesselDid / permissions / budget
+ *
+ * 真实身份标志编码进 token payload 的第 5 段（'R' = 真实，'S' = 模拟），
+ * 使 resolveVesselSessionFromToken 无需改库即可还原该标志（向后兼容旧 4 段 token）。
  */
 export async function issueVesselToken(
   params: IssueTokenParams
 ): Promise<VesselSession> {
   const nonce = randomBytes(16).toString('hex');
-  const payload = `${params.vesselDid}:${params.primeDid}:${params.expiresAt}:${nonce}`;
+  const identityFlag = params.identityReal ? 'R' : 'S';
+  const payload = `${params.vesselDid}:${params.primeDid}:${params.expiresAt}:${nonce}:${identityFlag}`;
   const secret = getVesselTokenSecret();
 
   const signature = createHash('sha256')
@@ -48,6 +54,7 @@ export async function issueVesselToken(
     ap2Budget: params.ap2Budget,
     permissions: params.permissions,
     accessMode: 'vessel',
+    identityReal: !!params.identityReal,
   };
 }
 
@@ -115,12 +122,17 @@ export async function resolveVesselSessionFromToken(
         ap2Budget: getDefaultBudget(),
         permissions: ['read'],
         accessMode: 'observer',
+        // Observer Mode 永远不是真实身份，绝不可结算真实资金。
+        identityReal: false,
       };
     }
 
     const [vesselDid, primeDid, expiresAtStr] = parts;
     const expiresAt = Number(expiresAtStr);
     if (Date.now() > expiresAt) return null;
+
+    // 第 5 段为真实身份标志（'R' = 真实，缺省/其它 = 模拟）。向后兼容旧 4 段 token。
+    const identityReal = parts[4] === 'R';
 
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const dbSession = await db.vesselSession.findUnique({
@@ -160,6 +172,7 @@ export async function resolveVesselSessionFromToken(
         ap2Budget,
         permissions,
         accessMode: 'vessel',
+        identityReal,
       };
     }
 

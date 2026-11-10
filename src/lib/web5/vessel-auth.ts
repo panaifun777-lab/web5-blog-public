@@ -106,6 +106,9 @@ async function simulateVesselSignature(
       signature,
       challenge,
       expiresAt: Date.now() + RFC_CONSTANTS.CHALLENGE_TTL_MS,
+      // 显式声明此凭证来自客户端模拟桩。真实凭证绝不应带此字段，
+      // 服务端 verifier 会据此将其标记为 identityReal=false 并在真实模式拒绝。
+      simulated: true,
     },
   };
 }

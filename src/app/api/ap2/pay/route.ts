@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ap2Pay } from '@/lib/web5/ap2/engine';
 import { toTokenUnits, serializeForJson, type AP2Category } from '@/lib/web5/types';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
-import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
+import { MONEY_FLOWS_ENABLED, moneyFlowBlocked, realIdentityRequiredForMoney } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 import { apiError } from '@/lib/web5/api/errors';
 
@@ -31,6 +31,13 @@ export async function POST(req: NextRequest) {
 
     if (!session || session.accessMode !== 'vessel') {
       return apiError('VESSEL_SESSION_REQUIRED', { request: req });
+    }
+
+    // 硬门槛：真实资金只能流向经过真实身份验签的会话。
+    // 即使 MONEY_FLOWS_ENABLED 已打开，beta 模拟身份也在此被拒绝（见 flags.realIdentityRequiredForMoney）。
+    const identityGate = realIdentityRequiredForMoney(session);
+    if (!identityGate.ok) {
+      return moneyFlowBlocked(identityGate.code, req);
     }
 
     const { to, amount, category, ref } = await req.json() as {

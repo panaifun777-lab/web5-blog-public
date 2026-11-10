@@ -322,6 +322,11 @@ export const API_ERRORS = {
     en: 'Missing required fields: challenge, aa2pClaim, vesselDid, eidolonDid.',
     zh: '缺少必填字段：challenge、aa2pClaim、vesselDid、eidolonDid。',
   },
+  SIMULATED_IDENTITY_NO_MONEY: {
+    status: 503,
+    en: 'Real-money flows require a cryptographically verified identity; this session is a beta simulation.',
+    zh: '真实资金结算需要经密码学验签的真实身份；当前会话为 beta 模拟身份，无法结算真实资金。',
+  },
 
   // ── Telegram 登录 ──
   TELEGRAM_INIT_DATA_MISSING: {

@@ -9,7 +9,7 @@ import { createPublicClient, http, parseUnits } from 'viem';
 import { db } from '@/lib/db';
 import { ARC_MAINNET, TREASURY } from '@/lib/web5/contracts/addresses';
 import { resolveVesselSessionFromToken } from '@/lib/web5/token-issuer';
-import { MONEY_FLOWS_ENABLED, moneyFlowBlocked } from '@/lib/launch/flags';
+import { MONEY_FLOWS_ENABLED, moneyFlowBlocked, realIdentityRequiredForMoney } from '@/lib/launch/flags';
 import { clientIp, rateLimit } from '@/lib/security/rate-limit';
 import { apiError } from '@/lib/web5/api/errors';
 
@@ -49,6 +49,12 @@ export async function POST(req: NextRequest) {
     const session = await resolveVesselSessionFromToken(token);
     if (!session || session.accessMode !== 'vessel') {
       return apiError('VESSEL_SESSION_REQUIRED', { request: req });
+    }
+
+    // 硬门槛：真实资金结算只能由经真实身份验签的会话发起。
+    const identityGate = realIdentityRequiredForMoney(session);
+    if (!identityGate.ok) {
+      return moneyFlowBlocked(identityGate.code, req);
     }
 
     const body = await req.json();

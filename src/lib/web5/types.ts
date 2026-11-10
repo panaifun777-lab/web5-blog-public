@@ -10,6 +10,26 @@ export const DID_METHODS = {
   VESSEL: 'did:vessel',
 } as const;
 
+/** 当前博客（博客 DID / 挑战方）。服务端校验 challenge.blogDid 时使用。 */
+export const BLOG_DID_FROM_ENV =
+  process.env.NEXT_PUBLIC_WEB5_BLOG_DID || 'did:web5blog:default';
+
+/**
+ * 客户端模拟桩（simulateVesselSignature）生成的 DID 形如 did:vessel:node-<hex> /
+ * did:eidolon:node-<hex>；也可用 :sim- 前缀的模拟 Prime。这些身份永远不能被视为真实身份。
+ */
+export function isMockDid(did: string | undefined | null): boolean {
+  if (!did) return false;
+  return /:node-[0-9a-f]+$/i.test(did) || did.includes(':sim-');
+}
+
+/** 从 DID 中取出内嵌的 0x 地址（支持 did:plvtvs:0x… / did:vessel:0x… / did:eidolon:0x…）。 */
+export function didToAddress(did: string | undefined | null): `0x${string}` | null {
+  if (!did) return null;
+  const raw = did.includes(':') ? did.slice(did.lastIndexOf(':') + 1) : did;
+  return /^0x[0-9a-fA-F]{40}$/.test(raw) ? (raw as `0x${string}`) : null;
+}
+
 /** Vessel 权限类型 */
 export type VesselPermission = 'read' | 'comment' | 'publish' | 'micropay' | 'harvest';
 
@@ -35,6 +55,11 @@ export interface VesselSession {
   ap2Budget: BudgetFence;
   permissions: VesselPermission[];
   accessMode: 'vessel' | 'observer';
+  /**
+   * 标识该会话的身份是否经过真实加密验签（AA2P 验签 + eidolonos.xyz 预言机授权）。
+   * false = beta 模拟身份（由 simulateVesselSignature 或模拟预言机产生），绝不可用于结算真实资金。
+   */
+  identityReal?: boolean;
 }
 
 /** AA2P 灵魂凭证 */
@@ -42,8 +67,12 @@ export interface AA2PClaim {
   vesselDid: string;
   eidolonDid: string;
   signature: string;
+  /** 真实模式下由 TEE（plvtvs.one）随凭证公布的 AA2P 公钥地址（0x… 或 did:vessel:0x…）。缺省视为模拟身份。 */
+  aa2pPublicKey?: string;
   challenge: VesselChallenge;
   expiresAt: number;
+  /** 显式标记此凭证来自客户端模拟桩（simulateVesselSignature）。真实凭证绝不应带此字段。 */
+  simulated?: boolean;
 }
 
 /** Vessel Challenge（四步握手 Step 1） */
@@ -58,6 +87,11 @@ export interface VesselChallenge {
 export interface PrimeDelegation {
   authorized: boolean;
   primeDid: string;
+  /**
+   * true 仅当授权来自真实预言机（eidolonos.xyz）或已落库的真实身份；
+   * false 表示模拟授权（beta），不得用于结算真实资金。
+   */
+  real: boolean;
   sessionKey: {
     budget: BudgetFence;
     permissions: VesselPermission[];

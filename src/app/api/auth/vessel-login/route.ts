@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ━━ Step 3a: 验证 AA2P 签名 ━━
-    const isValidSig = await verifyAA2PSignature(aa2pClaim, vesselDid);
-    if (!isValidSig) {
+    const sigResult = await verifyAA2PSignature(aa2pClaim, vesselDid);
+    if (!sigResult.verified) {
       return apiError('AA2P_SIGNATURE_INVALID', { request: req });
     }
 
@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
       return apiError('PRIME_DELEGATION_MISSING', { request: req });
     }
 
+    // 身份是否“真实”：签名经过密码学验签 + 预言机授权 + 非模拟 Prime。
+    // 任何一环不成立都视为模拟身份（beta），不可用于结算真实资金。
+    const identityReal =
+      sigResult.real &&
+      delegation.real &&
+      !delegation.primeDid.includes(':sim-');
+
     // ━━ Step 4: 签发 Vessel Session Token ━━
     const session = await issueVesselToken({
       vesselDid,
@@ -65,6 +72,7 @@ export async function POST(req: NextRequest) {
       ap2Budget: delegation.sessionKey.budget,
       permissions: delegation.sessionKey.permissions,
       expiresAt: delegation.sessionKey.expiresAt,
+      identityReal,
     });
 
     const tokenHash = createHash('sha256')
