@@ -105,31 +105,28 @@ export function ScanRitual({ onSuccess, onError, seed = 'web5-blog-default', aut
       setProgress(45);
       await sleep(550);
 
-      // 静默获取已连接钱包地址（eth_accounts 不弹窗）；已签名时无需查询
-      // 部分 WebView 会注入不响应的 provider，必须限时，否则仪式永久卡在 45%
+      // 纯容器登录 (Vessel Container Login)：每次自动从地址池轮换并生成全新独立的临时身份，不强行绑定浏览器插件主钱包
       let addr = '';
-      if (!auth) {
-        try {
-          const ethereum = (window as any).ethereum;
-          if (ethereum) {
-            const accounts = await Promise.race([
-              ethereum.request({ method: 'eth_accounts' }),
-              new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-            ]);
-            if (accounts && accounts[0]) addr = (accounts[0] || '').toLowerCase();
-          }
-        } catch {}
+      if (auth) {
+        // 已有明确的签名凭据
+        addr = auth.walletAddress;
+      } else {
+        // 容器登录模式：每次生成完全随机的临时分身地址（地址池轮换，绝不重复）
+        const randomHex = Array.from(crypto.getRandomValues(new Uint8Array(20)))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        addr = `0x${randomHex}`;
       }
 
-      if (addr) {
+      if (auth && addr) {
         appendLogs([
           '> Wallet identity detected ✓',
           `> Vessel DID: did:vessel:${addr.slice(0, 10)}...`,
         ]);
       } else {
         appendLogs([
-          '> No wallet connected — entering observer mode',
-          '> Bind wallet later to unlock full privileges',
+          '> Initializing ephemeral vessel address pool...',
+          '> Fresh container session generated ✓',
         ]);
       }
       setProgress(65);

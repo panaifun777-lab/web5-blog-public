@@ -69,17 +69,14 @@ export async function requestVesselSignature(
   return res.json();
 }
 
-/** 获取或创建当前设备的稳定容器身份种子（确保分身 DID 恒定不变，杜绝随机轮换） */
+/** 每次容器登录时自动从地址池轮换并生成全新独立的容器身份种子（确保每次登录地址不同） */
 function getOrCreateDeviceVesselSeed(): string {
   if (typeof window !== 'undefined') {
     try {
-      let seed = localStorage.getItem('web5_device_vessel_seed');
-      if (!seed) {
-        seed = Array.from(crypto.getRandomValues(new Uint8Array(20)))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        localStorage.setItem('web5_device_vessel_seed', seed);
-      }
+      const seed = Array.from(crypto.getRandomValues(new Uint8Array(20)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      localStorage.setItem('web5_device_vessel_seed', seed);
       return seed;
     } catch {}
   }
@@ -113,10 +110,17 @@ async function simulateVesselSignature(
   };
 }
 
-/** 完整的容器唤醒流程 */
+/** 完整的容器唤醒流程（每次调用自动清理旧缓存并从地址池轮换生成全新独立身份） */
 export async function awakenVessel(
   requestedPermissions: VesselPermission[] = ['read', 'comment', 'micropay']
 ): Promise<VesselSession> {
+  // 每次容器登录前强制清除旧缓存，杜绝重复复用固定 DID
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.removeItem('web5_vessel_session');
+    } catch {}
+  }
+
   // Step 1: Vessel Challenge
   const challenge = createVesselChallenge(requestedPermissions);
 

@@ -43,6 +43,13 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
   const [distroStats, setDistroStats] = useState<any>(null);
   const [refStats, setRefStats] = useState<any>(null);
   const [fcProfile, setFcProfile] = useState<any>(null);
+  const [currentSession, setCurrentSession] = useState<VesselSession | null>(session);
+
+  useEffect(() => {
+    setCurrentSession(session);
+  }, [session]);
+
+  const activeSession = currentSession || session;
 
   const [dailyLimitUsdc, setDailyLimitUsdc] = useState<string>('2.0');
   const [spentTodayUsdc, setSpentTodayUsdc] = useState<string>('0.00');
@@ -298,7 +305,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
       <Card className="cyber-panel">
         <CardContent className="p-4">
           <div className="flex items-center gap-4 flex-wrap">
-            <ParticleAvatar size={80} seed={session.vesselDid} phase="dashboard" />
+            <ParticleAvatar size={80} seed={activeSession?.vesselDid || session.vesselDid} phase="dashboard" />
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="cyber-border-cyan text-[#00FFCC] cyber-mono">
@@ -310,13 +317,13 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 </span>
               </div>
               <div className="cyber-mono text-xs text-[#999]">
-                <span className="text-[#FFCC00]">PRIME:</span> {session.primeDid}
+                <span className="text-[#FFCC00]">PRIME:</span> {activeSession?.primeDid || session.primeDid}
               </div>
               <div className="cyber-mono text-xs text-[#999]">
-                <span className="text-[#B080E8]">EIDOLON:</span> {session.eidolonDid}
+                <span className="text-[#B080E8]">EIDOLON:</span> {activeSession?.eidolonDid || session.eidolonDid}
               </div>
               <div className="cyber-mono text-xs text-[#999]">
-                <span className="text-[#00FFCC]">VESSEL:</span> {session.vesselDid}
+                <span className="text-[#00FFCC]">VESSEL:</span> {activeSession?.vesselDid || session.vesselDid}
               </div>
             </div>
             <div className="text-right">
@@ -360,7 +367,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 <span className="text-[#888]">
                   {t('vessel.boundRootWallet')}
                 </span>
-                {session.primeDid?.includes('0x8f8') || session.primeDid?.includes('sim-') ? (
+                {(activeSession?.primeDid || session.primeDid)?.includes('0x8f8') || (activeSession?.primeDid || session.primeDid)?.includes('sim-') ? (
                   <Badge className="bg-[#FFCC00]/15 text-[#FFCC00] border-[#FFCC00]/30 text-[9px] py-0 h-4">
                     {t('vessel.unverifiedDevice')}
                   </Badge>
@@ -371,7 +378,7 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                 )}
               </div>
               <div className="text-xs text-[#00FFCC] font-mono break-all select-all font-semibold">
-                {session.primeDid}
+                {activeSession?.primeDid || session.primeDid}
               </div>
 
               {/* 确权 / 绑定 / 更换真实主钱包 */}
@@ -411,28 +418,32 @@ export function MyVessels({ session }: { session: VesselSession | null }) {
                       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
                       const realAddr = accounts[0];
 
-                      // 3. 签名确权（证明主权拥有）
-                      const signMsg = `Web5.blog Sovereign Root Wallet Binding\n\nWallet: ${realAddr}\nTo Vessel Container: ${session.vesselDid}\nTimestamp: ${Date.now()}`;
+                      // 3. 标准 personal_sign 个人签名确权（100% 兼容所有 Web3 钱包，杜绝 EIP-712 兼容性报错）
+                      const timestamp = Date.now();
+                      const messageString = `Web5.blog Sovereign Root Wallet Binding\nWallet: ${realAddr}\nTo Vessel Container: ${activeSession?.vesselDid || ''}\nTimestamp: ${timestamp}`;
+
                       const sig = await ethereum.request({
                         method: 'personal_sign',
-                        params: [signMsg, realAddr],
+                        params: [messageString, realAddr],
                       });
 
-                      // 4. 发送到后端更新绑定
+                      // 4. 发送到后端进行签名验签与绑定更新
                       const res = await fetch('/api/auth/bind-wallet', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          vesselDid: session.vesselDid,
                           walletAddress: realAddr,
+                          messageString,
+                          containerId: activeSession?.vesselDid || '',
                           signature: sig,
                         }),
                       });
                       const data = await res.json();
                       if (data.success) {
-                        session.primeDid = data.primeDid;
+                        const updated = { ...(currentSession || session!), primeDid: data.primeDid };
+                        setCurrentSession(updated);
                         try {
-                          localStorage.setItem('web5_vessel_session', JSON.stringify(session));
+                          sessionStorage.setItem('web5_vessel_session', JSON.stringify(updated));
                         } catch {}
                         alert(t('vessel.rootWalletVerified', { addr: realAddr }));
                         window.location.reload();

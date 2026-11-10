@@ -31,7 +31,34 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Observer Mode 不创建 Vessel/Eidolon，只发受限 Token
+    // 为每个登录地址确保存在对应的 Eidolon（真身）+ Vessel（容器/分身），
+    // 使分身矩阵可加载（容器登录地址轮换时，每次随机地址都拥有独立 Vessel）。
+    const eidolonDid = `did:eidolon:${walletAddress.toLowerCase()}`;
+    const vesselDid = `did:vessel:${walletAddress.toLowerCase()}`;
+    const eidolon = await db.eidolon.upsert({
+      where: { did: eidolonDid },
+      update: { lastActiveAt: new Date(), status: 'ACTIVE' },
+      create: {
+        did: eidolonDid,
+        name: `Eidolon-${walletAddress.toLowerCase().slice(2, 8)}`,
+        primeId: prime.id,
+        status: 'ACTIVE',
+      },
+    });
+    const smartAccountAddress = `0x${createHash('sha256').update(walletAddress.toLowerCase()).digest('hex').slice(0, 40)}`;
+    await db.vessel.upsert({
+      where: { did: vesselDid },
+      update: { status: 'ACTIVE', lastActiveAt: new Date() },
+      create: {
+        did: vesselDid,
+        eidolonId: eidolon.id,
+        primeId: prime.id,
+        smartAccountAddress,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Observer Mode 仅发受限 Token，但附带 vesselDid 供前端加载分身矩阵
     const nonce = randomBytes(16).toString('hex');
     const expiresAt = Date.now() + RFC_CONSTANTS.SESSION_TTL_HOURS * 3600 * 1000;
     const payload = `observer:${prime.did}:${expiresAt}:${nonce}`;
@@ -42,8 +69,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       session: serializeForJson({
-        vesselDid: '',
-        eidolonDid: '',
+        vesselDid,
+        eidolonDid,
         primeDid: prime.did,
         sessionToken,
         expiresAt,
