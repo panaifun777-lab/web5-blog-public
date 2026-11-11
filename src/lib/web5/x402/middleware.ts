@@ -86,8 +86,8 @@ export interface X402GateResult {
   reason?: string;
 }
 
-const PAYMENT_HEADER_NAMES = ['x-402-payment-authorization', 'x-payment-proof', 'x-web5-voucher'];
-const VOUCHER_HEADER_RE = /^Web5-Voucher\s+([A-Za-z0-9_-]+)$/;
+const PAYMENT_HEADER_NAMES = ['x-402-payment-authorization', 'x-payment-proof', 'x-web5-voucher', 'authorization', 'x-402-payment-receipt'];
+const VOUCHER_HEADER_RE = /^(?:Web5-Voucher|Bearer)\s+([A-Za-z0-9_-]+)$/i;
 
 function getVoucherHeader(req: NextRequest): string | null {
   for (const name of PAYMENT_HEADER_NAMES) {

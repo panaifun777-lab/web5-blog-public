@@ -431,3 +431,24 @@ model ExternalOpportunity {
   @@index([status])
   @@index([source])
 }
+
+// ━━ A2ACapability：A2A (Agent-to-Agent) 智能体能力注册与 x402 计费模型 ━━
+model A2ACapability {
+  id           String   @id @default(cuid())
+  actionKey    String   @unique
+  name         String
+  description  String?
+  endpoint     String
+  method       String   @default("GET")
+  x402Tier     String?
+  pricingUsdc  Float    @default(0.05)
+  authType     String   @default("x402")
+  rateLimit    Int      @default(60)
+  isActive     Boolean  @default(true)
+  metadata     String?  // JSON
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@index([actionKey])
+  @@index([isActive])
+}
