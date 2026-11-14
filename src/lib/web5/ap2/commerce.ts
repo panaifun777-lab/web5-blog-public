@@ -38,6 +38,7 @@ export type OrderStatus =
   | 'DISPUTED'
   | 'SETTLING'
   | 'SETTLED'
+  | 'DEMO_SETTLED'
   | 'REFUNDING'
   | 'REFUNDED';
 

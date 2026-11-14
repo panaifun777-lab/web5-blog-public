@@ -48,7 +48,9 @@ export function readBlockNumbers(
 }
 
 function kindOf(status: string): 'terminal' | 'active' {
-  return status === 'SETTLED' || status === 'REFUNDED' ? 'terminal' : 'active';
+  return status === 'SETTLED' || status === 'DEMO_SETTLED' || status === 'REFUNDED'
+    ? 'terminal'
+    : 'active';
 }
 
 export async function auditOrderEvidence(
@@ -195,6 +197,10 @@ export async function auditOrderEvidence(
   if (status === 'SETTLED') {
     if (!record.payoutTxHash) e5Gaps.push('SETTLED without payoutTxHash');
     if (!record.settledAt) e5Gaps.push('SETTLED without settledAt');
+  }
+  // DEMO_SETTLED is a demo terminal state with no on-chain evidence by design.
+  if (status === 'DEMO_SETTLED' && !record.isDemo && !/^ap2-task-(seed|meme)-/.test(record.orderId)) {
+    e5Gaps.push('DEMO_SETTLED on a non-demo order');
   }
   if (status === 'REFUNDED' && !record.refundTxHash) {
     e5Gaps.push('REFUNDED without refundTxHash');

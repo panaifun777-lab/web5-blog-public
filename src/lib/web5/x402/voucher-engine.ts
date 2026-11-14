@@ -17,6 +17,10 @@ export const EIP712_VOUCHER_TYPES = {
     { name: 'amountUsdc', type: 'string' },
     { name: 'nonce', type: 'uint256' },
     { name: 'timestamp', type: 'uint256' },
+    // Attribution fields (Proof 0 · Item 3): let a settlement be traced back to
+    // the task order and session that produced it. Absent when not applicable.
+    { name: 'taskId', type: 'string' },
+    { name: 'sessionId', type: 'string' },
   ],
 } as const;
 
@@ -33,6 +37,10 @@ export interface SessionVoucher {
   amountUsdc: string;
   nonce: number;
   timestamp: number;
+  // Attribution (Proof 0 · Item 3): trace the settlement back to the task
+  // order and session that produced it. Empty string when not applicable.
+  taskId: string;
+  sessionId: string;
   signerAddress: string;
   signature: `0x${string}`;
 }
@@ -130,6 +138,8 @@ class VoucherChannelPool {
           amountUsdc: voucher.amountUsdc,
           nonce: BigInt(voucher.nonce),
           timestamp: BigInt(voucher.timestamp),
+          taskId: voucher.taskId || '',
+          sessionId: voucher.sessionId || '',
         },
         signature: voucher.signature,
       });

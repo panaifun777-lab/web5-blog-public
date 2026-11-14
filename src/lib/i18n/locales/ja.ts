@@ -241,6 +241,7 @@ const ja = {
   },
   task: {
     eyebrow: 'AP2 報酬タスク',
+    demoBadge: 'デモ',
     backHome: 'サイトに戻る',
     breadcrumbHome: 'ホーム',
     notFoundTitle: 'タスクが見つかりません',
@@ -256,6 +257,7 @@ const ja = {
     statusDisputed: '紛争中',
     statusSettling: '決済中',
     statusSettled: '決済済み',
+    statusDemoSettled: 'デモ決済済み',
     statusRefunding: '返金中',
     statusRefunded: '返金済み',
     bountyLabel: '報酬',

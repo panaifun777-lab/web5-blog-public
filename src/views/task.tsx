@@ -32,7 +32,7 @@ import type { PublicTaskOrder } from '@/lib/web5/ap2/task-browse';
 import {
   arweaveGatewayUrl,
   explorerTxUrl,
-  getPublicTaskOrder,
+  getInspectableTaskOrder,
   listOpenTaskOrders,
   taskStatusLabel,
   taskStructuredData,
@@ -81,11 +81,10 @@ function EvidenceRow({
 
 export default async function TaskPage({ orderId, locale = DEFAULT_LOCALE }: TaskViewProps) {
   const t = createT(locale);
-  const task = await getPublicTaskOrder(orderId);
+  const task = await getInspectableTaskOrder(orderId);
 
   if (!task) {
-    // Unknown orderId, a demo `ap2-task-seed-*` / `ap2-task-meme-*` row or a
-    // malformed id: there is nothing to index and nothing to show.
+    // Unknown orderId or a malformed id: nothing to index and nothing to show.
     notFound();
   }
 
@@ -130,6 +129,11 @@ export default async function TaskPage({ orderId, locale = DEFAULT_LOCALE }: Tas
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <Badge className={`${statusTone} font-mono text-[10px]`}>{status}</Badge>
+            {task.isDemo ? (
+              <Badge className="bg-[#FF8A00]/15 text-[#FF8A00] border-[#FF8A00]/30 font-mono text-[10px]">
+                {t('task.demoBadge')}
+              </Badge>
+            ) : null}
             <Badge className="bg-[#B080E8]/15 text-[#B080E8] border-[#B080E8]/30 font-mono text-[10px]">
               ARC-{task.chainId}
             </Badge>
@@ -138,6 +142,11 @@ export default async function TaskPage({ orderId, locale = DEFAULT_LOCALE }: Tas
       </header>
 
       <main className="flex-1 max-w-[860px] mx-auto w-full px-4 sm:px-6 py-10 sm:py-16">
+        {task.isDemo ? (
+          <div className="mb-6 rounded-xl border border-[#FF8A00]/30 bg-[#FF8A00]/10 px-4 py-3 text-[12px] text-[#FFB86B] font-mono">
+            {t('flags.demoNotice')}
+          </div>
+        ) : null}
         <div className="space-y-4 pb-6 border-b border-white/[0.08]">
           <div className="flex items-center gap-2 text-[11px] text-[#666] font-mono">
             <Coins className="w-3.5 h-3.5 text-[#FFCC00]" />

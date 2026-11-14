@@ -195,10 +195,10 @@ export async function handleX402PaymentGate(
   if (!X402_PAYMENTS_LIVE) {
     return {
       authorized: false,
-      reason: 'payments_paused',
+      reason: 'payments_disabled',
       response: NextResponse.json(
-        { error: 'x402 payments are temporarily paused', reason: 'payments_paused' },
-        { status: 503, headers: { 'X-402-Status': 'paused', 'Retry-After': '300' } }
+        { error: 'x402 payments are currently disabled', reason: 'payments_disabled' },
+        { status: 503, headers: { 'X-402-Status': 'DISABLED', 'Retry-After': '300' } }
       ),
     };
   }

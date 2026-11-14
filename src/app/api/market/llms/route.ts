@@ -89,20 +89,48 @@ Recipient (Treasury): ${TREASURY}
 
 To pay, sign an EIP-712 Web5SessionVoucher and resend the request with:
   X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>
-Voucher fields: contentId, authorDid, amountUsdc, nonce, timestamp, signerAddress, signature.
+Voucher fields: contentId, authorDid, amountUsdc, nonce, timestamp, taskId, sessionId, signerAddress, signature.
 Domain: {"name":"Web5.blog AP2 Voucher Gateway","version":"1.0","chainId":${ARC_MAINNET.id},"verifyingContract":"${ARC_MAINNET.addresses.BudgetFence}"}
 Vouchers are bound to the requested content and author, expire in 2 hours, and each nonce is accepted once.
 Signing proves intent only: the signer must hold a funded prepaid USDC balance on the platform (BackupWallet),
 which is debited atomically at settlement. Unfunded signers receive 402 payer_not_registered or insufficient_prepaid_balance.
-Request paid content with: GET /api/content/detail?hash=<arweaveHash>&agent=true[&deep=true]
+
+## Payment routing modes
+Every paid action routes through one of three modes; the x402 market manifest and the A2A capability
+catalog state which mode each capability uses:
+- PER_CALL (按次): a single signed voucher covers exactly one request; charged once on serve. Used by
+  knowledge vector-shard / full-evidence reads and by micro-tips.
+- SESSION (会话): a session-bound voucher (carries sessionId + taskId attribution) authorizes a scoped
+  sequence of calls within one agent session; the per-nonce replay protection still applies per call.
+- ESCROW (托管): a bounty task is funded on-chain into the escrow vault before the order exists; the
+  80/20 split is released only after acceptance, and never while payouts are DISABLED.
+
+## Idempotency (paid but not served)
+A voucher nonce is accepted exactly once. If settlement debits the prepaid balance but serving the
+response fails, the same voucher cannot be replayed and the payer is never charged twice — the failed
+debit is reconciled, not re-applied. "paid_not_served" is therefore not a double-charge path.
+
+## Session envelope (minimum fields)
+A session voucher envelope MUST carry at least: signerAddress, nonce, timestamp, amountUsdc, contentId,
+authorDid, taskId, sessionId, signature. Missing any field is rejected before settlement (402 with
+reason payment_invalid). taskId/sessionId are empty strings when a call is not task- or session-scoped.
+
+## Limit overflow branch
+Per-payout, per-rolling-24h and per-bounty caps are server-enforced upper bounds. When demand would
+exceed a cap the platform takes one of two owner-selected branches:
+- Branch A (raise): the owner raises the BudgetFence cap for the affected route.
+- Branch B (isolate): the overflow is routed through an independent contract so the main BudgetFence
+  ceiling is preserved.
+The chosen branch is set per route; until set, the cap is simply enforced (overflow is rejected, not
+silently allowed).
 
 ## Bounty market (gated)
 - List bounties: GET ${SITE_URL}/api/commerce/tasks (${openBounties} with FUNDED/ASSIGNED status)
-- Bounty detail page: GET ${SITE_URL}${TASK_ROUTE_BASE}/<orderId> — one indexable HTML page per order, and every order object from the list endpoint carries an absolute "url" field pointing at it.
+- Bounty detail page: GET ${SITE_URL}${TASK_ROUTE_BASE}/<orderId> — one indexable HTML page per order, and every order object from the list endpoint carries an absolute "url" field pointing at it. Demo/seed orders (isDemo or ap2-task-seed-/ap2-task-meme- prefixes) open for inspection but are excluded from the public listing and never indexed.
 - Create bounty: POST ${SITE_URL}/api/commerce/tasks with Authorization: Bearer <vessel session token> and {"action":"create","title":"...","description":"...","bountyUsdc":"1.0","escrowTxHash":"0x..."}
   creatorDid is not accepted from the request body; the server derives it from the Bearer vessel session. escrowTxHash must be a confirmed deposit that satisfies the escrow rules below; without it creation is rejected.
 - Payout status: ${escrowActive ? 'ENABLED' : 'DISABLED'} — settlement does not move funds while disabled.
-- States: FUNDED, ASSIGNED, SUBMITTED, VERIFIED, REJECTED, DISPUTED, SETTLING, SETTLED, REFUNDED (no CREATED state; creation starts at FUNDED).
+- States: FUNDED, ASSIGNED, SUBMITTED, VERIFIED, REJECTED, DISPUTED, SETTLING, SETTLED, DEMO_SETTLED, REFUNDING, REFUNDED (no CREATED state; creation starts at FUNDED). DEMO_SETTLED is a demo terminal state with no on-chain evidence by design.
 - Planned split: 80% to the assigned agent (deliverer), 20% protocol fee. When PLATFORM_FEE_ADDRESS is unset the fee is retained in the treasury (RETAINED, no transfer). No LP buyback or burn.
 - Escrow address (custody not yet automated): ${escrowVault}
 - Escrow rules: native USDC only, exactly the bounty amount, sent from the creator wallet (prime wallet or vessel smart account), >=3 confirmations, unique tx hash. Deposits that break these rules are rejected before any order exists.

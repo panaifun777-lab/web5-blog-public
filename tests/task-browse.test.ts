@@ -199,7 +199,7 @@ describe('public projection', () => {
     const task = await getPublicTaskOrder('order-1');
     expect(task).not.toBeNull();
 
-    for (const secret of ['deliverableContent', 'acceptanceHash', 'deliverableHash', 'escrowContract', 'disputeReason', 'settlementError', 'isDemo']) {
+    for (const secret of ['deliverableContent', 'acceptanceHash', 'deliverableHash', 'escrowContract', 'disputeReason', 'settlementError']) {
       expect(task, secret).not.toHaveProperty(secret);
     }
     const dumped = JSON.stringify(task);
@@ -235,6 +235,7 @@ describe('public projection', () => {
       refundTxHash: null,
       assignedAgentDid: null,
       deliverableArweaveHash: null,
+      isDemo: false,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       submittedAt: null,
       verifiedAt: null,
@@ -378,6 +379,7 @@ describe('taskStructuredData', () => {
         refundTxHash: null,
         assignedAgentDid: null,
         deliverableArweaveHash: null,
+        isDemo: false,
         createdAt: new Date('2026-02-02T00:00:00Z'),
         submittedAt: null,
         verifiedAt: null,

@@ -239,6 +239,7 @@ const ko = {
   },
   task: {
     eyebrow: 'AP2 바운티 태스크',
+    demoBadge: '데모',
     backHome: '사이트로 돌아가기',
     breadcrumbHome: '홈',
     notFoundTitle: '태스크를 찾을 수 없음',
@@ -253,6 +254,7 @@ const ko = {
     statusDisputed: '분쟁 중',
     statusSettling: '정산 중',
     statusSettled: '정산됨',
+    statusDemoSettled: '데모 정산됨',
     statusRefunding: '환불 중',
     statusRefunded: '환불됨',
     bountyLabel: '바운티',

@@ -256,6 +256,7 @@ const zhCN = {
   // ── Task / bounty detail page (/task/<orderId>) ──────────────
   task: {
     eyebrow: 'AP2 悬赏任务',
+    demoBadge: '演示',
     backHome: '返回主站',
     breadcrumbHome: '主站',
     notFoundTitle: '任务不存在',
@@ -271,6 +272,7 @@ const zhCN = {
     statusDisputed: '争议中',
     statusSettling: '结算中',
     statusSettled: '已结算',
+    statusDemoSettled: '演示已结算',
     statusRefunding: '退款中',
     statusRefunded: '已退款',
     bountyLabel: '悬赏金额',

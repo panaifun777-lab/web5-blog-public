@@ -240,6 +240,7 @@ const en = {
   },
   task: {
     eyebrow: 'AP2 Bounty Task',
+    demoBadge: 'Demo',
     backHome: 'Back to the site',
     breadcrumbHome: 'Home',
     notFoundTitle: 'Task Not Found',
@@ -255,6 +256,7 @@ const en = {
     statusDisputed: 'In dispute',
     statusSettling: 'Settling',
     statusSettled: 'Settled',
+    statusDemoSettled: 'Demo settled',
     statusRefunding: 'Refunding',
     statusRefunded: 'Refunded',
     bountyLabel: 'Bounty',

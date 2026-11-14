@@ -30,7 +30,8 @@ function offering(
   endpoint: string,
   priceUsdc: string,
   auth: string,
-  description: string
+  description: string,
+  routingMode: 'PER_CALL' | 'SESSION' | 'ESCROW'
 ) {
   return {
     id,
@@ -40,6 +41,7 @@ function offering(
     priceAtomic: decimalToAtomicUsdc(priceUsdc)?.toString() || '0',
     priceUsdc,
     auth,
+    routingMode,
     description,
   };
 }
@@ -103,7 +105,7 @@ export async function GET() {
       assetDecimals: ARC_MAINNET.usdcDecimals,
       recipient: TREASURY,
       finality: 'sub-second',
-      paused: paymentsPaused,
+      disabled: paymentsPaused,
       prepaidBalanceRequired: isPrepaidSettlementRequired(),
       voucher: {
         header: 'X-402-Payment-Authorization: Web5-Voucher <base64url(JSON)>',
@@ -114,7 +116,7 @@ export async function GET() {
           chainId: ARC_MAINNET.id,
           verifyingContract: ARC_MAINNET.addresses.BudgetFence,
         },
-        fields: ['contentId', 'authorDid', 'amountUsdc', 'nonce', 'timestamp', 'signerAddress', 'signature'],
+        fields: ['contentId', 'authorDid', 'amountUsdc', 'nonce', 'timestamp', 'taskId', 'sessionId', 'signerAddress', 'signature'],
         ttlSeconds: 7200,
         maxAmountUsdc: '10',
         replayProtection: 'signerAddress + nonce',
@@ -136,7 +138,8 @@ export async function GET() {
         '/api/content/detail',
         X402_TIER_PRICING.TIER_1_SUMMARY.priceUsdc,
         'x402 Web5-Voucher (EIP-712)',
-        '按主题检索平台沉淀的知识切片与摘要，返回结构化 JSON。'
+        '按主题检索平台沉淀的知识切片与摘要，返回结构化 JSON。',
+        'PER_CALL'
       ),
       offering(
         'knowledge.full_evidence',
@@ -144,7 +147,8 @@ export async function GET() {
         '/api/content/detail?deep=true',
         X402_TIER_PRICING.TIER_2_DEEP_REASONING.priceUsdc,
         'x402 Web5-Voucher (EIP-712)',
-        '返回完整论证、引用来源与机制推演，适用于研报生成。'
+        '返回完整论证、引用来源与机制推演，适用于研报生成。',
+        'PER_CALL'
       ),
       offering(
         'agent.mutual_interrogation',
@@ -152,7 +156,8 @@ export async function GET() {
         '/api/aa2p',
         X402_TIER_PRICING.TIER_3_A2A_COLLAB.priceUsdc,
         'x402 Web5-Voucher (EIP-712) + AA2P signature',
-        '外部智能体对站内博文发起结构化质询，返回分身应答与存证哈希。'
+        '外部智能体对站内博文发起结构化质询，返回分身应答与存证哈希。',
+        'SESSION'
       ),
     ],
     bountyMarket: {
@@ -180,7 +185,7 @@ export async function GET() {
         uniqueTxHash: true,
         note: 'Verified server-side before an order exists: native USDC to this address, exactly the bounty amount, from the creator wallet, >=3 confirmations, tx hash never used before. A memo/orderId alone does not fund an order. The destination is server-fixed; a caller-supplied escrowContract is ignored.',
       },
-      stateMachine: ['FUNDED', 'ASSIGNED', 'SUBMITTED', 'VERIFIED', 'REJECTED', 'DISPUTED', 'SETTLING', 'SETTLED', 'REFUNDED'],
+      stateMachine: ['FUNDED', 'ASSIGNED', 'SUBMITTED', 'VERIFIED', 'REJECTED', 'DISPUTED', 'SETTLING', 'SETTLED', 'DEMO_SETTLED', 'REFUNDING', 'REFUNDED'],
       settlementRule: {
         deliverer: '80%',
         protocol: '20%',
@@ -202,6 +207,45 @@ export async function GET() {
       deliverableAnchor: 'Arweave + SHA-256',
       disputeWindowHours: settlementWindowHours,
     },
+    paymentRouting: {
+      modes: ['PER_CALL', 'SESSION', 'ESCROW'],
+      perCall: 'A single signed voucher covers exactly one request; charged once on serve.',
+      session:
+        'A session-bound voucher (taskId + sessionId attribution) authorizes a scoped call sequence; per-nonce replay protection still applies per call.',
+      escrow:
+        'Bounty funded on-chain into the escrow vault before the order exists; 80/20 split released only after acceptance, never while DISABLED.',
+      capabilityModeField: 'Each offering/capability declares its routing mode via metadata.routingMode.',
+    },
+    idempotency: {
+      rule: 'paid_not_served is not a double-charge path',
+      nonceAcceptedOnce: true,
+      paidButNotServed:
+        'If settlement debits but serving fails, the same voucher cannot replay and the payer is never charged twice; the failed debit is reconciled, not re-applied.',
+    },
+    sessionEnvelope: {
+      minFields: [
+        'signerAddress',
+        'nonce',
+        'timestamp',
+        'amountUsdc',
+        'contentId',
+        'authorDid',
+        'taskId',
+        'sessionId',
+        'signature',
+      ],
+      rejectBeforeSettlement: true,
+      emptyTaskSession:
+        'taskId/sessionId are empty strings when a call is not task- or session-scoped.',
+    },
+    limitOverflow: {
+      enforcedUpperBounds: true,
+      branches: {
+        A_RAISE: 'Owner raises the BudgetFence cap for the affected route.',
+        B_ISOLATE: 'Overflow routed through an independent contract; main BudgetFence ceiling preserved.',
+      },
+      selection: 'Chosen per route; until set, overflow is rejected, not silently allowed.',
+    },
     rateLimits: {
       anonymousReadPerMinute: 60,
       paidCallPerMinute: 600,
@@ -215,7 +259,7 @@ export async function GET() {
     headers: {
       'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
       'Access-Control-Allow-Origin': '*',
-      'X-402-Status': paymentsPaused ? 'paused' : 'active',
+      'X-402-Status': paymentsPaused ? 'DISABLED' : 'ACTIVE',
     },
   });
 }

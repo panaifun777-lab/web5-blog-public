@@ -104,6 +104,8 @@ export async function settleVoucherFromPrepaidBalance(
             authorDid: voucher.authorDid,
             nonce: voucher.nonce,
             timestamp: voucher.timestamp,
+            taskId: voucher.taskId || '',
+            sessionId: voucher.sessionId || '',
           }),
         },
       });

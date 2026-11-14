@@ -146,6 +146,7 @@ async function main() {
         status: task.status,
         escrowContract: task.escrowContract,
         escrowTxHash: task.escrowTxHash,
+        isDemo: true,
       },
       create: {
         orderId: task.orderId,
@@ -156,6 +157,7 @@ async function main() {
         status: task.status,
         escrowContract: task.escrowContract,
         escrowTxHash: task.escrowTxHash,
+        isDemo: true,
       },
     });
 

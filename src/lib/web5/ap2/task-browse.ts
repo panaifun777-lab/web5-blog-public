@@ -79,6 +79,7 @@ export const TASK_PUBLIC_SELECT = {
   settlementDueAt: true,
   deliveryDueAt: true,
   settledAt: true,
+  isDemo: true,
 } satisfies Prisma.TaskOrderSelect;
 
 /** Shape of a row returned by `TASK_PUBLIC_SELECT`. */
@@ -89,6 +90,7 @@ export interface TaskOrderPublicRow {
   description: string;
   bountyUsdc: string;
   status: string;
+  isDemo: boolean;
   escrowTxHash: string | null;
   payoutTxHash: string | null;
   feeTxHash: string | null;
@@ -116,6 +118,7 @@ export interface PublicTaskOrder {
   bountyDisplay: string;
   status: string;
   isOpen: boolean;
+  isDemo: boolean;
   creatorDid: string;
   assignedAgentDid: string | null;
   chainId: number;
@@ -218,6 +221,7 @@ export function toPublicTaskOrder(row: TaskOrderPublicRow): PublicTaskOrder {
     bountyDisplay: formatBountyUsdc(row.bountyUsdc),
     status: row.status,
     isOpen: (OPEN_BOUNTY_STATUSES as string[]).includes(row.status),
+    isDemo: Boolean(row.isDemo) || /^ap2-task-(seed|meme)-/.test(row.orderId),
     creatorDid: row.creatorDid,
     assignedAgentDid: row.assignedAgentDid ?? null,
     chainId: chain.id,
@@ -263,6 +267,32 @@ export async function getPublicTaskOrder(orderId: string): Promise<PublicTaskOrd
 }
 
 /**
+ * Inspectable lookup for the public detail page only. Unlike `loadTaskOrder`
+ * it does NOT apply `NON_DEMO_ORDER_WHERE`, so a demo or seed order can be
+ * opened and verified ("一眼分清哪些是演示") while still keeping the
+ * listing, sitemap and machine manifests free of demo/seed rows. Uses the same
+ * privacy-preserving `TASK_PUBLIC_SELECT`, so no deliverable body or
+ * acceptance hash can leak.
+ */
+export async function loadInspectableTaskOrder(
+  orderId: string
+): Promise<TaskOrderPublicRow | null> {
+  if (!isTaskOrderId(orderId)) return null;
+  return db.taskOrder.findFirst({
+    where: { orderId: orderId.trim() },
+    select: TASK_PUBLIC_SELECT,
+  });
+}
+
+/** Projected inspectable lookup. */
+export async function getInspectableTaskOrder(
+  orderId: string
+): Promise<PublicTaskOrder | null> {
+  const row = await loadInspectableTaskOrder(orderId);
+  return row ? toPublicTaskOrder(row) : null;
+}
+
+/**
  * Newest open bounties, for the sitemap, the machine manifests and the
  * related-tasks block. Throws with the database so callers keep their own
  * "discovery surface must not 500" handling.
@@ -281,7 +311,7 @@ export async function listOpenTaskOrders(
 
 // ── labels & metadata ──────────────────────────────────────────
 
-const STATUS_LABEL_KEYS: Record<string, 'statusFunded' | 'statusAssigned' | 'statusSubmitted' | 'statusVerified' | 'statusRejected' | 'statusDisputed' | 'statusSettling' | 'statusSettled' | 'statusRefunding' | 'statusRefunded'> = {
+const STATUS_LABEL_KEYS: Record<string, 'statusFunded' | 'statusAssigned' | 'statusSubmitted' | 'statusVerified' | 'statusRejected' | 'statusDisputed' | 'statusSettling' | 'statusSettled' | 'statusDemoSettled' | 'statusRefunding' | 'statusRefunded'> = {
   FUNDED: 'statusFunded',
   ASSIGNED: 'statusAssigned',
   SUBMITTED: 'statusSubmitted',
@@ -290,6 +320,7 @@ const STATUS_LABEL_KEYS: Record<string, 'statusFunded' | 'statusAssigned' | 'sta
   DISPUTED: 'statusDisputed',
   SETTLING: 'statusSettling',
   SETTLED: 'statusSettled',
+  DEMO_SETTLED: 'statusDemoSettled',
   REFUNDING: 'statusRefunding',
   REFUNDED: 'statusRefunded',
 };
@@ -307,12 +338,21 @@ export async function buildTaskMetadata(
   locale: LocaleCode = DEFAULT_LOCALE
 ): Promise<Metadata> {
   const t = createT(locale);
-  const task = await getPublicTaskOrder(orderId);
+  const task = await getInspectableTaskOrder(orderId);
 
   if (!task) {
-    // Nothing indexable here: keep it out of the index instead of publishing a
+    // Nothing here: keep it out of the index instead of publishing a
     // generic title, and let the page answer 404.
     return { title: t('task.notFoundTitle'), robots: { index: false, follow: true } };
+  }
+
+  // Demo/seed rows are open for human + machine inspection but must never be
+  // indexed as live bounties.
+  if (task.isDemo) {
+    return {
+      title: t('task.metaTitle', { title: task.title, amount: task.bountyDisplay }),
+      robots: { index: false, follow: true },
+    };
   }
 
   const status = taskStatusLabel(task.status, locale);

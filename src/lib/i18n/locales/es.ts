@@ -240,6 +240,7 @@ const es = {
   },
   task: {
     eyebrow: 'Tarea de recompensa AP2',
+    demoBadge: 'Demo',
     backHome: 'Volver al sitio',
     breadcrumbHome: 'Inicio',
     notFoundTitle: 'Tarea no encontrada',
@@ -254,6 +255,7 @@ const es = {
     statusDisputed: 'En disputa',
     statusSettling: 'Liquidando',
     statusSettled: 'Liquidada',
+    statusDemoSettled: 'Liquidada (demo)',
     statusRefunding: 'Reembolsando',
     statusRefunded: 'Reembolsada',
     bountyLabel: 'Recompensa',
